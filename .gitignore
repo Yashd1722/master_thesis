@@ -1,0 +1,43 @@
+# ----------------------------
+# Python / venv / cache
+# ----------------------------
+myenv/
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+.DS_Store
+.idea/
+.vscode/
+
+# ----------------------------
+# Outputs (optional)
+# ----------------------------
+checkpoints/
+results/
+testing/
+*.ckpt
+*.log
+
+# ----------------------------
+# DATASET RULES
+# Ignore everything in dataset/ ...
+# ----------------------------
+dataset/**
+
+# ... but allow the dataset folder structure itself
+!dataset/
+!dataset/**/
+
+# Allow ONLY these final CSVs
+!dataset/ts_1500/ts_1500_final.csv
+!dataset/ts_500/ts_500_final.csv
+
+# Allow the clean_dataset folder and all CSVs inside it
+!dataset/pangaea_923197/datasets/clean_dataset/
+!dataset/pangaea_923197/datasets/clean_dataset/*csv
+
+# (optional) If you only want CSVs inside clean_dataset:
+# dataset/pangaea_923197/datasets/clean_dataset/*
+# !dataset/pangaea_923197/datasets/clean_dataset/*.csv
