@@ -358,7 +358,7 @@ sbatch --partition=standard train.sh
 
 ## 📧 Contact
 
-For questions or issues, contact: [yashkumar-sanjaybhai.dhameliya@uni-wuerzburg.de]
+For questions or issues, contact: [yashkumar-sanjaybhai.dhameliya@stud-mail.uni-wuerzburg.de]
 
 ---
 
