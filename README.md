@@ -36,23 +36,28 @@ master_thesis/
 │
 ├── training/                      # Training scripts (on HPC)
 │   ├── train.py                  # Main training script
-│   ├── models.py                 # Model architectures (LSTM, GRU, etc.)
-│   └── utils.py                  # Training utilities
+│
+│
 │
 ├── logs/                          # Training logs (SLURM output)
 │   ├── train_*.out               # Standard output logs
 │   └── train_*.err               # Error logs
 │
-├── models/                        # Saved model checkpoints
+├── checkpoints/                   # Saved model checkpoints
 │   └── *.pth                     # PyTorch model files
 │
 ├── metrics/                       # Training metrics and results
-│   └── *.json                    # Metric logs
+│   └── *.json                     # Metric logs
+|
+├── Models/                         # Saved model Architecture
+│   └── CNN.py                     # Different Neural Network Arch.
+|
+|
 │
 ├── results/                       # Analysis results
 │   └── *.csv                     # Result summaries
 │
-├── train.sh               # SLURM script for training
+├── train.sh                      # SLURM script for training
 ```
 
 ---

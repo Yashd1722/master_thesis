@@ -99,3 +99,24 @@ Epoch 17/20  (time: 257.0s)
   Train -> loss: 0.363277 | acc: 0.867029
   Val   -> loss: 0.353949 | acc: 0.870107 | f1_macro: 0.869418
   ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 18/20  (time: 258.6s)
+  Train -> loss: 0.356440 | acc: 0.869577
+  Val   -> loss: 0.343390 | acc: 0.872507 | f1_macro: 0.871607
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 19/20  (time: 256.3s)
+  Train -> loss: 0.352584 | acc: 0.870700
+  Val   -> loss: 0.345854 | acc: 0.872533 | f1_macro: 0.871665
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 20/20  (time: 256.2s)
+  Train -> loss: 0.349882 | acc: 0.871531
+  Val   -> loss: 0.346184 | acc: 0.872533 | f1_macro: 0.872027
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Saved training log CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_training.csv
+
+=========================================
+Job finished at: Thu Feb 19 09:52:49 PM CET 2026
+=========================================
