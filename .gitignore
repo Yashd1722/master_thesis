@@ -41,3 +41,6 @@ dataset/**
 # (optional) If you only want CSVs inside clean_dataset:
 # dataset/pangaea_923197/datasets/clean_dataset/*
 # !dataset/pangaea_923197/datasets/clean_dataset/*.csv
+dataset/ts_1500/
+dataset/ts_500/
+dataset/pangaea_923197/

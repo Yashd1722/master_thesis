@@ -1,0 +1,67 @@
+=========================================
+Job started at: Thu Feb 19 08:27:24 PM CET 2026
+Job ID: 2312852
+Node: jn018
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 46068 MiB, 45460 MiB
+
+Starting training...
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+Device: cuda
+
+Epoch 1/20  (time: 255.0s)
+  Train -> loss: 1.310946 | acc: 0.348540
+  Val   -> loss: 1.228816 | acc: 0.394613 | f1_macro: 0.350273
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 2/20  (time: 252.6s)
+  Train -> loss: 1.198609 | acc: 0.440574
+  Val   -> loss: 0.856912 | acc: 0.666787 | f1_macro: 0.662687
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 3/20  (time: 251.1s)
+  Train -> loss: 0.843404 | acc: 0.665529
+  Val   -> loss: 0.733464 | acc: 0.713493 | f1_macro: 0.713036
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 4/20  (time: 252.1s)
+  Train -> loss: 0.718147 | acc: 0.721871
+  Val   -> loss: 0.636903 | acc: 0.754493 | f1_macro: 0.754621
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 5/20  (time: 253.6s)
+  Train -> loss: 0.599610 | acc: 0.774346
+  Val   -> loss: 0.499389 | acc: 0.814080 | f1_macro: 0.812771
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 6/20  (time: 255.5s)
+  Train -> loss: 0.524503 | acc: 0.805189
+  Val   -> loss: 0.489874 | acc: 0.822453 | f1_macro: 0.822230
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 7/20  (time: 256.7s)
+  Train -> loss: 0.470985 | acc: 0.826214
+  Val   -> loss: 0.418040 | acc: 0.845653 | f1_macro: 0.844448
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 8/20  (time: 254.5s)
+  Train -> loss: 0.444296 | acc: 0.836151
+  Val   -> loss: 0.398956 | acc: 0.852147 | f1_macro: 0.850852
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 9/20  (time: 256.4s)
+  Train -> loss: 0.428088 | acc: 0.842169
+  Val   -> loss: 0.389147 | acc: 0.855720 | f1_macro: 0.854529
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+
+Epoch 10/20  (time: 256.7s)
+  Train -> loss: 0.414635 | acc: 0.847666
+  Val   -> loss: 0.378354 | acc: 0.860267 | f1_macro: 0.859068
+  ✅ Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
