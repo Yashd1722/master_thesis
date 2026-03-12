@@ -17,6 +17,7 @@ __pycache__/
 testing/
 *.ckpt
 *.log
+*.py
 
 # ----------------------------
 # DATASET RULES
