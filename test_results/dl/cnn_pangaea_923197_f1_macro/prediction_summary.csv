@@ -1,7 +1,7 @@
-file_name,p_fold,p_hopf,p_transcritical,p_null,p_transition,predicted_class,prediction_confidence
-sample_0,0.0,0.0,0.0,1.0,0.0,null,1.0
-sample_1,0.0,1.0,0.0,0.0,1.0,hopf,1.0
-sample_2,0.0,0.0,0.0,1.0,0.0,null,1.0
-sample_3,0.0,0.0,0.0,1.0,0.0,null,1.0
-sample_4,0.0,0.0,0.0,1.0,0.0,null,1.0
-sample_5,0.0,0.0,0.0,1.0,0.0,null,1.0
+file_name,p_fold,p_hopf,p_transcritical,p_null,p_transition,predicted_class_idx,predicted_class,prediction_confidence
+sample_0,0.0,0.0,0.0,1.0,0.0,3,null,1.0
+sample_1,0.0,1.0,0.0,0.0,1.0,1,hopf,1.0
+sample_2,0.0,0.0,0.0,1.0,0.0,3,null,1.0
+sample_3,0.0,0.0,0.0,1.0,0.0,3,null,1.0
+sample_4,0.0,0.0,0.0,1.0,0.0,3,null,1.0
+sample_5,0.0,0.0,0.0,1.0,0.0,3,null,1.0
