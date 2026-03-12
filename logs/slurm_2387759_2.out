@@ -1,0 +1,108 @@
+=========================================
+Job started at: Wed Mar 11 01:33:11 PM CET 2026
+Job ID: 2387762
+Array Task ID: 2
+Node: jn117
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 49140 MiB, 48514 MiB
+
+Running experiment: seasonality
+Command: python3 training/train.py --model lstm --dataset ts_500 --metric f1_macro --epochs 20 --early_stop --patience 5 --seq_len 500 --data_seed 42 --seasonality
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['lstm']
+Datasets: ['ts_500']
+Metrics: ['f1_macro']
+2026-03-11 13:33:15,525 | INFO | Run name: lstm_ts_500_f1_macro_season
+2026-03-11 13:33:15,528 | INFO | Dataset: ts_500 | Model: lstm | Metric: f1_macro
+2026-03-11 13:33:15,528 | INFO | Trend: False | Seasonality: True
+2026-03-11 13:33:15,529 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 13:33:15,529 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_season_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-03-11 13:33:15,609 | INFO | Device: cuda
+2026-03-11 13:38:16,262 | INFO | Epoch 1/20 (time: 298.9s)
+2026-03-11 13:38:16,267 | INFO |   Train -> loss: 1.371547 | acc: 0.301774
+2026-03-11 13:38:16,267 | INFO |   Val   -> loss: 1.360138 | acc: 0.320520 | f1_macro: 0.249939
+2026-03-11 13:38:16,275 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 13:43:12,700 | INFO | Epoch 2/20 (time: 296.4s)
+2026-03-11 13:43:12,709 | INFO |   Train -> loss: 1.345958 | acc: 0.321709
+2026-03-11 13:43:12,709 | INFO |   Val   -> loss: 1.278229 | acc: 0.389427 | f1_macro: 0.337963
+2026-03-11 13:43:12,730 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 13:48:06,882 | INFO | Epoch 3/20 (time: 294.1s)
+2026-03-11 13:48:06,887 | INFO |   Train -> loss: 1.294927 | acc: 0.363420
+2026-03-11 13:48:06,887 | INFO |   Val   -> loss: 1.261493 | acc: 0.398147 | f1_macro: 0.355976
+2026-03-11 13:48:06,894 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 13:53:02,835 | INFO | Epoch 4/20 (time: 295.9s)
+2026-03-11 13:53:02,840 | INFO |   Train -> loss: 1.225978 | acc: 0.407940
+2026-03-11 13:53:02,840 | INFO |   Val   -> loss: 1.134589 | acc: 0.467200 | f1_macro: 0.465013
+2026-03-11 13:53:02,845 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 13:57:57,730 | INFO | Epoch 5/20 (time: 294.9s)
+2026-03-11 13:57:57,734 | INFO |   Train -> loss: 1.107725 | acc: 0.497971
+2026-03-11 13:57:57,735 | INFO |   Val   -> loss: 1.006543 | acc: 0.572293 | f1_macro: 0.576603
+2026-03-11 13:57:57,738 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:02:49,797 | INFO | Epoch 6/20 (time: 292.1s)
+2026-03-11 14:02:49,802 | INFO |   Train -> loss: 1.024090 | acc: 0.556354
+2026-03-11 14:02:49,802 | INFO |   Val   -> loss: 0.991634 | acc: 0.575440 | f1_macro: 0.577302
+2026-03-11 14:02:49,806 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:07:42,311 | INFO | Epoch 7/20 (time: 292.5s)
+2026-03-11 14:07:42,316 | INFO |   Train -> loss: 0.995109 | acc: 0.574591
+2026-03-11 14:07:42,316 | INFO |   Val   -> loss: 0.991981 | acc: 0.560747 | f1_macro: 0.557676
+2026-03-11 14:12:34,515 | INFO | Epoch 8/20 (time: 292.2s)
+2026-03-11 14:12:34,520 | INFO |   Train -> loss: 0.970326 | acc: 0.585686
+2026-03-11 14:12:34,521 | INFO |   Val   -> loss: 0.931383 | acc: 0.601800 | f1_macro: 0.600921
+2026-03-11 14:12:34,524 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:17:26,231 | INFO | Epoch 9/20 (time: 291.7s)
+2026-03-11 14:17:26,238 | INFO |   Train -> loss: 0.966086 | acc: 0.586500
+2026-03-11 14:17:26,238 | INFO |   Val   -> loss: 1.014120 | acc: 0.566053 | f1_macro: 0.567069
+2026-03-11 14:22:19,942 | INFO | Epoch 10/20 (time: 293.7s)
+2026-03-11 14:22:19,946 | INFO |   Train -> loss: 0.985608 | acc: 0.580257
+2026-03-11 14:22:19,946 | INFO |   Val   -> loss: 0.921801 | acc: 0.612520 | f1_macro: 0.611803
+2026-03-11 14:22:19,950 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:27:12,117 | INFO | Epoch 11/20 (time: 292.2s)
+2026-03-11 14:27:12,121 | INFO |   Train -> loss: 0.948271 | acc: 0.596043
+2026-03-11 14:27:12,122 | INFO |   Val   -> loss: 0.908188 | acc: 0.614680 | f1_macro: 0.615834
+2026-03-11 14:27:12,127 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:32:04,991 | INFO | Epoch 12/20 (time: 292.9s)
+2026-03-11 14:32:04,995 | INFO |   Train -> loss: 0.926076 | acc: 0.607823
+2026-03-11 14:32:04,996 | INFO |   Val   -> loss: 0.875318 | acc: 0.631187 | f1_macro: 0.634136
+2026-03-11 14:32:05,000 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:36:57,059 | INFO | Epoch 13/20 (time: 292.1s)
+2026-03-11 14:36:57,065 | INFO |   Train -> loss: 0.910355 | acc: 0.615571
+2026-03-11 14:36:57,066 | INFO |   Val   -> loss: 0.883451 | acc: 0.628267 | f1_macro: 0.623087
+2026-03-11 14:41:50,540 | INFO | Epoch 14/20 (time: 293.5s)
+2026-03-11 14:41:50,545 | INFO |   Train -> loss: 0.886083 | acc: 0.630957
+2026-03-11 14:41:50,545 | INFO |   Val   -> loss: 0.897896 | acc: 0.631640 | f1_macro: 0.632084
+2026-03-11 14:46:44,936 | INFO | Epoch 15/20 (time: 294.4s)
+2026-03-11 14:46:44,940 | INFO |   Train -> loss: 0.869206 | acc: 0.639823
+2026-03-11 14:46:44,940 | INFO |   Val   -> loss: 0.800595 | acc: 0.684213 | f1_macro: 0.682142
+2026-03-11 14:46:44,944 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 14:51:40,827 | INFO | Epoch 16/20 (time: 295.9s)
+2026-03-11 14:51:40,831 | INFO |   Train -> loss: 0.813476 | acc: 0.673471
+2026-03-11 14:51:40,831 | INFO |   Val   -> loss: 0.815910 | acc: 0.665573 | f1_macro: 0.664702
+2026-03-11 14:56:36,498 | INFO | Epoch 17/20 (time: 295.7s)
+2026-03-11 14:56:36,502 | INFO |   Train -> loss: 0.775717 | acc: 0.690840
+2026-03-11 14:56:36,503 | INFO |   Val   -> loss: 0.878673 | acc: 0.639133 | f1_macro: 0.638051
+2026-03-11 15:01:28,117 | INFO | Epoch 18/20 (time: 291.6s)
+2026-03-11 15:01:28,122 | INFO |   Train -> loss: 0.746504 | acc: 0.709803
+2026-03-11 15:01:28,122 | INFO |   Val   -> loss: 0.723658 | acc: 0.719440 | f1_macro: 0.717310
+2026-03-11 15:01:28,125 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 15:06:21,577 | INFO | Epoch 19/20 (time: 293.4s)
+2026-03-11 15:06:21,581 | INFO |   Train -> loss: 0.685484 | acc: 0.741920
+2026-03-11 15:06:21,581 | INFO |   Val   -> loss: 0.618144 | acc: 0.768613 | f1_macro: 0.764441
+2026-03-11 15:06:21,584 | INFO | Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_season.pt
+2026-03-11 15:11:17,610 | INFO | Epoch 20/20 (time: 296.0s)
+2026-03-11 15:11:17,615 | INFO |   Train -> loss: 0.646010 | acc: 0.758763
+2026-03-11 15:11:17,615 | INFO |   Val   -> loss: 0.622672 | acc: 0.767867 | f1_macro: 0.764312
+2026-03-11 15:11:17,631 | INFO | Saved training log CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_season_training.csv
+2026-03-11 15:11:17,631 | INFO | Done.
+
+=========================================
+Finished experiment: seasonality
+Job finished at: Wed Mar 11 03:11:18 PM CET 2026
+=========================================

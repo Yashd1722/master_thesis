@@ -1,0 +1,104 @@
+=========================================
+Job started at: Mon Feb 23 02:21:11 PM CET 2026
+Job ID: 2320742
+Node: jn114
+Args: DATASET=ts_500 MODEL=cnn_lstm METRIC=acc
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 49140 MiB, 48514 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['cnn_lstm']
+Datasets: ['ts_500']
+Metrics: ['acc']
+2026-02-23 14:21:15,416 | INFO | Run name: cnn_lstm_ts_500_acc
+2026-02-23 14:21:15,416 | INFO | Dataset: ts_500 | Model: cnn_lstm | Metric: acc
+2026-02-23 14:21:15,416 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:21:15,416 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_acc_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-23 14:21:15,503 | INFO | Device: cuda
+2026-02-23 14:26:18,260 | INFO | Epoch 1/20 (time: 300.9s)
+2026-02-23 14:26:18,266 | INFO |   Train -> loss: 1.335274 | acc: 0.313400
+2026-02-23 14:26:18,266 | INFO |   Val   -> loss: 1.275943 | acc: 0.361680 | acc: 0.361680
+2026-02-23 14:26:18,272 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:31:12,854 | INFO | Epoch 2/20 (time: 294.6s)
+2026-02-23 14:31:12,859 | INFO |   Train -> loss: 1.280070 | acc: 0.360600
+2026-02-23 14:31:12,859 | INFO |   Val   -> loss: 1.267911 | acc: 0.368867 | acc: 0.368867
+2026-02-23 14:31:12,865 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:36:09,388 | INFO | Epoch 3/20 (time: 296.5s)
+2026-02-23 14:36:09,392 | INFO |   Train -> loss: 1.277035 | acc: 0.365214
+2026-02-23 14:36:09,392 | INFO |   Val   -> loss: 1.257925 | acc: 0.369160 | acc: 0.369160
+2026-02-23 14:36:09,395 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:41:05,639 | INFO | Epoch 4/20 (time: 296.2s)
+2026-02-23 14:41:05,643 | INFO |   Train -> loss: 1.266227 | acc: 0.366920
+2026-02-23 14:41:05,644 | INFO |   Val   -> loss: 1.246413 | acc: 0.379200 | acc: 0.379200
+2026-02-23 14:41:05,648 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:46:01,654 | INFO | Epoch 5/20 (time: 296.0s)
+2026-02-23 14:46:01,658 | INFO |   Train -> loss: 1.254760 | acc: 0.375700
+2026-02-23 14:46:01,658 | INFO |   Val   -> loss: 1.241163 | acc: 0.383680 | acc: 0.383680
+2026-02-23 14:46:01,661 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:50:57,206 | INFO | Epoch 6/20 (time: 295.5s)
+2026-02-23 14:50:57,217 | INFO |   Train -> loss: 1.252256 | acc: 0.378657
+2026-02-23 14:50:57,217 | INFO |   Val   -> loss: 1.239396 | acc: 0.384267 | acc: 0.384267
+2026-02-23 14:50:57,221 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 14:55:52,683 | INFO | Epoch 7/20 (time: 295.5s)
+2026-02-23 14:55:52,689 | INFO |   Train -> loss: 1.242081 | acc: 0.385666
+2026-02-23 14:55:52,689 | INFO |   Val   -> loss: 1.222512 | acc: 0.398800 | acc: 0.398800
+2026-02-23 14:55:52,692 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:00:47,975 | INFO | Epoch 8/20 (time: 295.3s)
+2026-02-23 15:00:47,982 | INFO |   Train -> loss: 1.229111 | acc: 0.391940
+2026-02-23 15:00:47,983 | INFO |   Val   -> loss: 1.260112 | acc: 0.384173 | acc: 0.384173
+2026-02-23 15:05:42,462 | INFO | Epoch 9/20 (time: 294.5s)
+2026-02-23 15:05:42,466 | INFO |   Train -> loss: 1.128318 | acc: 0.457820
+2026-02-23 15:05:42,466 | INFO |   Val   -> loss: 1.328498 | acc: 0.396240 | acc: 0.396240
+2026-02-23 15:10:37,751 | INFO | Epoch 10/20 (time: 295.3s)
+2026-02-23 15:10:37,756 | INFO |   Train -> loss: 1.090845 | acc: 0.474889
+2026-02-23 15:10:37,756 | INFO |   Val   -> loss: 1.088216 | acc: 0.485093 | acc: 0.485093
+2026-02-23 15:10:37,758 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:15:33,302 | INFO | Epoch 11/20 (time: 295.5s)
+2026-02-23 15:15:33,306 | INFO |   Train -> loss: 1.038150 | acc: 0.524017
+2026-02-23 15:15:33,306 | INFO |   Val   -> loss: 0.990910 | acc: 0.565107 | acc: 0.565107
+2026-02-23 15:15:33,309 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:20:28,859 | INFO | Epoch 12/20 (time: 295.5s)
+2026-02-23 15:20:28,864 | INFO |   Train -> loss: 0.995151 | acc: 0.545960
+2026-02-23 15:20:28,864 | INFO |   Val   -> loss: 1.148814 | acc: 0.486960 | acc: 0.486960
+2026-02-23 15:25:25,288 | INFO | Epoch 13/20 (time: 296.4s)
+2026-02-23 15:25:25,293 | INFO |   Train -> loss: 0.950602 | acc: 0.568929
+2026-02-23 15:25:25,293 | INFO |   Val   -> loss: 0.995999 | acc: 0.565947 | acc: 0.565947
+2026-02-23 15:25:25,296 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:30:22,439 | INFO | Epoch 14/20 (time: 297.1s)
+2026-02-23 15:30:22,448 | INFO |   Train -> loss: 0.935759 | acc: 0.577991
+2026-02-23 15:30:22,448 | INFO |   Val   -> loss: 1.141367 | acc: 0.502907 | acc: 0.502907
+2026-02-23 15:35:18,169 | INFO | Epoch 15/20 (time: 295.7s)
+2026-02-23 15:35:18,176 | INFO |   Train -> loss: 0.940511 | acc: 0.572043
+2026-02-23 15:35:18,176 | INFO |   Val   -> loss: 1.076715 | acc: 0.501280 | acc: 0.501280
+2026-02-23 15:40:11,219 | INFO | Epoch 16/20 (time: 293.0s)
+2026-02-23 15:40:11,224 | INFO |   Train -> loss: 0.946304 | acc: 0.567414
+2026-02-23 15:40:11,224 | INFO |   Val   -> loss: 1.189300 | acc: 0.498347 | acc: 0.498347
+2026-02-23 15:45:07,321 | INFO | Epoch 17/20 (time: 296.1s)
+2026-02-23 15:45:07,331 | INFO |   Train -> loss: 0.912726 | acc: 0.588934
+2026-02-23 15:45:07,332 | INFO |   Val   -> loss: 0.931026 | acc: 0.589067 | acc: 0.589067
+2026-02-23 15:45:07,337 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:50:00,325 | INFO | Epoch 18/20 (time: 293.0s)
+2026-02-23 15:50:00,329 | INFO |   Train -> loss: 0.902954 | acc: 0.593151
+2026-02-23 15:50:00,329 | INFO |   Val   -> loss: 0.869486 | acc: 0.618533 | acc: 0.618533
+2026-02-23 15:50:00,334 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 15:54:51,260 | INFO | Epoch 19/20 (time: 290.9s)
+2026-02-23 15:54:51,267 | INFO |   Train -> loss: 0.897092 | acc: 0.598357
+2026-02-23 15:54:51,267 | INFO |   Val   -> loss: 0.888796 | acc: 0.614640 | acc: 0.614640
+2026-02-23 15:59:46,780 | INFO | Epoch 20/20 (time: 295.5s)
+2026-02-23 15:59:46,785 | INFO |   Train -> loss: 0.892088 | acc: 0.603171
+2026-02-23 15:59:46,785 | INFO |   Val   -> loss: 0.883354 | acc: 0.613987 | acc: 0.613987
+2026-02-23 15:59:46,788 | INFO | Saved training log CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_acc_training.csv
+2026-02-23 15:59:46,788 | INFO | Done.
+
+=========================================
+Job finished at: Mon Feb 23 03:59:47 PM CET 2026
+=========================================

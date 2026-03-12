@@ -1,0 +1,32 @@
+=========================================
+Job started at: Thu Feb 19 11:43:58 PM CET 2026
+Job ID: 2313689
+Node: jnfat03
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40S, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 12 experiment(s): 4 model(s) × 1 dataset(s) × 3 metric(s)
+Models: ['cnn', 'cnn_lstm', 'gru', 'lstm']
+Datasets: ['ts_500']
+Metrics: ['acc', 'f1_macro', 'balanced_accuracy']
+2026-02-19 23:44:03,123 | INFO | Run name: cnn_ts_500_acc
+2026-02-19 23:44:03,123 | INFO | Dataset: ts_500 | Model: cnn | Metric: acc
+2026-02-19 23:44:03,123 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_ts_500_acc.pt
+2026-02-19 23:44:03,123 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/cnn_ts_500_acc_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-19 23:44:03,214 | INFO | Device: cuda
+2026-02-19 23:48:40,249 | INFO | Epoch 1/20 (time: 275.2s)
+2026-02-19 23:48:40,253 | INFO |   Train -> loss: 1.139285 | acc: 0.474391
+2026-02-19 23:48:40,253 | INFO |   Val   -> loss: 1.562554 | acc: 0.361040 | acc: 0.361040
+2026-02-19 23:48:40,262 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_ts_500_acc.pt
+2026-02-19 23:53:11,614 | INFO | Epoch 2/20 (time: 271.3s)
+2026-02-19 23:53:11,625 | INFO |   Train -> loss: 1.029044 | acc: 0.541577
+2026-02-19 23:53:11,626 | INFO |   Val   -> loss: 1.540486 | acc: 0.356920 | acc: 0.356920

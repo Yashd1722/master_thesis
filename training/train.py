@@ -1,15 +1,17 @@
 import argparse
 import sys
 import time
-import json
 from pathlib import Path
+
 import pandas as pd
 import torch
+import torch.nn.functional as F
 
 # Make project root importable (for src and models)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.splits import create_or_use_split_csv
+from src.signal_injector import apply_forcing
 from metrics import METRICS
 from helper import (
     project_root,
@@ -18,7 +20,6 @@ from helper import (
     TSCSVDataset,
     build_model,
 )
-from evaluate import run_one_epoch
 
 
 class EarlyStopping:
@@ -42,13 +43,79 @@ class EarlyStopping:
         return self.bad >= self.patience
 
 
+def build_run_name(model_name, dataset_name, metric_name, args):
+    base = f"{model_name}_{dataset_name}_{metric_name}"
+
+    if args.trend and args.seasonality:
+        return f"{base}_trend_season"
+    if args.trend:
+        return f"{base}_trend"
+    if args.seasonality:
+        return f"{base}_season"
+    return base
+
+
+def run_epoch(model, loader, device, optimizer=None, train_mode=True, args=None):
+    if train_mode:
+        model.train()
+    else:
+        model.eval()
+
+    total_loss = 0.0
+    total_correct = 0
+    total_samples = 0
+    y_true_all = []
+    y_pred_all = []
+
+    context = torch.enable_grad() if train_mode else torch.no_grad()
+
+    with context:
+        for x, y in loader:
+            x = x.to(device)
+            y = y.to(device)
+
+            x = apply_forcing(
+                x,
+                trend=args.trend,
+                seasonality=args.seasonality,
+                trend_strength=args.trend_strength,
+                season_amp=args.season_amp,
+                season_period=args.season_period,
+            )
+
+            if train_mode:
+                optimizer.zero_grad()
+
+            logits = model(x)
+            loss = F.cross_entropy(logits, y)
+
+            if train_mode:
+                loss.backward()
+                optimizer.step()
+
+            preds = torch.argmax(logits, dim=1)
+
+            batch_size = y.size(0)
+            total_loss += loss.item() * batch_size
+            total_correct += (preds == y).sum().item()
+            total_samples += batch_size
+
+            y_true_all.extend(y.detach().cpu().tolist())
+            y_pred_all.extend(preds.detach().cpu().tolist())
+
+    avg_loss = total_loss / total_samples
+    avg_acc = total_correct / total_samples
+
+    return avg_loss, avg_acc, y_true_all, y_pred_all
+
+
 def run_experiment(dataset_name, model_name, metric_name, args):
     """Run a single training experiment."""
     root = project_root()
     for sub in ["results", "checkpoints", "logs"]:
         (root / sub).mkdir(exist_ok=True)
 
-    run_name = f"{model_name}_{dataset_name}_{metric_name}"
+    run_name = build_run_name(model_name, dataset_name, metric_name, args)
     log_path = root / "logs" / f"{run_name}.log"
     ckpt_path = root / "checkpoints" / f"{run_name}.pt"
     results_csv = root / "results" / f"{run_name}_training.csv"
@@ -56,6 +123,7 @@ def run_experiment(dataset_name, model_name, metric_name, args):
     logger = setup_logger(log_path)
     logger.info(f"Run name: {run_name}")
     logger.info(f"Dataset: {dataset_name} | Model: {model_name} | Metric: {metric_name}")
+    logger.info(f"Trend: {args.trend} | Seasonality: {args.seasonality}")
     logger.info(f"Checkpoint: {ckpt_path}")
     logger.info(f"Results CSV: {results_csv}")
 
@@ -85,8 +153,12 @@ def run_experiment(dataset_name, model_name, metric_name, args):
         seed=args.data_seed + 1,
     )
 
-    train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, num_workers=0)
-    val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, num_workers=0)
+    train_loader = torch.utils.data.DataLoader(
+        train_ds, batch_size=args.batch_size, num_workers=0
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_ds, batch_size=args.batch_size, num_workers=0
+    )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Device: {device}")
@@ -109,14 +181,23 @@ def run_experiment(dataset_name, model_name, metric_name, args):
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
 
-        train_loss, train_acc, _, _ = run_one_epoch(
-            model, train_loader, optimizer, device, train_mode=True
+        train_loss, train_acc, _, _ = run_epoch(
+            model=model,
+            loader=train_loader,
+            optimizer=optimizer,
+            device=device,
+            train_mode=True,
+            args=args,
         )
 
-        with torch.no_grad():
-            val_loss, val_acc, y_true, y_pred = run_one_epoch(
-                model, val_loader, optimizer=None, device=device, train_mode=False
-            )
+        val_loss, val_acc, y_true, y_pred = run_epoch(
+            model=model,
+            loader=val_loader,
+            optimizer=None,
+            device=device,
+            train_mode=False,
+            args=args,
+        )
 
         val_metric = metric_fn(y_true, y_pred, args.num_classes) if metric_name != "acc" else float(val_acc)
 
@@ -136,13 +217,13 @@ def run_experiment(dataset_name, model_name, metric_name, args):
         if best_val_metric is None or val_metric > best_val_metric:
             best_val_metric = val_metric
             torch.save(model.state_dict(), ckpt_path)
-            logger.info(f" Saved best checkpoint: {ckpt_path}")
-
-        if stopper is not None and stopper.step(val_metric):
-            logger.info(f"  Early stopping (patience={args.patience})")
-            break
+            logger.info(f"Saved best checkpoint: {ckpt_path}")
 
         pd.DataFrame(rows).to_csv(results_csv, index=False)
+
+        if stopper is not None and stopper.step(val_metric):
+            logger.info(f"Early stopping (patience={args.patience})")
+            break
 
     logger.info(f"Saved training log CSV: {results_csv}")
     logger.info("Done.")
@@ -151,16 +232,13 @@ def run_experiment(dataset_name, model_name, metric_name, args):
 def main():
     parser = argparse.ArgumentParser()
 
-    # Experiment selection (if omitted, run all combinations)
     parser.add_argument("--dataset", default=None, choices=["ts_500", "ts_1500"])
     parser.add_argument("--model", default=None, help="Model file name in models/ (e.g., lstm, gru)")
     parser.add_argument("--metric", default=None, choices=list(METRICS.keys()))
 
-    # Model selection helpers
     parser.add_argument("--model_class", default=None, help="Exact class name inside the model file")
     parser.add_argument("--model_kwargs", default=None, help="JSON dict of extra model args")
 
-    # Training hyperparameters
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -171,11 +249,16 @@ def main():
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--patience", type=int, default=5)
 
-    # Bury-style preprocessing
     parser.add_argument("--bury_padding", action="store_true", help="Apply random zero padding")
     parser.add_argument("--bury_pad_mode", default="both", choices=["both", "left"], help="Padding mode")
-    parser.add_argument("--bury_norm", action="store_true", help="Apply mean‑abs normalisation")
+    parser.add_argument("--bury_norm", action="store_true", help="Apply mean-abs normalisation")
     parser.add_argument("--data_seed", type=int, default=42, help="Seed for padding randomness")
+
+    parser.add_argument("--trend", action="store_true")
+    parser.add_argument("--seasonality", action="store_true")
+    parser.add_argument("--trend_strength", type=float, default=1.0)
+    parser.add_argument("--season_amp", type=float, default=0.4)
+    parser.add_argument("--season_period", type=int, default=50)
 
     args = parser.parse_args()
 

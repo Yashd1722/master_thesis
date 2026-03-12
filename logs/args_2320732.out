@@ -1,0 +1,56 @@
+=========================================
+Job started at: Mon Feb 23 02:07:38 PM CET 2026
+Job ID: 2320732
+Node: jnfat08
+Args: DATASET=ts_500 MODEL=cnn_lstm METRIC=balanced_accuracy
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40S, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['cnn_lstm']
+Datasets: ['ts_500']
+Metrics: ['balanced_accuracy']
+2026-02-23 14:07:39,620 | INFO | Run name: cnn_lstm_ts_500_balanced_accuracy
+2026-02-23 14:07:39,620 | INFO | Dataset: ts_500 | Model: cnn_lstm | Metric: balanced_accuracy
+2026-02-23 14:07:39,620 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_balanced_accuracy.pt
+2026-02-23 14:07:39,620 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_balanced_accuracy_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-23 14:07:39,701 | INFO | Device: cuda
+2026-02-23 14:10:57,011 | INFO | Epoch 1/20 (time: 196.5s)
+2026-02-23 14:10:57,018 | INFO |   Train -> loss: 1.387751 | acc: 0.218526
+2026-02-23 14:10:57,019 | INFO |   Val   -> loss: 1.386328 | acc: 0.249920 | balanced_accuracy: 0.249920
+2026-02-23 14:10:57,022 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_balanced_accuracy.pt
+2026-02-23 14:14:10,245 | INFO | Epoch 2/20 (time: 193.2s)
+2026-02-23 14:14:10,248 | INFO |   Train -> loss: 1.386965 | acc: 0.182314
+2026-02-23 14:14:10,249 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:14:10,252 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_balanced_accuracy.pt
+2026-02-23 14:17:24,505 | INFO | Epoch 3/20 (time: 194.2s)
+2026-02-23 14:17:24,510 | INFO |   Train -> loss: 1.386954 | acc: 0.110577
+2026-02-23 14:17:24,510 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:20:38,545 | INFO | Epoch 4/20 (time: 194.0s)
+2026-02-23 14:20:38,549 | INFO |   Train -> loss: 1.386953 | acc: 0.107291
+2026-02-23 14:20:38,549 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:23:51,741 | INFO | Epoch 5/20 (time: 193.2s)
+2026-02-23 14:23:51,749 | INFO |   Train -> loss: 1.386953 | acc: 0.106169
+2026-02-23 14:23:51,750 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:27:05,627 | INFO | Epoch 6/20 (time: 193.9s)
+2026-02-23 14:27:05,629 | INFO |   Train -> loss: 1.386953 | acc: 0.106169
+2026-02-23 14:27:05,630 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:30:20,214 | INFO | Epoch 7/20 (time: 194.6s)
+2026-02-23 14:30:20,221 | INFO |   Train -> loss: 1.386953 | acc: 0.106169
+2026-02-23 14:30:20,221 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | balanced_accuracy: 0.250000
+2026-02-23 14:30:20,221 | INFO |   Early stopping (patience=5)
+2026-02-23 14:30:20,221 | INFO | Saved training log CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_balanced_accuracy_training.csv
+2026-02-23 14:30:20,221 | INFO | Done.
+
+=========================================
+Job finished at: Mon Feb 23 02:30:20 PM CET 2026
+=========================================

@@ -1,0 +1,13 @@
+=========================================
+Job started at: Sun Feb 22 08:52:32 PM CET 2026
+Job ID: 2320284
+Node: jnfat08
+Args: DATASET=ts_500 MODEL=lstm METRIC=f1_macro
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40S, 46068 MiB, 45460 MiB
+
+Starting training...

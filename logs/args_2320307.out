@@ -1,0 +1,110 @@
+=========================================
+Job started at: Sun Feb 22 10:42:43 PM CET 2026
+Job ID: 2320307
+Node: jn103
+Args: DATASET=ts_500 MODEL=lstm METRIC=balanced_accuracy
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['lstm']
+Datasets: ['ts_500']
+Metrics: ['balanced_accuracy']
+2026-02-22 22:42:47,508 | INFO | Run name: lstm_ts_500_balanced_accuracy
+2026-02-22 22:42:47,508 | INFO | Dataset: ts_500 | Model: lstm | Metric: balanced_accuracy
+2026-02-22 22:42:47,508 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 22:42:47,509 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_balanced_accuracy_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-22 22:42:47,587 | INFO | Device: cuda
+2026-02-22 22:47:37,364 | INFO | Epoch 1/20 (time: 287.8s)
+2026-02-22 22:47:37,367 | INFO |   Train -> loss: 1.322427 | acc: 0.340331
+2026-02-22 22:47:37,367 | INFO |   Val   -> loss: 1.361770 | acc: 0.309600 | balanced_accuracy: 0.309600
+2026-02-22 22:47:37,375 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 22:52:19,157 | INFO | Epoch 2/20 (time: 281.8s)
+2026-02-22 22:52:19,161 | INFO |   Train -> loss: 1.310238 | acc: 0.365574
+2026-02-22 22:52:19,161 | INFO |   Val   -> loss: 1.071591 | acc: 0.540507 | balanced_accuracy: 0.540507
+2026-02-22 22:52:19,165 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 22:56:58,352 | INFO | Epoch 3/20 (time: 279.2s)
+2026-02-22 22:56:58,356 | INFO |   Train -> loss: 1.096478 | acc: 0.516934
+2026-02-22 22:56:58,356 | INFO |   Val   -> loss: 1.078172 | acc: 0.529507 | balanced_accuracy: 0.529507
+2026-02-22 23:01:38,765 | INFO | Epoch 4/20 (time: 280.4s)
+2026-02-22 23:01:38,772 | INFO |   Train -> loss: 0.963965 | acc: 0.595031
+2026-02-22 23:01:38,772 | INFO |   Val   -> loss: 0.840388 | acc: 0.655720 | balanced_accuracy: 0.655720
+2026-02-22 23:01:38,776 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:06:20,197 | INFO | Epoch 5/20 (time: 281.4s)
+2026-02-22 23:06:20,201 | INFO |   Train -> loss: 0.825956 | acc: 0.673197
+2026-02-22 23:06:20,201 | INFO |   Val   -> loss: 0.756911 | acc: 0.706560 | balanced_accuracy: 0.706560
+2026-02-22 23:06:20,204 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:10:59,561 | INFO | Epoch 6/20 (time: 279.4s)
+2026-02-22 23:10:59,565 | INFO |   Train -> loss: 0.726202 | acc: 0.720700
+2026-02-22 23:10:59,565 | INFO |   Val   -> loss: 0.601006 | acc: 0.769507 | balanced_accuracy: 0.769507
+2026-02-22 23:10:59,568 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:15:39,739 | INFO | Epoch 7/20 (time: 280.2s)
+2026-02-22 23:15:39,744 | INFO |   Train -> loss: 0.660451 | acc: 0.750689
+2026-02-22 23:15:39,744 | INFO |   Val   -> loss: 0.586589 | acc: 0.778747 | balanced_accuracy: 0.778747
+2026-02-22 23:15:39,747 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:20:20,244 | INFO | Epoch 8/20 (time: 280.5s)
+2026-02-22 23:20:20,249 | INFO |   Train -> loss: 0.555135 | acc: 0.794517
+2026-02-22 23:20:20,249 | INFO |   Val   -> loss: 0.475166 | acc: 0.824680 | balanced_accuracy: 0.824680
+2026-02-22 23:20:20,252 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:25:00,879 | INFO | Epoch 9/20 (time: 280.6s)
+2026-02-22 23:25:00,884 | INFO |   Train -> loss: 0.505118 | acc: 0.813291
+2026-02-22 23:25:00,884 | INFO |   Val   -> loss: 0.438017 | acc: 0.838533 | balanced_accuracy: 0.838533
+2026-02-22 23:25:00,890 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:29:40,119 | INFO | Epoch 10/20 (time: 279.2s)
+2026-02-22 23:29:40,126 | INFO |   Train -> loss: 0.470091 | acc: 0.827289
+2026-02-22 23:29:40,126 | INFO |   Val   -> loss: 0.407080 | acc: 0.848840 | balanced_accuracy: 0.848840
+2026-02-22 23:29:40,129 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:34:18,567 | INFO | Epoch 11/20 (time: 278.4s)
+2026-02-22 23:34:18,571 | INFO |   Train -> loss: 0.452295 | acc: 0.832591
+2026-02-22 23:34:18,571 | INFO |   Val   -> loss: 0.398372 | acc: 0.851640 | balanced_accuracy: 0.851640
+2026-02-22 23:34:18,576 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:38:57,904 | INFO | Epoch 12/20 (time: 279.3s)
+2026-02-22 23:38:57,909 | INFO |   Train -> loss: 0.461932 | acc: 0.827954
+2026-02-22 23:38:57,909 | INFO |   Val   -> loss: 0.393792 | acc: 0.854040 | balanced_accuracy: 0.854040
+2026-02-22 23:38:57,913 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:43:37,585 | INFO | Epoch 13/20 (time: 279.7s)
+2026-02-22 23:43:37,589 | INFO |   Train -> loss: 0.434070 | acc: 0.839760
+2026-02-22 23:43:37,589 | INFO |   Val   -> loss: 0.376068 | acc: 0.860960 | balanced_accuracy: 0.860960
+2026-02-22 23:43:37,594 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:48:17,702 | INFO | Epoch 14/20 (time: 280.1s)
+2026-02-22 23:48:17,709 | INFO |   Train -> loss: 0.417266 | acc: 0.846734
+2026-02-22 23:48:17,709 | INFO |   Val   -> loss: 0.371834 | acc: 0.862320 | balanced_accuracy: 0.862320
+2026-02-22 23:48:17,714 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:52:56,152 | INFO | Epoch 15/20 (time: 278.4s)
+2026-02-22 23:52:56,156 | INFO |   Train -> loss: 0.403977 | acc: 0.851400
+2026-02-22 23:52:56,156 | INFO |   Val   -> loss: 0.371085 | acc: 0.863880 | balanced_accuracy: 0.863880
+2026-02-22 23:52:56,163 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-22 23:57:35,307 | INFO | Epoch 16/20 (time: 279.1s)
+2026-02-22 23:57:35,311 | INFO |   Train -> loss: 0.393107 | acc: 0.855511
+2026-02-22 23:57:35,311 | INFO |   Val   -> loss: 0.359126 | acc: 0.866680 | balanced_accuracy: 0.866680
+2026-02-22 23:57:35,315 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-23 00:02:15,260 | INFO | Epoch 17/20 (time: 279.9s)
+2026-02-23 00:02:15,268 | INFO |   Train -> loss: 0.384520 | acc: 0.858917
+2026-02-23 00:02:15,268 | INFO |   Val   -> loss: 0.354707 | acc: 0.868707 | balanced_accuracy: 0.868707
+2026-02-23 00:02:15,272 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-23 00:06:53,448 | INFO | Epoch 18/20 (time: 278.2s)
+2026-02-23 00:06:53,450 | INFO |   Train -> loss: 0.377171 | acc: 0.861211
+2026-02-23 00:06:53,450 | INFO |   Val   -> loss: 0.351271 | acc: 0.870613 | balanced_accuracy: 0.870613
+2026-02-23 00:06:53,453 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-23 00:11:30,758 | INFO | Epoch 19/20 (time: 277.3s)
+2026-02-23 00:11:30,764 | INFO |   Train -> loss: 0.384655 | acc: 0.858769
+2026-02-23 00:11:30,764 | INFO |   Val   -> loss: 0.356901 | acc: 0.867613 | balanced_accuracy: 0.867613
+2026-02-23 00:16:08,009 | INFO | Epoch 20/20 (time: 277.2s)
+2026-02-23 00:16:08,013 | INFO |   Train -> loss: 0.377241 | acc: 0.861551
+2026-02-23 00:16:08,013 | INFO |   Val   -> loss: 0.344047 | acc: 0.872493 | balanced_accuracy: 0.872493
+2026-02-23 00:16:08,020 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_balanced_accuracy.pt
+2026-02-23 00:16:08,025 | INFO | Saved training log CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_balanced_accuracy_training.csv
+2026-02-23 00:16:08,025 | INFO | Done.
+
+=========================================
+Job finished at: Mon Feb 23 12:16:08 AM CET 2026
+=========================================

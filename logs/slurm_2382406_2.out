@@ -1,0 +1,22 @@
+=========================================
+Job started at: Mon Mar  9 07:03:24 PM CET 2026
+Job ID: 2382409
+Array Task ID: 2
+Node: jn004
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 49140 MiB, 48514 MiB
+
+Running experiment: seasonality
+Command: python3 training/train.py --model lstm --dataset ts_500 --metric f1_macro --epochs 20 --early_stop --patience 5 --seq_len 500 --data_seed 42 --seasonality
+2026-03-09 19:03:25,720 | INFO | Run name: lstm_ts_500_f1_macro_season
+2026-03-09 19:03:25,721 | INFO | Dataset: ts_500 | Model: lstm | Metric: f1_macro
+2026-03-09 19:03:25,721 | INFO | Trend: False | Seasonality: True
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-03-09 19:03:25,804 | INFO | Device: cuda

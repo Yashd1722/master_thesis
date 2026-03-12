@@ -1,0 +1,26 @@
+=========================================
+Job started at: Sun Feb 22 08:26:35 PM CET 2026
+Job ID: 2320274
+Node: jnfat08
+Args: DATASET=ts_500 MODEL=lstm METRIC=f1_macro
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40S, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['lstm']
+Datasets: ['ts_500']
+Metrics: ['f1_macro']
+2026-02-22 20:26:39,512 | INFO | Run name: lstm_ts_500_f1_macro
+2026-02-22 20:26:39,514 | INFO | Dataset: ts_500 | Model: lstm | Metric: f1_macro
+2026-02-22 20:26:39,515 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+2026-02-22 20:26:39,515 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-22 20:26:39,607 | INFO | Device: cuda
