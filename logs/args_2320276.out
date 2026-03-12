@@ -1,0 +1,47 @@
+=========================================
+Job started at: Sun Feb 22 08:30:46 PM CET 2026
+Job ID: 2320276
+Node: jnfat08
+Args: DATASET=ts_500 MODEL=lstm METRIC=f1_macro
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40S, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['lstm']
+Datasets: ['ts_500']
+Metrics: ['f1_macro']
+2026-02-22 20:30:47,572 | INFO | Run name: lstm_ts_500_f1_macro
+2026-02-22 20:30:47,573 | INFO | Dataset: ts_500 | Model: lstm | Metric: f1_macro
+2026-02-22 20:30:47,573 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+2026-02-22 20:30:47,573 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-22 20:30:47,654 | INFO | Device: cuda
+2026-02-22 20:34:13,427 | INFO | Epoch 1/20 (time: 205.1s)
+2026-02-22 20:34:13,431 | INFO |   Train -> loss: 1.375643 | acc: 0.271140
+2026-02-22 20:34:13,431 | INFO |   Val   -> loss: 1.373986 | acc: 0.299040 | f1_macro: 0.197727
+2026-02-22 20:34:13,439 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+2026-02-22 20:37:37,773 | INFO | Epoch 2/20 (time: 204.3s)
+2026-02-22 20:37:37,779 | INFO |   Train -> loss: 1.363688 | acc: 0.275589
+2026-02-22 20:37:37,779 | INFO |   Val   -> loss: 1.286067 | acc: 0.353307 | f1_macro: 0.246845
+2026-02-22 20:37:37,782 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt
+2026-02-22 20:40:55,355 | INFO | Epoch 3/20 (time: 197.6s)
+2026-02-22 20:40:55,359 | INFO |   Train -> loss: 1.304738 | acc: 0.343486
+2026-02-22 20:40:55,359 | INFO |   Val   -> loss: 1.355037 | acc: 0.285573 | f1_macro: 0.164545
+2026-02-22 20:44:13,469 | INFO | Epoch 4/20 (time: 198.1s)
+2026-02-22 20:44:13,473 | INFO |   Train -> loss: 1.372794 | acc: 0.259603
+2026-02-22 20:44:13,473 | INFO |   Val   -> loss: 1.372905 | acc: 0.263893 | f1_macro: 0.129767
+2026-02-22 20:47:32,399 | INFO | Epoch 5/20 (time: 198.9s)
+2026-02-22 20:47:32,401 | INFO |   Train -> loss: 1.348243 | acc: 0.294086
+2026-02-22 20:47:32,401 | INFO |   Val   -> loss: 1.364675 | acc: 0.281160 | f1_macro: 0.157581
+2026-02-22 20:50:49,433 | INFO | Epoch 6/20 (time: 197.0s)
+2026-02-22 20:50:49,436 | INFO |   Train -> loss: 1.326794 | acc: 0.321629
+2026-02-22 20:50:49,436 | INFO |   Val   -> loss: 1.288369 | acc: 0.359293 | f1_macro: 0.248570
+2026-02-22 20:50:49,439 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro.pt

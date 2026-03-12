@@ -1,0 +1,13 @@
+========================================
+Running DL inference for all checkpoints
+ROOT_DIR      : /home/s466553/Master_thesis/Main
+TEST_DATASET  : pangaea_923197
+NUM_CHECKPOINTS: 12
+========================================
+----------------------------------------
+Checkpoint     : checkpoints/cnn_lstm_ts_500_acc.pt
+MODEL          : cnn
+TRAIN_DATASET  : lstm
+METRIC         : ts_500_acc
+RUN_NAME       : cnn_pangaea_923197_ts_500_acc
+----------------------------------------

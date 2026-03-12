@@ -1,0 +1,52 @@
+=========================================
+Job started at: Mon Feb 23 08:05:43 PM CET 2026
+Job ID: 2321191
+Node: jn007
+Args: DATASET=ts_500 MODEL=cnn_lstm METRIC=acc
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 46068 MiB, 45460 MiB
+
+Starting training...
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['cnn_lstm']
+Datasets: ['ts_500']
+Metrics: ['acc']
+2026-02-23 20:05:47,524 | INFO | Run name: cnn_lstm_ts_500_acc
+2026-02-23 20:05:47,525 | INFO | Dataset: ts_500 | Model: cnn_lstm | Metric: acc
+2026-02-23 20:05:47,525 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 20:05:47,525 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_acc_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
+2026-02-23 20:05:47,615 | INFO | Device: cuda
+2026-02-23 20:10:05,655 | INFO | Epoch 1/20 (time: 256.0s)
+2026-02-23 20:10:05,660 | INFO |   Train -> loss: 1.391074 | acc: 0.240314
+2026-02-23 20:10:05,660 | INFO |   Val   -> loss: 1.386470 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:10:05,669 | INFO |  Saved best checkpoint: /home/s466553/Master_thesis/Main/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-02-23 20:14:17,831 | INFO | Epoch 2/20 (time: 252.2s)
+2026-02-23 20:14:17,834 | INFO |   Train -> loss: 1.386998 | acc: 0.195306
+2026-02-23 20:14:17,835 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:18:25,118 | INFO | Epoch 3/20 (time: 247.3s)
+2026-02-23 20:18:25,123 | INFO |   Train -> loss: 1.386954 | acc: 0.137583
+2026-02-23 20:18:25,123 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:22:33,144 | INFO | Epoch 4/20 (time: 248.0s)
+2026-02-23 20:22:33,153 | INFO |   Train -> loss: 1.386953 | acc: 0.108440
+2026-02-23 20:22:33,153 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:26:39,994 | INFO | Epoch 5/20 (time: 246.8s)
+2026-02-23 20:26:39,999 | INFO |   Train -> loss: 1.386953 | acc: 0.106091
+2026-02-23 20:26:39,999 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:30:47,513 | INFO | Epoch 6/20 (time: 247.5s)
+2026-02-23 20:30:47,518 | INFO |   Train -> loss: 1.386953 | acc: 0.106146
+2026-02-23 20:30:47,518 | INFO |   Val   -> loss: 1.386295 | acc: 0.250000 | acc: 0.250000
+2026-02-23 20:30:47,518 | INFO |   Early stopping (patience=5)
+2026-02-23 20:30:47,518 | INFO | Saved training log CSV: /home/s466553/Master_thesis/Main/results/cnn_lstm_ts_500_acc_training.csv
+2026-02-23 20:30:47,518 | INFO | Done.
+
+=========================================
+Job finished at: Mon Feb 23 08:30:48 PM CET 2026
+=========================================

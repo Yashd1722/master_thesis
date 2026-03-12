@@ -1,0 +1,14 @@
+=========================================
+Job started at: Tue Mar 10 10:34:42 PM CET 2026
+Job ID: 2384739
+Array Task ID: 3
+Node: jn118
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 49140 MiB, 48514 MiB
+
+Running experiment: trend_seasonality
+Command: python3 training/train.py --model lstm --dataset ts_500 --metric f1_macro --epochs 20 --early_stop --patience 5 --seq_len 500 --data_seed 42 --trend --seasonality

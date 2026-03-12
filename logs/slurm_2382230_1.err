@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/Main/training/train.py", line 24, in <module>
+    from src.signal_injection import apply_signals
+ModuleNotFoundError: No module named 'src.signal_injection'

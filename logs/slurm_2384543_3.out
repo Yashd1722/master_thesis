@@ -1,0 +1,27 @@
+=========================================
+Job started at: Tue Mar 10 01:33:01 PM CET 2026
+Job ID: 2384543
+Array Task ID: 3
+Node: jn111
+=========================================
+Activating virtual environment...
+
+GPU Information:
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L40, 49140 MiB, 48514 MiB
+
+Running experiment: trend_seasonality
+Command: python3 training/train.py --model lstm --dataset ts_500 --metric f1_macro --epochs 20 --early_stop --patience 5 --seq_len 500 --data_seed 42 --trend --seasonality
+Running 1 experiment(s): 1 model(s) × 1 dataset(s) × 1 metric(s)
+Models: ['lstm']
+Datasets: ['ts_500']
+Metrics: ['f1_macro']
+2026-03-10 13:33:03,404 | INFO | Run name: lstm_ts_500_f1_macro_trend_season
+2026-03-10 13:33:03,405 | INFO | Dataset: ts_500 | Model: lstm | Metric: f1_macro
+2026-03-10 13:33:03,405 | INFO | Trend: True | Seasonality: True
+2026-03-10 13:33:03,405 | INFO | Checkpoint: /home/s466553/Master_thesis/Main/checkpoints/lstm_ts_500_f1_macro_trend_season.pt
+2026-03-10 13:33:03,405 | INFO | Results CSV: /home/s466553/Master_thesis/Main/results/lstm_ts_500_f1_macro_trend_season_training.csv
+Split files already exist. Using existing:
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_train.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_val.csv
+  /home/s466553/Master_thesis/Main/dataset/ts_500/ts_500_test.csv
