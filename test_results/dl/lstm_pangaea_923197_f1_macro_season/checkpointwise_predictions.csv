@@ -1,0 +1,2 @@
+checkpoint_name,model_name,dataset_name,train_dataset_name,metric_name,num_samples,mean_p_fold,mean_p_hopf,mean_p_transcritical,mean_p_null,mean_p_transition
+lstm_ts_500_f1_macro_season.pt,lstm,pangaea_923197,ts_500,f1_macro_season,6,0.19722163180510202,0.4724116052190463,0.17876471827427545,0.15160203880319992,0.8483979552984238
