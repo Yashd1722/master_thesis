@@ -35,9 +35,9 @@ def build_model(model_name: str, input_dim: int, num_classes: int = 4):
     if model_name == "cnn":
         return CNNClassifier(input_size=input_dim, num_classes=num_classes)
     if model_name == "lstm":
-        return LSTMClassifier(input_dim=input_dim, num_classes=num_classes)
+        return LSTMClassifier(input_size=input_dim, num_classes=num_classes)
     if model_name in {"cnn_lstm", "cnnlstm"}:
-        return CNNLSTMClassifier(input_dim=input_dim, num_classes=num_classes)
+        return CNNLSTMClassifier(input_size=input_dim, num_classes=num_classes)
 
     raise ValueError(f"Unsupported model name: {model_name}")
 
@@ -128,7 +128,7 @@ def main():
 
     logger.info("Expected input dim inferred from checkpoint: %d", expected_input_dim)
 
-    model = build_model(args.model, input_dim=expected_input_dim, num_classes=4)
+    model = build_model(args.model, expected_input_dim, num_classes=4)
     model.load_state_dict(state)
     model.to(device)
     model.eval()

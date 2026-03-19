@@ -1,0 +1,21 @@
+========================================
+Test dataset   : pangaea_923197
+Checkpoint dir : /var/lib/slurm/slurmd/job2417966/checkpoints
+Models         : cnn lstm cnn_lstm
+Metrics        : acc f1_macro f1_macro_trend f1_macro_season f1_macro_trend_season
+Window frac    : 0.5
+Min window     : 20
+Feature mode   : first
+Generate null  : 1
+========================================
+
+----------------------------------------
+Checkpoint     : cnn_ts_500_acc.pt
+Model          : cnn
+Train dataset  : ts_500
+Metric         : acc
+Test dataset   : pangaea_923197
+----------------------------------------
+
+[1/3] DL inference/testing
+python: can't open file '/var/lib/slurm/slurmd/job2417966/testing/test.py': [Errno 2] No such file or directory

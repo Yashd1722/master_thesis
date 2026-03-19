@@ -280,6 +280,7 @@ def main():
         description="Merge DL and CSD outputs and compare observed vs optional null-model results."
     )
     parser.add_argument("--dataset", required=True, help="Dataset name")
+    parser.add_argument("--train_dataset", required=False, help="Train dataset token (optional, unused)")
     parser.add_argument("--model", required=True, help="Model name")
     parser.add_argument("--metric", required=True, help="Metric name")
     parser.add_argument(

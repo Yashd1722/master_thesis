@@ -1,2 +1,2 @@
-dataset_name,model_name,metric_name,num_samples,mean_ktau_var,mean_ktau_ac1,mean_window_size
-pangaea_923197,lstm,acc,6,0.04273569222080802,-0.07766468646317033,1755.3333333333333
+dataset_name,model_name,metric_name,num_samples,mean_ktau_var,mean_ktau_ac1,feature_mode,window_frac,min_window,fixed_length,generate_null,n_null
+pangaea_923197,lstm,acc,6,0.04273569222080802,-0.07766468646317033,first,0.5,20,,True,100
