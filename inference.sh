@@ -1,12 +1,43 @@
 #!/usr/bin/env bash
+#SBATCH --job-name=thesis_infer_all
+#SBATCH --partition=cpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
+#SBATCH --time=04:00:00
+#SBATCH --output=test_logs/thesis_infer_all_%j.out
+#SBATCH --error=test_logs/thesis_infer_all_%j.err
+
 set -euo pipefail
+
+# ----------------------------------------
+# Paths / environment
+# ----------------------------------------
+PROJECT_DIR="${SLURM_SUBMIT_DIR:-$HOME/Master_thesis/master_thesis}"
+VENV_DIR="$HOME/Master_thesis/myenv"
+
+cd "$PROJECT_DIR"
+source "$VENV_DIR/bin/activate"
+
+ROOT_DIR="$PROJECT_DIR"
+PYTHON_BIN="${PYTHON_BIN:-python}"
+
+mkdir -p "$ROOT_DIR/test_logs"
+mkdir -p "$ROOT_DIR/test_results"
+mkdir -p "$ROOT_DIR/inference_logs"
+
+echo "========================================"
+echo "PROJECT_DIR     : $PROJECT_DIR"
+echo "ROOT_DIR        : $ROOT_DIR"
+echo "PWD             : $(pwd)"
+echo "PYTHON_BIN      : $PYTHON_BIN"
+echo "PYTHON_PATH     : $(which "$PYTHON_BIN")"
+echo "========================================"
 
 # ----------------------------------------
 # Config
 # ----------------------------------------
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-python}"
-
 TEST_DATASET="${TEST_DATASET:-ts_500}"          # ts_500 | ts_1500 | pangaea_923197
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-$ROOT_DIR/checkpoints}"
 
@@ -42,7 +73,7 @@ case "$TEST_DATASET" in
     ;;
   pangaea_923197)
     FIXED_LENGTH=""
-    # choose which checkpoint family to use for empirical inference
+    # choose checkpoint family for empirical inference
     TRAIN_DATASET_TOKEN="${TRAIN_DATASET_TOKEN:-ts_500}"
     ;;
   *)
@@ -87,6 +118,7 @@ run_dl() {
     cmd+=(--fixed_length "$FIXED_LENGTH")
   fi
 
+  echo "Running: ${cmd[*]}"
   "${cmd[@]}"
 }
 
@@ -118,34 +150,39 @@ run_csd() {
     )
   fi
 
+  echo "Running: ${cmd[*]}"
   "${cmd[@]}"
 }
 
 run_compare() {
   local model="$1"
   local metric="$2"
+  local train_dataset="$3"
 
-  echo "[3/3] DL vs CSD comparison"
+  echo "[3/3] Comparing DL vs CSD"
 
   cmd=(
     "$PYTHON_BIN" "$ROOT_DIR/testing/compare_dl_vs_csd.py"
     --dataset "$TEST_DATASET"
+    --train_dataset "$train_dataset"
     --model "$model"
     --metric "$metric"
   )
 
-  if [[ "$GENERATE_NULL" == "1" ]]; then
-    cmd+=(--use_null)
-  fi
-
+  echo "Running: ${cmd[*]}"
   "${cmd[@]}"
 }
 
+# ----------------------------------------
+# Main loop
+# ----------------------------------------
 for model in $MODELS; do
   for metric in $METRICS; do
+    checkpoint_name="${model}_${TRAIN_DATASET_TOKEN}_${metric}.pt"
+
     echo
     echo "----------------------------------------"
-    echo "Checkpoint     : ${model}_${TRAIN_DATASET_TOKEN}_${metric}.pt"
+    echo "Checkpoint     : $checkpoint_name"
     echo "Model          : $model"
     echo "Train dataset  : $TRAIN_DATASET_TOKEN"
     echo "Metric         : $metric"
@@ -153,16 +190,19 @@ for model in $MODELS; do
     echo "----------------------------------------"
     echo
 
+    if [[ ! -f "$CHECKPOINT_DIR/$checkpoint_name" ]]; then
+      echo "WARNING: checkpoint not found: $CHECKPOINT_DIR/$checkpoint_name"
+      echo "Skipping..."
+      continue
+    fi
+
     run_dl "$model" "$metric" "$TRAIN_DATASET_TOKEN"
     run_csd "$model" "$metric"
-    run_compare "$model" "$metric"
-
-    echo
-    echo "Finished: model=$model | metric=$metric | test_dataset=$TEST_DATASET"
-    echo
+    run_compare "$model" "$metric" "$TRAIN_DATASET_TOKEN"
   done
 done
 
+echo
 echo "========================================"
-echo "All experiments finished successfully."
+echo "Inference pipeline completed successfully"
 echo "========================================"
