@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from metrics.csd_metrics import compute_csd_scores
 from src.dataset_loader import load_dataset
-from testing.null_models import generate_null_surrogates
+from testing.null_model import generate_null_surrogates
 from testing.testing_utils import (
     build_run_name,
     enforce_fixed_sequence_length,
@@ -39,6 +39,7 @@ def main():
         description="Compute CSD metrics for synthetic or empirical data with optional null generation."
     )
     parser.add_argument("--dataset", required=True, help="Dataset name for src.dataset_loader.load_dataset()")
+    parser.add_argument("--train_dataset", required=False, help="Train dataset token (optional, unused in CSD)")
     parser.add_argument("--model", required=True, help="Model name for run naming")
     parser.add_argument("--metric", required=True, help="Metric name for run naming")
 

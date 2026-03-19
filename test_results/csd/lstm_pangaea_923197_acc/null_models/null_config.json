@@ -1,0 +1,13 @@
+{
+  "dataset": "pangaea_923197",
+  "model": "lstm",
+  "metric": "acc",
+  "window_frac": 0.5,
+  "min_window": 20,
+  "feature_mode": "first",
+  "fixed_length": null,
+  "length_mode": "last",
+  "n_null": 100,
+  "null_fit_fraction": 0.2,
+  "seed": 42
+}

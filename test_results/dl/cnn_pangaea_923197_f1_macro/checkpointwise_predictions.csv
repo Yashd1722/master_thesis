@@ -1,2 +1,2 @@
-checkpoint_name,model_name,dataset_name,train_dataset_name,metric_name,num_samples,mean_p_fold,mean_p_hopf,mean_p_transcritical,mean_p_null,mean_p_transition
-cnn_ts_500_f1_macro.pt,cnn,pangaea_923197,ts_500,f1_macro,6,0.0,0.16666666666666666,0.0,0.8333333333333334,0.16666666666666666
+dataset_name,model_name,metric_name,p_fold,p_hopf,p_transcritical,p_null,p_transition
+pangaea_923197,cnn,f1_macro,0.0,0.16666666666666666,0.0,0.8333333333333334,0.16666666666666666
