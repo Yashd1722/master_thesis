@@ -2,10 +2,10 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-BASE = "/home/s466553/Master_thesis/Main/dataset/ts_500/combined"
+BASE = "/home/s466553/Master_thesis/master_thesis/dataset/ts_1500/combined"
 LABELS = os.path.join(BASE, "labels.csv")
-OUT_RESIDS = os.path.join(BASE, "output_resids", "output_resids")
-OUT_SIMS = os.path.join(BASE, "output_sims", "output_sims")
+OUT_RESIDS = os.path.join(BASE, "output_resids")
+OUT_SIMS = os.path.join(BASE, "output_sims")
 
 labels = pd.read_csv(LABELS)
 
@@ -28,4 +28,4 @@ for seq_id, class_label in tqdm(labels[["sequence_ID", "class_label"]].values):
     rows.append(merged)
 
 flat = pd.concat(rows, ignore_index=True)
-flat.to_csv("/home/s466553/Master_thesis/Main/dataset/ts_500_final.csv", index=False)
+flat.to_csv("/home/s466553/Master_thesis/master_thesis/dataset/ts_1500_final.csv", index=False)

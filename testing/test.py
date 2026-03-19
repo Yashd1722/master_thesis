@@ -12,9 +12,9 @@ import torch.nn.functional as F
 # Make project root importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from models.CNN import CNNModel
-from models.LSTM import LSTMModel
-from models.CNN_LSTM import CNNLSTMModel
+from models.CNN import CNNClassifier
+from models.LSTM import LSTMClassifier
+from models.CNN_LSTM import CNNLSTMClassifier
 from src.dataset_loader import load_dataset
 from testing.testing_utils import (
     add_transition_probability,
@@ -33,11 +33,11 @@ def build_model(model_name: str, input_dim: int, num_classes: int = 4):
     model_name = model_name.lower()
 
     if model_name == "cnn":
-        return CNNModel(input_dim=input_dim, num_classes=num_classes)
+        return CNNClassifier(input_size=input_dim, num_classes=num_classes)
     if model_name == "lstm":
-        return LSTMModel(input_dim=input_dim, num_classes=num_classes)
+        return LSTMClassifier(input_dim=input_dim, num_classes=num_classes)
     if model_name in {"cnn_lstm", "cnnlstm"}:
-        return CNNLSTMModel(input_dim=input_dim, num_classes=num_classes)
+        return CNNLSTMClassifier(input_dim=input_dim, num_classes=num_classes)
 
     raise ValueError(f"Unsupported model name: {model_name}")
 
@@ -54,6 +54,10 @@ def infer_input_dim_from_state_dict(state: dict) -> int | None:
 
         # Fallback for conv layers
         if "conv" in key and "weight" in key and len(shape) >= 2:
+            return int(shape[1])
+
+        # New: handle features.0.weight (first conv layer in many CNNs)
+        if key == "features.0.weight" and len(shape) >= 2:
             return int(shape[1])
 
     return None
@@ -119,6 +123,7 @@ def main():
 
     expected_input_dim = infer_input_dim_from_state_dict(state)
     if expected_input_dim is None:
+        print("Checkpoint state_dict keys:", list(state.keys()))
         raise RuntimeError("Could not infer expected input_dim from checkpoint state_dict.")
 
     logger.info("Expected input dim inferred from checkpoint: %d", expected_input_dim)
