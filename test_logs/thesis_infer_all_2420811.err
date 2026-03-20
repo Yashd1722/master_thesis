@@ -1,0 +1,5 @@
+usage: test.py [-h] --dataset DATASET --train_dataset {ts_500,ts_1500}
+               --model {cnn,lstm,cnn_lstm} --metric METRIC [--device DEVICE]
+               [--experiment {base,trend,season,trend_season}]
+               [--length_mode {first,last}]
+test.py: error: argument --train_dataset: invalid choice: 'lstm_ts' (choose from ts_500, ts_1500)

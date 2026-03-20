@@ -1,0 +1,39 @@
+2026-03-20 13:38:02 | INFO | Run name: cnn_lstm_ts_500_acc_on_pangaea_923197
+2026-03-20 13:38:02 | INFO | Dataset: pangaea_923197
+2026-03-20 13:38:02 | INFO | Train dataset: ts_500
+2026-03-20 13:38:02 | INFO | Model: cnn_lstm
+2026-03-20 13:38:02 | INFO | Metric: acc
+2026-03-20 13:38:02 | INFO | Experiment: base
+2026-03-20 13:38:02 | INFO | Length mode: last
+2026-03-20 13:38:02 | INFO | Device: cuda
+2026-03-20 13:38:02 | INFO | Checkpoint: /home/s466553/Master_thesis/master_thesis/checkpoints/cnn_lstm_ts_500_acc.pt
+2026-03-20 13:38:02 | INFO | Expected input_dim from checkpoint: 2
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:990: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.1 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+Loading PANGAEA CSV files:   0%|          | 0/6 [00:00<?, ?it/s]Loading PANGAEA CSV files: 100%|██████████| 6/6 [00:00<00:00, 134.92it/s]
+2026-03-20 13:38:02 | INFO | Loaded 6 samples
+2026-03-20 13:38:03 | INFO | Sample=sample_0 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Sample=sample_1 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Sample=sample_2 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Sample=sample_3 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Sample=sample_4 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Sample=sample_5 | len=500 | probs=[0.2421, 0.2531, 0.2538, 0.2509] | pred=transcritical
+2026-03-20 13:38:03 | INFO | Saved prediction files to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/dl
+2026-03-20 13:38:03 | INFO | No labels found for dataset=pangaea_923197. Saved predictions only.
+2026-03-20 13:38:03 | INFO | Saved metrics to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/dl/metrics.json
+2026-03-20 13:38:03 | INFO | Done.
+2026-03-20 13:38:06 | INFO | Run name: cnn_lstm_ts_500_acc_on_pangaea_923197
+2026-03-20 13:38:06 | INFO | Dataset: pangaea_923197
+2026-03-20 13:38:06 | INFO | Train dataset: ts_500
+2026-03-20 13:38:06 | INFO | Model: cnn_lstm
+2026-03-20 13:38:06 | INFO | Metric: acc
+2026-03-20 13:38:06 | INFO | Experiment: base
+2026-03-20 13:38:06 | INFO | Window frac: 0.500
+2026-03-20 13:38:06 | INFO | Min window: 20
+2026-03-20 13:38:06 | INFO | Feature mode: first
+2026-03-20 13:38:06 | INFO | Normalize signal: True
+2026-03-20 13:38:06 | INFO | Generate null: True
+Loading PANGAEA CSV files:   0%|          | 0/6 [00:00<?, ?it/s]Loading PANGAEA CSV files: 100%|██████████| 6/6 [00:00<00:00, 169.68it/s]
+2026-03-20 13:38:06 | INFO | Loaded 6 samples
+2026-03-20 13:38:56 | INFO | Sample=sample_0 | len=7672 | ktau_var=-0.0912 | ktau_ac1=-0.0840
+2026-03-20 13:38:56 | INFO | Sample=sample_1 | len=37 | ktau_var=0.4902 | ktau_ac1=-0.0980
