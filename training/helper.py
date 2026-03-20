@@ -1,18 +1,13 @@
 import sys
 from pathlib import Path
 import logging
-import importlib
-import inspect
-import json
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 from torch.utils.data import IterableDataset
 
-# Make project root importable (for models and src)
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from models import list_available_models, build_model
+from src.signal_injector import apply_forcing
 
 def project_root() -> Path:
     """Return absolute path to the project root."""
@@ -24,14 +19,6 @@ def accuracy_np(y_true, y_pred):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     return float((y_true == y_pred).mean())
-
-
-def list_available_models():
-    """Scan models/ directory and return lowercased .py filenames (no __init__)."""
-    models_dir = project_root() / "models"
-    models_dir.mkdir(exist_ok=True)
-    py_files = [p for p in models_dir.glob("*.py") if p.name != "__init__.py"]
-    return sorted([p.stem.lower() for p in py_files])
 
 
 def setup_logger(log_path: Path):
@@ -114,42 +101,48 @@ class TSCSVDataset(IterableDataset):
         apply_padding=False,
         pad_mode="both",
         apply_norm=False,
+        forcing_config=None,
         seed=42,
     ):
-        self.csv_path = str(csv_path)
+        self.csv_path = Path(csv_path)
         self.feature_cols = list(feature_cols)
         self.seq_len = seq_len
         self.chunksize = chunksize
         self.apply_padding = apply_padding
         self.pad_mode = pad_mode
         self.apply_norm = apply_norm
+        self.forcing_config = forcing_config or {}
         self.seed = seed
 
     def __iter__(self):
         cols = ["sequence_ID", "Time", *self.feature_cols, "class_label"]
-        buffer_df = None
+        buffer_df = pd.DataFrame(columns=cols)
         rng = np.random.default_rng(self.seed)
         pad_left_max, pad_right_max = get_bury_pad_max(self.seq_len, self.pad_mode)
 
         for chunk in pd.read_csv(self.csv_path, usecols=cols, chunksize=self.chunksize):
             chunk = chunk.sort_values(["sequence_ID", "Time"])
 
-            if buffer_df is not None:
+            if not buffer_df.empty:
                 chunk = pd.concat([buffer_df, chunk], ignore_index=True)
-                buffer_df = None
 
-            groups = list(chunk.groupby("sequence_ID", sort=False))
-            if not groups:
-                continue
+            # Group by sequence_ID, keeping the order in which they appear
+            groups = chunk.groupby("sequence_ID", sort=False)
+            group_keys = list(groups.groups.keys())
 
-            # Keep last (possibly incomplete) group as buffer
-            last_sid, last_g = groups[-1]
+            # The last group might be incomplete in the current chunk
+            last_sid = group_keys[-1]
+            last_g = groups.get_group(last_sid)
+
+            # If the last group is not complete, we save it for the next chunk
             if len(last_g) < self.seq_len:
-                buffer_df = last_g.copy()
-                groups = groups[:-1]
+                buffer_df = last_g
+                group_keys = group_keys[:-1]
+            else:
+                buffer_df = pd.DataFrame(columns=cols)
 
-            for sid, g in groups:
-                g = g.iloc[: self.seq_len]
+            for sid in group_keys:
+                g = groups.get_group(sid).iloc[:self.seq_len]
                 if len(g) < self.seq_len:
                     continue
 
@@ -158,67 +151,17 @@ class TSCSVDataset(IterableDataset):
 
                 if self.apply_padding:
                     X = bury_random_zero_padding(X, pad_left_max, pad_right_max, rng)
+
                 if self.apply_norm:
                     X = bury_mean_abs_normalize_nonzero(X)
 
-                yield torch.from_numpy(X), torch.tensor(y, dtype=torch.long)
+                X_tensor = torch.from_numpy(X)
+
+                # Apply forcing if configured
+                if self.forcing_config:
+                    # apply_forcing expects (B, T, F)
+                    X_tensor = apply_forcing(X_tensor.unsqueeze(0), **self.forcing_config).squeeze(0)
+
+                yield X_tensor, torch.tensor(y, dtype=torch.long)
 
 
-# ---------- Dynamic model loader ----------
-def _find_model_module_name(model_name: str) -> str:
-    """Convert 'lstm' → 'models.lstm' after checking file existence."""
-    model_name = model_name.lower()
-    models_dir = project_root() / "models"
-    py_files = [p for p in models_dir.glob("*.py") if p.name != "__init__.py"]
-    for p in py_files:
-        if p.stem.lower() == model_name:
-            return f"models.{p.stem}"
-    available = sorted([p.stem.lower() for p in py_files])
-    raise ValueError(
-        f"Unknown model '{model_name}'. Available: {available}"
-    )
-
-
-def _pick_model_class(module, model_class: str | None = None):
-    """Pick a single nn.Module subclass from the module."""
-    if model_class is not None:
-        if not hasattr(module, model_class):
-            raise ValueError(f"Class '{model_class}' not found in {module.__name__}")
-        cls = getattr(module, model_class)
-        if not (inspect.isclass(cls) and issubclass(cls, nn.Module)):
-            raise ValueError(f"{module.__name__}.{model_class} is not a torch.nn.Module")
-        return cls
-
-    candidates = []
-    for name, obj in inspect.getmembers(module, inspect.isclass):
-        if obj.__module__ != module.__name__:
-            continue
-        if issubclass(obj, nn.Module):
-            candidates.append(obj)
-
-    if len(candidates) == 1:
-        return candidates[0]
-
-    preferred = [c for c in candidates if c.__name__.endswith(("Classifier", "Model"))]
-    if len(preferred) == 1:
-        return preferred[0]
-
-    if not candidates:
-        raise ValueError(f"No nn.Module found in {module.__name__}")
-    names = [c.__name__ for c in candidates]
-    raise ValueError(f"Multiple classes: {names}. Use --model_class.")
-
-
-def build_model(model_name, input_size, num_classes, model_kwargs_json=None, model_class=None):
-    """Instantiate a model by name, passing input_size, num_classes and extra kwargs."""
-    module_name = _find_model_module_name(model_name)
-    module = importlib.import_module(module_name)
-    ModelCls = _pick_model_class(module, model_class=model_class)
-
-    extra_kwargs = {}
-    if model_kwargs_json:
-        extra_kwargs = json.loads(model_kwargs_json)
-        if not isinstance(extra_kwargs, dict):
-            raise ValueError("--model_kwargs must be a JSON object")
-
-    return ModelCls(input_size=input_size, num_classes=num_classes, **extra_kwargs)

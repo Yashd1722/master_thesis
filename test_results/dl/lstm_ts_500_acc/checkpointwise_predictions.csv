@@ -1,0 +1,2 @@
+dataset_name,model_name,metric_name,p_fold,p_hopf,p_transcritical,p_null,p_transition
+ts_500,lstm,acc,0.2329775446653366,0.2730895382165909,0.23068371295928955,0.2632492029666901,0.736750795841217
