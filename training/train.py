@@ -6,20 +6,15 @@ from pathlib import Path
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
-# Make project root importable (for src and models)
+# Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.splits import create_or_use_split_csv
-from src.signal_injector import apply_forcing
 from metrics import METRICS
-from helper import (
-    project_root,
-    list_available_models,
-    setup_logger,
-    TSCSVDataset,
-    build_model,
-)
+from models import list_available_models, build_model
+from helper import project_root, setup_logger, TSCSVDataset
 
 
 class EarlyStopping:
@@ -45,43 +40,24 @@ class EarlyStopping:
 
 def build_run_name(model_name, dataset_name, metric_name, args):
     base = f"{model_name}_{dataset_name}_{metric_name}"
-
-    if args.trend and args.seasonality:
-        return f"{base}_trend_season"
     if args.trend:
-        return f"{base}_trend"
+        base += "_trend"
     if args.seasonality:
-        return f"{base}_season"
+        base += "_season"
     return base
 
 
-def run_epoch(model, loader, device, optimizer=None, train_mode=True, args=None):
-    if train_mode:
-        model.train()
-    else:
-        model.eval()
+def run_epoch(model, loader, device, optimizer=None, args=None):
+    train_mode = optimizer is not None
+    model.train() if train_mode else model.eval()
 
-    total_loss = 0.0
-    total_correct = 0
-    total_samples = 0
-    y_true_all = []
-    y_pred_all = []
+    total_loss, total_correct, total_samples = 0.0, 0, 0
+    y_true_all, y_pred_all = [], []
 
     context = torch.enable_grad() if train_mode else torch.no_grad()
-
     with context:
         for x, y in loader:
-            x = x.to(device)
-            y = y.to(device)
-
-            x = apply_forcing(
-                x,
-                trend=args.trend,
-                seasonality=args.seasonality,
-                trend_strength=args.trend_strength,
-                season_amp=args.season_amp,
-                season_period=args.season_period,
-            )
+            x, y = x.to(device), y.to(device)
 
             if train_mode:
                 optimizer.zero_grad()
@@ -94,19 +70,15 @@ def run_epoch(model, loader, device, optimizer=None, train_mode=True, args=None)
                 optimizer.step()
 
             preds = torch.argmax(logits, dim=1)
-
             batch_size = y.size(0)
             total_loss += loss.item() * batch_size
             total_correct += (preds == y).sum().item()
             total_samples += batch_size
 
-            y_true_all.extend(y.detach().cpu().tolist())
-            y_pred_all.extend(preds.detach().cpu().tolist())
+            y_true_all.extend(y.cpu().tolist())
+            y_pred_all.extend(preds.cpu().tolist())
 
-    avg_loss = total_loss / total_samples
-    avg_acc = total_correct / total_samples
-
-    return avg_loss, avg_acc, y_true_all, y_pred_all
+    return total_loss / total_samples, total_correct / total_samples, y_true_all, y_pred_all
 
 
 def run_experiment(dataset_name, model_name, metric_name, args):
@@ -116,144 +88,98 @@ def run_experiment(dataset_name, model_name, metric_name, args):
         (root / sub).mkdir(exist_ok=True)
 
     run_name = build_run_name(model_name, dataset_name, metric_name, args)
-    log_path = root / "logs" / f"{run_name}.log"
     ckpt_path = root / "checkpoints" / f"{run_name}.pt"
     results_csv = root / "results" / f"{run_name}_training.csv"
+    logger = setup_logger(root / "logs" / f"{run_name}.log")
 
-    logger = setup_logger(log_path)
-    logger.info(f"Run name: {run_name}")
-    logger.info(f"Dataset: {dataset_name} | Model: {model_name} | Metric: {metric_name}")
-    logger.info(f"Trend: {args.trend} | Seasonality: {args.seasonality}")
-    logger.info(f"Checkpoint: {ckpt_path}")
-    logger.info(f"Results CSV: {results_csv}")
+    logger.info(f"Experiment: {run_name} | Dataset: {dataset_name} | Model: {model_name}")
 
-    train_csv, val_csv, test_csv = create_or_use_split_csv(dataset_name)
+    try:
+        train_csv, val_csv, _ = create_or_use_split_csv(dataset_name)
+    except Exception as e:
+        logger.error(f"Failed to prepare splits for dataset {dataset_name}: {e}")
+        return
 
-    feature_cols = ("x", "Residuals")
-    input_size = len(feature_cols)
+    if not train_csv.exists() or not val_csv.exists():
+        logger.error(f"Dataset split files not found: {train_csv} or {val_csv}")
+        return
 
-    train_ds = TSCSVDataset(
-        train_csv,
-        feature_cols=feature_cols,
+    forcing_config = {
+        "trend": args.trend,
+        "seasonality": args.seasonality,
+        "trend_strength": args.trend_strength,
+        "season_amp": args.season_amp,
+        "season_period": args.season_period,
+    }
+
+    ds_kwargs = dict(
+        feature_cols=("x", "Residuals"),
         seq_len=args.seq_len,
         chunksize=args.chunksize,
         apply_padding=args.bury_padding,
         pad_mode=args.bury_pad_mode,
         apply_norm=args.bury_norm,
+        forcing_config=forcing_config,
         seed=args.data_seed,
     )
-    val_ds = TSCSVDataset(
-        val_csv,
-        feature_cols=feature_cols,
-        seq_len=args.seq_len,
-        chunksize=args.chunksize,
-        apply_padding=args.bury_padding,
-        pad_mode=args.bury_pad_mode,
-        apply_norm=args.bury_norm,
-        seed=args.data_seed + 1,
-    )
 
-    train_loader = torch.utils.data.DataLoader(
-        train_ds, batch_size=args.batch_size, num_workers=0
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_ds, batch_size=args.batch_size, num_workers=0
-    )
+    train_loader = DataLoader(TSCSVDataset(train_csv, **ds_kwargs), batch_size=args.batch_size)
+    val_loader = DataLoader(TSCSVDataset(val_csv, **ds_kwargs), batch_size=args.batch_size)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Device: {device}")
-
     model = build_model(
-        model_name,
-        input_size=input_size,
-        num_classes=args.num_classes,
-        model_kwargs_json=args.model_kwargs,
-        model_class=args.model_class,
+        model_name, input_size=2, num_classes=args.num_classes,
+        model_kwargs_json=args.model_kwargs, model_class=args.model_class
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     metric_fn = METRICS[metric_name]
-
     stopper = EarlyStopping(patience=args.patience, mode="max") if args.early_stop else None
-    best_val_metric = None
-    rows = []
+
+    best_val_metric, rows = 0.0, []
 
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
-
-        train_loss, train_acc, _, _ = run_epoch(
-            model=model,
-            loader=train_loader,
-            optimizer=optimizer,
-            device=device,
-            train_mode=True,
-            args=args,
-        )
-
-        val_loss, val_acc, y_true, y_pred = run_epoch(
-            model=model,
-            loader=val_loader,
-            optimizer=None,
-            device=device,
-            train_mode=False,
-            args=args,
-        )
+        train_loss, train_acc, _, _ = run_epoch(model, train_loader, device, optimizer, args)
+        val_loss, val_acc, y_true, y_pred = run_epoch(model, val_loader, device, None, args)
 
         val_metric = metric_fn(y_true, y_pred, args.num_classes) if metric_name != "acc" else float(val_acc)
+        logger.info(f"Epoch {epoch}/{args.epochs} | Train Loss: {train_loss:.4f} | Val {metric_name}: {val_metric:.4f} | Time: {time.time()-t0:.1f}s")
 
-        logger.info(f"Epoch {epoch}/{args.epochs} (time: {time.time()-t0:.1f}s)")
-        logger.info(f"  Train -> loss: {train_loss:.6f} | acc: {train_acc:.6f}")
-        logger.info(f"  Val   -> loss: {val_loss:.6f} | acc: {val_acc:.6f} | {metric_name}: {val_metric:.6f}")
+        rows.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss, f"val_{metric_name}": val_metric})
 
-        rows.append({
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "train_acc": train_acc,
-            "val_loss": val_loss,
-            "val_acc": val_acc,
-            f"val_{metric_name}": val_metric,
-        })
-
-        if best_val_metric is None or val_metric > best_val_metric:
+        if val_metric > best_val_metric:
             best_val_metric = val_metric
             torch.save(model.state_dict(), ckpt_path)
-            logger.info(f"Saved best checkpoint: {ckpt_path}")
+            logger.info(f"New best model saved to {ckpt_path}")
 
-        pd.DataFrame(rows).to_csv(results_csv, index=False)
-
-        if stopper is not None and stopper.step(val_metric):
-            logger.info(f"Early stopping (patience={args.patience})")
+        if stopper and stopper.step(val_metric):
+            logger.info(f"Early stopping at epoch {epoch}")
             break
 
-    logger.info(f"Saved training log CSV: {results_csv}")
-    logger.info("Done.")
+    pd.DataFrame(rows).to_csv(results_csv, index=False)
+    logger.info(f"Experiment complete. Results saved to {results_csv}")
 
 
 def main():
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--dataset", default=None, choices=["ts_500", "ts_1500"])
-    parser.add_argument("--model", default=None, help="Model file name in models/ (e.g., lstm, gru)")
+    parser.add_argument("--model", default=None, help="Model name in models/")
     parser.add_argument("--metric", default=None, choices=list(METRICS.keys()))
-
-    parser.add_argument("--model_class", default=None, help="Exact class name inside the model file")
-    parser.add_argument("--model_kwargs", default=None, help="JSON dict of extra model args")
-
+    parser.add_argument("--model_class", default=None)
+    parser.add_argument("--model_kwargs", default=None)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seq_len", type=int, default=500)
     parser.add_argument("--chunksize", type=int, default=300_000)
     parser.add_argument("--num_classes", type=int, default=4)
-
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--patience", type=int, default=5)
-
-    parser.add_argument("--bury_padding", action="store_true", help="Apply random zero padding")
-    parser.add_argument("--bury_pad_mode", default="both", choices=["both", "left"], help="Padding mode")
-    parser.add_argument("--bury_norm", action="store_true", help="Apply mean-abs normalisation")
-    parser.add_argument("--data_seed", type=int, default=42, help="Seed for padding randomness")
-
+    parser.add_argument("--bury_padding", action="store_true")
+    parser.add_argument("--bury_pad_mode", default="both", choices=["both", "left"])
+    parser.add_argument("--bury_norm", action="store_true")
+    parser.add_argument("--data_seed", type=int, default=42)
     parser.add_argument("--trend", action="store_true")
     parser.add_argument("--seasonality", action="store_true")
     parser.add_argument("--trend_strength", type=float, default=1.0)
@@ -261,25 +187,14 @@ def main():
     parser.add_argument("--season_period", type=int, default=50)
 
     args = parser.parse_args()
+    datasets = [args.dataset] if args.dataset else ["ts_500", "ts_1500"]
+    metrics = [args.metric] if args.metric else list(METRICS.keys())
+    models = [args.model.lower()] if args.model else list_available_models()
 
-    datasets = ["ts_500", "ts_1500"] if args.dataset is None else [args.dataset]
-    metrics = list(METRICS.keys()) if args.metric is None else [args.metric]
-
-    available_models = list_available_models()
-    if not available_models:
-        raise RuntimeError("No model files found in models/")
-    models = available_models if args.model is None else [args.model.lower()]
-
-    total = len(datasets) * len(models) * len(metrics)
-    print(f"Running {total} experiment(s): {len(models)} model(s) × {len(datasets)} dataset(s) × {len(metrics)} metric(s)")
-    print(f"Models: {models}")
-    print(f"Datasets: {datasets}")
-    print(f"Metrics: {metrics}")
-
-    for model_name in models:
-        for dataset_name in datasets:
-            for metric_name in metrics:
-                run_experiment(dataset_name, model_name, metric_name, args)
+    for m in models:
+        for d in datasets:
+            for met in metrics:
+                run_experiment(d, m, met, args)
 
 
 if __name__ == "__main__":
