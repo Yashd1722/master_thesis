@@ -37,3 +37,23 @@
 2026-03-20 13:38:06 | INFO | Loaded 6 samples
 2026-03-20 13:38:56 | INFO | Sample=sample_0 | len=7672 | ktau_var=-0.0912 | ktau_ac1=-0.0840
 2026-03-20 13:38:56 | INFO | Sample=sample_1 | len=37 | ktau_var=0.4902 | ktau_ac1=-0.0980
+2026-03-20 13:39:44 | INFO | Sample=sample_2 | len=7460 | ktau_var=-0.2629 | ktau_ac1=-0.3730
+2026-03-20 13:39:45 | INFO | Sample=sample_3 | len=108 | ktau_var=-0.8613 | ktau_ac1=-0.4061
+2026-03-20 13:40:19 | INFO | Sample=sample_4 | len=5489 | ktau_var=0.7214 | ktau_ac1=0.0637
+2026-03-20 13:40:20 | INFO | Sample=sample_5 | len=295 | ktau_var=0.2674 | ktau_ac1=0.4344
+2026-03-20 13:40:20 | INFO | Saved CSD scores to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/csd/csd_scores.csv
+2026-03-20 13:40:20 | INFO | Saved rolling statistics to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/csd/rolling_statistics.csv
+2026-03-20 13:40:20 | INFO | Saved null summary to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/csd/null_summary.csv
+2026-03-20 13:40:20 | INFO | Done.
+2026-03-20 13:40:24 | INFO | Run name: cnn_lstm_ts_500_acc_on_pangaea_923197
+2026-03-20 13:40:24 | INFO | DL file: /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/dl/prediction_summary.csv
+2026-03-20 13:40:24 | INFO | CSD file: /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/csd/csd_scores.csv
+2026-03-20 13:40:24 | INFO | Saved merged comparison file.
+2026-03-20 13:40:24 | INFO | No usable true labels found. Saved merged file and summary without ROC/AUC.
+2026-03-20 13:40:24 | INFO | Saved comparison outputs to /home/s466553/Master_thesis/master_thesis/test_results/cnn_lstm_ts_500_acc_on_pangaea_923197/compare
+2026-03-20 13:40:24 | INFO | Done.
+usage: test.py [-h] --dataset DATASET --train_dataset {ts_500,ts_1500}
+               --model {cnn,lstm,cnn_lstm} --metric METRIC [--device DEVICE]
+               [--experiment {base,trend,season,trend_season}]
+               [--length_mode {first,last}]
+test.py: error: argument --experiment: invalid choice: 'accuracy' (choose from base, trend, season, trend_season)

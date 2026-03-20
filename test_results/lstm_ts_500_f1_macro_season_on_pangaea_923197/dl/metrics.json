@@ -1,0 +1,9 @@
+{
+  "run_name": "lstm_ts_500_f1_macro_season_on_pangaea_923197",
+  "dataset": "pangaea_923197",
+  "train_dataset": "ts_500",
+  "model": "lstm",
+  "metric": "f1_macro",
+  "experiment": "season",
+  "num_samples": 6
+}

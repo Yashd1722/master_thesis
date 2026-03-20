@@ -57,16 +57,18 @@ echo "========================================"
 # ----------------------------------------
 # Parse checkpoint name
 # Supports:
-# cnn_ts_500_acc.pt
-# lstm_ts_500_f1_macro_season.pt
-# cnn_lstm_ts_1500_f1_macro_trend_season.pt
+#   cnn_ts_500_acc.pt
+#   cnn_ts_500_balanced_accuracy.pt
+#   lstm_ts_500_f1_macro.pt
+#   lstm_ts_500_f1_macro_season.pt
+#   cnn_lstm_ts_500_f1_macro_trend_season.pt
+#   cnn_lstm_ts_500_balanced_accuracy.pt
 # ----------------------------------------
 parse_checkpoint() {
   local fname="$1"
   fname="${fname%.pt}"
 
-  # Detect model prefix BEFORE splitting on underscores,
-  # so that cnn_lstm is not mistaken for model=cnn, train=lstm_ts
+  # --- Step 1: detect model prefix (cnn_lstm before cnn to avoid false match) ---
   if [[ "$fname" == cnn_lstm* ]]; then
     model="cnn_lstm"
     remainder="${fname#cnn_lstm_}"
@@ -81,21 +83,31 @@ parse_checkpoint() {
     return 1
   fi
 
-  # Split the remainder: <ds_part1>_<ds_part2>_<metric...>_<exp...>
-  # e.g. ts_500_acc  or  ts_1500_f1_macro_trend_season
+  # --- Step 2: split remainder on underscores ---
+  # remainder examples:
+  #   ts_500_acc
+  #   ts_500_balanced_accuracy
+  #   ts_500_f1_macro
+  #   ts_500_f1_macro_season
+  #   ts_500_f1_macro_trend_season
   IFS="_" read -r -a parts <<< "$remainder"
 
-  train_dataset="${parts[0]}_${parts[1]}"   # e.g. ts_500 or ts_1500
+  # parts[0]=ts  parts[1]=500  parts[2]=<metric_start> ...
+  train_dataset="${parts[0]}_${parts[1]}"   # always ts_500 or ts_1500
 
-  # metric can be f1_macro (2 tokens) or acc (1 token)
-  if [[ "${parts[2]}" == "f1" ]]; then
+  # --- Step 3: detect metric (2-token metrics first, else 1-token) ---
+  if [[ "${parts[2]}" == "f1" && "${parts[3]:-}" == "macro" ]]; then
     metric="f1_macro"
+    exp_parts=("${parts[@]:4}")
+  elif [[ "${parts[2]}" == "balanced" && "${parts[3]:-}" == "accuracy" ]]; then
+    metric="balanced_accuracy"
     exp_parts=("${parts[@]:4}")
   else
     metric="${parts[2]}"
     exp_parts=("${parts[@]:3}")
   fi
 
+  # --- Step 4: experiment (remaining tokens joined with _) ---
   if [[ ${#exp_parts[@]} -eq 0 ]]; then
     experiment="base"
   else

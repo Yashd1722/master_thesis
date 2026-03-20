@@ -1,0 +1,9 @@
+{
+  "run_name": "cnn_lstm_ts_500_f1_macro_on_pangaea_923197",
+  "dataset": "pangaea_923197",
+  "train_dataset": "ts_500",
+  "model": "cnn_lstm",
+  "metric": "f1_macro",
+  "experiment": "base",
+  "num_samples": 6
+}
