@@ -7,6 +7,7 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+import re
 
 import numpy as np
 import torch
@@ -160,23 +161,40 @@ def infer_num_classes_from_checkpoint_dict(checkpoint: Dict[str, Any]) -> Option
     if not isinstance(state_dict, dict):
         return None
 
-    # Prefer keys that contain 'classifier' or 'fc' or 'output'
-    candidates = []
+    # Prefer explicit classifier/fc/output/linear final layers.
+    # Collect candidates of the form '...classifier.N.weight' and pick the one
+    # with the highest numeric index N (assumed final layer).
+    candidates: List[tuple[str, int, Optional[int]]] = []
     for k, v in state_dict.items():
-        if not k.lower().endswith(".weight"):
+        lk = k.lower()
+        if not lk.endswith(".weight"):
             continue
-        lname = k.lower()
-        try:
-            shape0 = int(v.shape[0])
-        except Exception:
-            shape0 = None
+        # look for classifier-like names
+        if any(x in lk for x in ("classifier", ".fc", "output", "linear")):
+            # try to extract an index after the keyword (e.g. classifier.3.weight)
+            m = re.search(r"(?:classifier|fc|output|linear)\.(\d+)\.weight$", lk)
+            if m:
+                idx = int(m.group(1))
+            else:
+                # fallback: any numeric index before .weight
+                m2 = re.search(r"\.(\d+)\.weight$", lk)
+                idx = int(m2.group(1)) if m2 else -1
 
-        if any(x in lname for x in ("classifier", "fc", "output", "linear")):
-            if shape0 is not None:
-                return shape0
-            candidates.append((k, shape0))
+            try:
+                out0 = int(v.shape[0])
+            except Exception:
+                out0 = None
 
-    # fallback: any 2-D weight param
+            candidates.append((lk, idx, out0))
+
+    if candidates:
+        # prefer candidates with a numeric index; sort by index desc, then pick first with valid out0
+        candidates.sort(key=lambda t: (t[1] if t[1] is not None else -1), reverse=True)
+        for _, _, out0 in candidates:
+            if out0 is not None:
+                return out0
+
+    # final fallback: return any 2-D weight parameter's output dim
     for k, v in state_dict.items():
         if k.lower().endswith(".weight"):
             try:
@@ -321,20 +339,7 @@ def _extract_series_items_from_loaded_dataset(
     dataset_name: str,
     split: str,
 ) -> Tuple[List[WindowSample], List[Dict[str, Any]]]:
-    """
-    This is the only repo-dependent section.
-    It converts your project dataset loader output into:
-    - sample/window dataset
-    - full series dataset for progressive inference
-
-    Expected flexible input patterns:
-    1) dict with keys like:
-       loaded["X_test"], loaded["y_test"], loaded["series_test"]
-    2) dict with split nested:
-       loaded["test"]["X"], loaded["test"]["y"], loaded["test"]["series"]
-    3) already prepared objects:
-       loaded["window_samples"], loaded["series_items"]
-    """
+    
 
     # Case A: already normalized by your loader
     if isinstance(loaded, dict) and "window_samples" in loaded and "series_items" in loaded:
