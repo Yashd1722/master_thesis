@@ -1,0 +1,43 @@
+2026-03-31 22:45:08,258 | INFO | testing.test_csd | ================================================================================
+2026-03-31 22:45:08,260 | INFO | testing.test_csd | Starting CSD testing run
+2026-03-31 22:45:08,265 | INFO | testing.test_csd | ================================================================================
+2026-03-31 22:45:08,266 | INFO | testing.test_csd | Dataset             : pangaea_923197
+2026-03-31 22:45:08,271 | INFO | testing.test_csd | Split               : test
+2026-03-31 22:45:08,272 | INFO | testing.test_csd | Rolling window frac : 0.5000
+2026-03-31 22:45:08,277 | INFO | testing.test_csd | Progressive start   : 0.6000
+2026-03-31 22:45:08,282 | INFO | testing.test_csd | Progressive end     : 1.0000
+2026-03-31 22:45:08,284 | INFO | testing.test_csd | Progressive steps   : 40
+2026-03-31 22:45:08,286 | INFO | testing.test_csd | Min prefix len      : 64
+2026-03-31 22:45:08,289 | INFO | testing.test_csd | Smooth sigma        : 0.0000
+2026-03-31 22:45:08,291 | INFO | testing.test_csd | Run directory       : results/testing_csd/csd_pangaea_923197
+2026-03-31 22:45:08,293 | INFO | testing.test_csd | Log file            : results/testing_csd/csd_pangaea_923197/logs/test_csd.log
+2026-03-31 22:45:08,297 | INFO | testing.test_csd | Loading dataset...
+2026-03-31 22:45:08,927 | INFO | testing.test_csd | --------------------------------------------------------------------------------
+2026-03-31 22:45:08,930 | INFO | testing.test_csd | [1/2] Progressive CSD evaluation
+2026-03-31 22:45:08,932 | INFO | testing.test_csd | --------------------------------------------------------------------------------
+2026-03-31 22:45:08,935 | INFO | testing.test_csd | CSD evaluation [1/15] | series_id=64PE406-E1_Al [mg/kg] | length=15344
+2026-03-31 22:45:32,779 | INFO | testing.test_csd | CSD evaluation [2/15] | series_id=64PE406-E1_Ba [mg/kg] | length=15344
+2026-03-31 22:45:56,632 | INFO | testing.test_csd | CSD evaluation [3/15] | series_id=64PE406-E1_Mo [mg/kg] | length=15344
+2026-03-31 22:46:20,804 | INFO | testing.test_csd | CSD evaluation [4/15] | series_id=64PE406-E1_Ti [mg/kg] | length=15344
+2026-03-31 22:46:44,846 | INFO | testing.test_csd | CSD evaluation [5/15] | series_id=64PE406-E1_U [mg/kg] | length=15344
+2026-03-31 22:47:09,003 | INFO | testing.test_csd | CSD evaluation [6/15] | series_id=MS21PC_Al [mg/kg] | length=14920
+2026-03-31 22:47:31,750 | INFO | testing.test_csd | CSD evaluation [7/15] | series_id=MS21PC_Ba [mg/kg] | length=14920
+2026-03-31 22:47:54,479 | INFO | testing.test_csd | CSD evaluation [8/15] | series_id=MS21PC_Mo [mg/kg] | length=14920
+2026-03-31 22:48:17,138 | INFO | testing.test_csd | CSD evaluation [9/15] | series_id=MS21PC_Ti [mg/kg] | length=14920
+2026-03-31 22:48:39,876 | INFO | testing.test_csd | CSD evaluation [10/15] | series_id=MS21PC_U [mg/kg] | length=14920
+2026-03-31 22:49:03,363 | INFO | testing.test_csd | CSD evaluation [11/15] | series_id=MS66PC_Al [mg/kg] | length=10978
+2026-03-31 22:49:19,418 | INFO | testing.test_csd | CSD evaluation [12/15] | series_id=MS66PC_Ba [mg/kg] | length=10978
+2026-03-31 22:49:35,432 | INFO | testing.test_csd | CSD evaluation [13/15] | series_id=MS66PC_Mo [mg/kg] | length=10978
+2026-03-31 22:49:51,363 | INFO | testing.test_csd | CSD evaluation [14/15] | series_id=MS66PC_Ti [mg/kg] | length=10978
+2026-03-31 22:50:07,508 | INFO | testing.test_csd | CSD evaluation [15/15] | series_id=MS66PC_U [mg/kg] | length=10978
+2026-03-31 22:50:23,232 | INFO | testing.test_csd | Saved combined CSD predictions: results/testing_csd/csd_pangaea_923197/all_series_csd_predictions.csv
+2026-03-31 22:50:23,245 | INFO | testing.test_csd | Saved final CSD predictions: results/testing_csd/csd_pangaea_923197/final_series_csd_predictions.csv
+2026-03-31 22:50:23,296 | INFO | testing.test_csd | Saved per-series CSD CSV files: results/testing_csd/csd_pangaea_923197/series_predictions
+2026-03-31 22:50:23,297 | INFO | testing.test_csd | --------------------------------------------------------------------------------
+2026-03-31 22:50:23,299 | INFO | testing.test_csd | [2/2] Plot generation
+2026-03-31 22:50:23,301 | INFO | testing.test_csd | --------------------------------------------------------------------------------
+2026-03-31 22:50:30,861 | INFO | testing.test_csd | Saved CSD plots under: results/testing_csd/csd_pangaea_923197/plots
+2026-03-31 22:50:30,866 | INFO | testing.test_csd | ================================================================================
+2026-03-31 22:50:30,869 | INFO | testing.test_csd | CSD testing completed successfully
+2026-03-31 22:50:30,870 | INFO | testing.test_csd | All outputs saved in: results/testing_csd/csd_pangaea_923197
+2026-03-31 22:50:30,873 | INFO | testing.test_csd | ================================================================================
