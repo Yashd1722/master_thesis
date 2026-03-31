@@ -1,0 +1,23 @@
+{
+  "checkpoint_path": "/home/s466553/Master_thesis/master_thesis/checkpoints/cnn_lstm_ts_500_f1_macro.pt",
+  "run_name": "cnn_lstm_ts_500_f1_macro_to_pangaea_923197",
+  "model_name": "cnn_lstm",
+  "train_dataset": "unknown_train_dataset",
+  "test_dataset": "pangaea_923197",
+  "metric": "unknown_metric",
+  "split": "test",
+  "input_length": 500,
+  "num_classes": 4,
+  "class_names": [
+    "class_0",
+    "class_1",
+    "class_2",
+    "class_3"
+  ],
+  "device": "cuda",
+  "batch_size": 128,
+  "progressive_start_frac": 0.6,
+  "progressive_end_frac": 1.0,
+  "progressive_num_steps": 40,
+  "min_prefix_len": 64
+}
