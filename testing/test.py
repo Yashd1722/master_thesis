@@ -314,15 +314,37 @@ def main() -> None:
         or (ckpt_meta.get("model_config", {}).get("input_size") if isinstance(ckpt_meta.get("model_config"), dict) else None)
         or 2
     )
-    # Determine num_classes: CLI override -> checkpoint meta -> infer from state_dict -> default 3
+    # Determine num_classes with precedence:
+    # CLI override -> infer from state_dict -> checkpoint meta -> default 3
     if getattr(args, "num_classes", None) is not None:
         num_classes = int(args.num_classes)
+        num_source = "cli"
     else:
-        num_classes = (
-            int(ckpt_meta.get("num_classes"))
-            if "num_classes" in ckpt_meta
-            else (infer_num_classes_from_checkpoint_dict(ckpt) or 3)
-        )
+        inferred = infer_num_classes_from_checkpoint_dict(ckpt)
+        if inferred is not None:
+            num_classes = int(inferred)
+            num_source = "inferred_from_state_dict"
+        elif "num_classes" in ckpt_meta:
+            num_classes = int(ckpt_meta.get("num_classes"))
+            num_source = "ckpt_meta"
+        else:
+            num_classes = 3
+            num_source = "default"
+
+    # Warn if metadata disagrees with inferred state_dict
+    if "num_classes" in ckpt_meta and inferred is not None:
+        try:
+            meta_nc = int(ckpt_meta.get("num_classes"))
+        except Exception:
+            meta_nc = None
+        if meta_nc is not None and meta_nc != int(inferred):
+            LOGGER.warning(
+                "Checkpoint meta num_classes=%s disagrees with inferred=%s; using inferred",
+                meta_nc,
+                inferred,
+            )
+
+    LOGGER.info("Num classes         : %d (source: %s)", num_classes, num_source)
     class_names = resolve_class_names(num_classes=num_classes, ckpt_meta=ckpt_meta)
 
     run_name = (
