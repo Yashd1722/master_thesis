@@ -474,7 +474,8 @@ def load_test_dataset_for_inference(
     - window_dataset: for normal classification evaluation
     - series_dataset: for progressive per-series prediction
     """
-    loaded = load_dataset(dataset_name=dataset_name)
+    # `load_dataset` expects the dataset token as a positional arg (name)
+    loaded = load_dataset(dataset_name)
 
     window_samples, series_items = _extract_series_items_from_loaded_dataset(
         loaded=loaded,
