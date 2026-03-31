@@ -32,9 +32,11 @@ dataset/**
 !dataset/pangaea_923197/datasets/clean_dataset/*.csv
 
 # ----------------------------
-# RESULTS & LOGS – track these
+# TRACK RESULTS, LOGS, AND TEST OUTPUTS
 # ----------------------------
 !results/
 !results/**/*
 !logs/
 !logs/**/*
+!test_results/
+!test_results/**/*
