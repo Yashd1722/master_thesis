@@ -477,6 +477,24 @@ def load_test_dataset_for_inference(
     # `load_dataset` expects the dataset token as a positional arg (name)
     loaded = load_dataset(dataset_name)
 
+    # Normalize older loader outputs that return (sequences, labels, feature_names)
+    # into the dict format expected by `_extract_series_items_from_loaded_dataset()`.
+    if isinstance(loaded, (list, tuple)) and len(loaded) >= 2:
+        sequences = loaded[0]
+        labels = loaded[1]
+        feature_names = loaded[2] if len(loaded) > 2 else None
+
+        series_list = []
+        for i, seq in enumerate(sequences):
+            item = {
+                "series_id": f"{dataset_name}_{split}_series_{i}",
+                "signal": seq,
+                "label": None if labels is None else int(labels[i]),
+            }
+            series_list.append(item)
+
+        loaded = {"X": sequences, "y": labels, "series": series_list}
+
     window_samples, series_items = _extract_series_items_from_loaded_dataset(
         loaded=loaded,
         dataset_name=dataset_name,
