@@ -1,5 +1,4 @@
 # testing/test.py
-
 from __future__ import annotations
 
 import argparse
@@ -21,10 +20,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from metrics.acc import compute  # noqa: E402
-from metrics.f1_macro import compute  # noqa: E402
-from src.plot_testing_results import get_testing_output_dirs, run_all_testing_plots  # noqa: E402
-from testing.testing_utils import (  # noqa: E402
+# Import metric functions from your files
+from metrics.acc import compute as compute_acc
+from metrics.f1_macro import compute as compute_f1_macro
+from src.plot_testing_results import get_testing_output_dirs, run_all_testing_plots
+from testing.testing_utils import (
     build_model_from_checkpoint,
     infer_num_classes_from_checkpoint_dict,
     collate_eval_batch,
@@ -44,7 +44,6 @@ from testing.testing_utils import (  # noqa: E402
 )
 
 LOGGER = logging.getLogger("testing.test")
-
 
 # ---------------------------------------------------------------------
 # args
@@ -80,51 +79,6 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
-
-def resolve_checkpoint_path(checkpoint_arg: str) -> Path:
-    requested_path = Path(checkpoint_arg)
-
-    if requested_path.exists():
-        return requested_path
-
-    # Common mapping from older project layout to current layout
-    if requested_path.is_absolute() and "/Main/" in str(requested_path):
-        corrected_path = Path(str(requested_path).replace("/Main/", "/master_thesis/"))
-        if corrected_path.exists():
-            LOGGER.warning(
-                "Checkpoint %s not found, using corrected path %s",
-                requested_path,
-                corrected_path,
-            )
-            return corrected_path
-
-    ckpt_filename = requested_path.name
-    search_dirs = [
-        REPO_ROOT / "checkpoints",
-        REPO_ROOT.parent / "checkpoints",
-        REPO_ROOT,
-        Path.home() / "Master_thesis" / "master_thesis" / "checkpoints",
-        Path.home() / "Master_thesis" / "Main" / "checkpoints",
-    ]
-
-    tried_paths = [str(requested_path)]
-
-    for sd in search_dirs:
-        candidate = sd / ckpt_filename
-        tried_paths.append(str(candidate))
-        if candidate.exists():
-            LOGGER.warning(
-                "Checkpoint %s not found, using fallback path %s",
-                requested_path,
-                candidate,
-            )
-            return candidate
-
-    raise FileNotFoundError(
-        f"Checkpoint not found: {requested_path}. Tried: {', '.join(tried_paths)}"
-    )
-
-
 # ---------------------------------------------------------------------
 # logging
 # ---------------------------------------------------------------------
@@ -132,15 +86,11 @@ def setup_run_logging(log_file: Path, verbose: bool = False) -> None:
     ensure_dir(log_file.parent)
 
     level = logging.DEBUG if verbose else logging.INFO
-
-    formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
-    # clear old handlers to avoid duplicate logs
     if root_logger.handlers:
         root_logger.handlers.clear()
 
@@ -155,18 +105,15 @@ def setup_run_logging(log_file: Path, verbose: bool = False) -> None:
     root_logger.addHandler(stream_handler)
     root_logger.addHandler(file_handler)
 
-
 # ---------------------------------------------------------------------
 # metrics
 # ---------------------------------------------------------------------
-def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int) -> Dict[str, float]:
+    """Compute standard metrics using the provided metric functions."""
     return {
         "acc": float(compute_acc(y_true, y_pred)),
-        "f1_macro": float(compute_f1_macro(y_true, y_pred)),
-        "precision_macro": float(compute_precision_macro(y_true, y_pred)),
-        "recall_macro": float(compute_recall_macro(y_true, y_pred)),
+        "f1_macro": float(compute_f1_macro(y_true, y_pred, num_classes)),
     }
-
 
 # ---------------------------------------------------------------------
 # sample-level evaluation
@@ -176,6 +123,7 @@ def run_sample_level_evaluation(
     loader: DataLoader,
     device: torch.device,
     class_names: List[str],
+    num_classes: int,
 ) -> Dict[str, Any]:
     model.eval()
 
@@ -207,7 +155,7 @@ def run_sample_level_evaluation(
     preds_np = np.concatenate(all_preds, axis=0) if all_preds else np.empty((0,), dtype=int)
     targets_np = np.concatenate(all_targets, axis=0) if all_targets else np.empty((0,), dtype=int)
 
-    metrics = compute_metrics(targets_np, preds_np)
+    metrics = compute_metrics(targets_np, preds_np, num_classes)
 
     rows: List[Dict[str, Any]] = []
     for i in range(len(preds_np)):
@@ -233,7 +181,6 @@ def run_sample_level_evaluation(
         "probs": probs_np,
     }
 
-
 # ---------------------------------------------------------------------
 # progressive series evaluation
 # ---------------------------------------------------------------------
@@ -248,15 +195,13 @@ def run_progressive_series_evaluation(
     progressive_num_steps: int,
     min_prefix_len: int,
 ) -> pd.DataFrame:
-    model.eval()
-
     series_records: List[Dict[str, Any]] = []
     total_series = len(dataset_for_series.series_items)
 
     with torch.no_grad():
         for idx, item in enumerate(dataset_for_series.series_items, start=1):
             series_id = str(item["series_id"])
-            x_full = np.asarray(item["signal"], dtype=np.float32).reshape(-1)
+            x_full = np.asarray(item["signal"], dtype=np.float32)
             y_true = item.get("label", None)
             transition_index = item.get("transition_index", None)
 
@@ -291,7 +236,6 @@ def run_progressive_series_evaluation(
 
     return pd.DataFrame(series_records)
 
-
 # ---------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------
@@ -299,9 +243,13 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
 
-    checkpoint_path = resolve_checkpoint_path(args.checkpoint)
+    # Simple checkpoint path validation
+    if not args.checkpoint:
+        raise ValueError("--checkpoint is required and cannot be empty")
+    checkpoint_path = Path(args.checkpoint)
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
-    # read checkpoint metadata first for run naming
     ckpt = load_checkpoint_safely(checkpoint_path)
     ckpt_meta = extract_checkpoint_metadata(ckpt)
     model_name = infer_model_name_from_checkpoint(checkpoint_path, ckpt_meta)
@@ -314,9 +262,9 @@ def main() -> None:
         or (ckpt_meta.get("model_config", {}).get("input_size") if isinstance(ckpt_meta.get("model_config"), dict) else None)
         or 2
     )
-    # Determine num_classes with precedence:
-    # CLI override -> infer from state_dict -> checkpoint meta -> default 3
-    if getattr(args, "num_classes", None) is not None:
+
+    # Determine num_classes
+    if args.num_classes is not None:
         num_classes = int(args.num_classes)
         num_source = "cli"
     else:
@@ -331,7 +279,6 @@ def main() -> None:
             num_classes = 3
             num_source = "default"
 
-    # Warn if metadata disagrees with inferred state_dict
     if "num_classes" in ckpt_meta and inferred is not None:
         try:
             meta_nc = int(ckpt_meta.get("num_classes"))
@@ -356,10 +303,8 @@ def main() -> None:
     run_dir = Path(args.results_root) / "testing" / run_name
     ensure_dir(run_dir)
 
-    # create dedicated folder structure immediately
     output_dirs = get_testing_output_dirs(run_dir)
 
-    # log file inside dedicated run folder
     log_file = output_dirs["logs_dir"] / "test.log"
     setup_run_logging(log_file=log_file, verbose=args.verbose)
 
@@ -409,6 +354,7 @@ def main() -> None:
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=(device.type == "cuda"),
+        collate_fn=lambda batch: batch,  # keep as list of dicts for custom collation
     )
 
     config_summary = summarise_run_config(
@@ -440,6 +386,7 @@ def main() -> None:
         loader=loader,
         device=device,
         class_names=class_names,
+        num_classes=num_classes,
     )
 
     metrics_dict = sample_eval["metrics"]
@@ -480,15 +427,12 @@ def main() -> None:
     if progressive_df.empty:
         LOGGER.warning("No progressive predictions were generated.")
     else:
-        # save combined progressive CSV at run root
         progressive_csv_path = run_dir / "all_series_progressive_predictions.csv"
         progressive_df.to_csv(progressive_csv_path, index=False)
         LOGGER.info("Saved combined progressive predictions: %s", progressive_csv_path)
 
-        # save copy into dedicated tables folder too
         progressive_df.to_csv(output_dirs["tables_dir"] / "all_series_progressive_predictions.csv", index=False)
 
-        # save final step per series
         final_step_df = (
             progressive_df
             .sort_values(["series_id", "reveal_index"])
@@ -503,15 +447,12 @@ def main() -> None:
 
         final_step_df.to_csv(output_dirs["tables_dir"] / "final_series_predictions.csv", index=False)
 
-        # optional per-series csv files
         if args.save_series_csv:
             series_csv_dir = run_dir / "series_predictions"
             ensure_dir(series_csv_dir)
-
             for series_id, series_df in progressive_df.groupby("series_id", sort=True):
                 safe_name = str(series_id).replace("/", "_").replace("\\", "_").replace(" ", "_")
                 series_df.sort_values("reveal_index").to_csv(series_csv_dir / f"{safe_name}.csv", index=False)
-
             LOGGER.info("Saved per-series progressive CSV files: %s", series_csv_dir)
 
     LOGGER.info("-" * 80)

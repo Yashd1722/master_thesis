@@ -1,0 +1,36 @@
+========================================================
+SLURM JOB ID         : 2448475
+PROJECT_DIR          : /home/s466553/Master_thesis/master_thesis
+CHECKPOINT           : checkpoints/lstm_ts_500_f1_macro.pt
+TEST_DATASET         : pangaea_923197
+SPLIT                : test
+DEVICE               : cuda
+RESULTS_ROOT         : results
+========================================================
+DL_RUN_NAME          : lstm_ts_500_f1_macro_to_pangaea_923197
+CSD_RUN_NAME         : csd_pangaea_923197
+COMPARE_RUN_NAME     : compare_lstm_ts_500_f1_macro_to_pangaea_923197_vs_csd_pangaea_923197
+========================================================
+========================================================
+[1/3] Running DL testing
+========================================================
+python testing/test.py --checkpoint checkpoints/lstm_ts_500_f1_macro.pt --dataset pangaea_923197 --split test --batch-size 128 --num-workers 0 --device cuda --seed 42 --progressive-start-frac 0.60 --progressive-end-frac 1.00 --progressive-num-steps 40 --min-prefix-len 64 --results-root results --run-name lstm_ts_500_f1_macro_to_pangaea_923197 --save-summary-csv --save-series-csv --make-plots 
+2026-03-31 19:53:36,665 | INFO | testing.test | ================================================================================
+2026-03-31 19:53:36,668 | INFO | testing.test | Starting testing run
+2026-03-31 19:53:36,670 | INFO | testing.test | ================================================================================
+2026-03-31 19:53:36,671 | INFO | testing.test | Run name            : lstm_ts_500_f1_macro_to_pangaea_923197
+2026-03-31 19:53:36,673 | INFO | testing.test | Checkpoint          : checkpoints/lstm_ts_500_f1_macro.pt
+2026-03-31 19:53:36,674 | INFO | testing.test | Model               : lstm
+2026-03-31 19:53:36,681 | INFO | testing.test | Train dataset token : unknown_train_dataset
+2026-03-31 19:53:36,683 | INFO | testing.test | Test dataset        : pangaea_923197
+2026-03-31 19:53:36,684 | INFO | testing.test | Metric              : unknown_metric
+2026-03-31 19:53:36,685 | INFO | testing.test | Input length        : 500
+2026-03-31 19:53:36,687 | INFO | testing.test | Num classes         : 4
+2026-03-31 19:53:36,688 | INFO | testing.test | Class names         : ['class_0', 'class_1', 'class_2', 'class_3']
+2026-03-31 19:53:36,691 | INFO | testing.test | Device              : cuda
+2026-03-31 19:53:36,695 | INFO | testing.test | Run directory       : results/testing/lstm_ts_500_f1_macro_to_pangaea_923197
+2026-03-31 19:53:36,697 | INFO | testing.test | Log file            : results/testing/lstm_ts_500_f1_macro_to_pangaea_923197/logs/test.log
+2026-03-31 19:53:36,943 | INFO | testing.test | Loading test dataset...
+2026-03-31 19:53:37,068 | INFO | testing.test | --------------------------------------------------------------------------------
+2026-03-31 19:53:37,071 | INFO | testing.test | [1/3] Sample-level evaluation
+2026-03-31 19:53:37,073 | INFO | testing.test | --------------------------------------------------------------------------------

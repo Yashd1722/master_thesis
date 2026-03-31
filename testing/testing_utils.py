@@ -1,13 +1,12 @@
 # testing/testing_utils.py
-
 from __future__ import annotations
 
 import json
 import random
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
-import re
 
 import numpy as np
 import torch
@@ -20,13 +19,12 @@ from torch.utils.data import Dataset
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # ---------------------------------------------------------------------
-# optional project imports
-# adapt these imports if your repo names differ
+# imports from your project – adjust if needed
 # ---------------------------------------------------------------------
-from src.dataset_loader import load_dataset  # adjust only if needed
-from models.CNN import CNNClassifier  # adjust only if needed
-from models.LSTM import LSTMClassifier  # adjust only if needed
-from models.CNN_LSTM import CNNLSTMClassifier  # adjust only if needed
+from src.dataset_loader import load_dataset
+from models.CNN import CNNClassifier
+from models.LSTM import LSTMClassifier
+from models.CNN_LSTM import CNNLSTMClassifier
 
 
 # ---------------------------------------------------------------------
@@ -141,19 +139,13 @@ def resolve_class_names(num_classes: int, ckpt_meta: Dict[str, Any]) -> List[str
 
 
 def infer_num_classes_from_checkpoint_dict(checkpoint: Dict[str, Any]) -> Optional[int]:
-    """Try to infer the number of output classes from a checkpoint or raw state_dict.
-
-    Looks for typical final linear weight parameter names such as
-    'classifier.*.weight', 'fc.*.weight', 'output.*.weight' and falls back
-    to any 2-D weight tensor if found.
-    """
+    """Try to infer the number of output classes from a checkpoint or raw state_dict."""
     state_dict = None
     for key in ["model_state_dict", "state_dict", "model"]:
         if key in checkpoint:
             state_dict = checkpoint[key]
             break
 
-    # checkpoint might be a raw state_dict itself
     if state_dict is None and isinstance(checkpoint, dict):
         if any("." in str(k) for k in checkpoint.keys()):
             state_dict = checkpoint
@@ -162,21 +154,16 @@ def infer_num_classes_from_checkpoint_dict(checkpoint: Dict[str, Any]) -> Option
         return None
 
     # Prefer explicit classifier/fc/output/linear final layers.
-    # Collect candidates of the form '...classifier.N.weight' and pick the one
-    # with the highest numeric index N (assumed final layer).
     candidates: List[tuple[str, int, Optional[int]]] = []
     for k, v in state_dict.items():
         lk = k.lower()
         if not lk.endswith(".weight"):
             continue
-        # look for classifier-like names
         if any(x in lk for x in ("classifier", ".fc", "output", "linear")):
-            # try to extract an index after the keyword (e.g. classifier.3.weight)
             m = re.search(r"(?:classifier|fc|output|linear)\.(\d+)\.weight$", lk)
             if m:
                 idx = int(m.group(1))
             else:
-                # fallback: any numeric index before .weight
                 m2 = re.search(r"\.(\d+)\.weight$", lk)
                 idx = int(m2.group(1)) if m2 else -1
 
@@ -188,13 +175,12 @@ def infer_num_classes_from_checkpoint_dict(checkpoint: Dict[str, Any]) -> Option
             candidates.append((lk, idx, out0))
 
     if candidates:
-        # prefer candidates with a numeric index; sort by index desc, then pick first with valid out0
         candidates.sort(key=lambda t: (t[1] if t[1] is not None else -1), reverse=True)
         for _, _, out0 in candidates:
             if out0 is not None:
                 return out0
 
-    # final fallback: return any 2-D weight parameter's output dim
+    # final fallback: any 2-D weight parameter's output dim
     for k, v in state_dict.items():
         if k.lower().endswith(".weight"):
             try:
@@ -220,10 +206,8 @@ def _build_model(
 
     if model_name == "cnn":
         return CNNClassifier(input_size=effective_input_size, num_classes=num_classes)
-
     if model_name == "lstm":
         return LSTMClassifier(input_size=effective_input_size, num_classes=num_classes)
-
     if model_name in {"cnn_lstm", "cnnlstm"}:
         return CNNLSTMClassifier(input_size=effective_input_size, num_classes=num_classes)
 
@@ -252,9 +236,7 @@ def build_model_from_checkpoint(
             state_dict = checkpoint[key]
             break
 
-    # directly saved state dict (checkpoint is a state_dict itself)
     if state_dict is None and isinstance(checkpoint, dict):
-        # heuristic: parameter keys typically contain '.' and 'weight' or 'bias'
         if any("." in str(k) for k in checkpoint.keys()):
             state_dict = checkpoint
 
@@ -275,7 +257,7 @@ def build_model_from_checkpoint(
 # ---------------------------------------------------------------------
 @dataclass
 class WindowSample:
-    x: np.ndarray
+    x: np.ndarray      # shape (T, F)
     y: int
     series_id: str
     window_id: str
@@ -304,182 +286,42 @@ class SeriesDataset:
 
 
 # ---------------------------------------------------------------------
-# data formatting helpers
+# 2D data formatting helpers
 # ---------------------------------------------------------------------
-def _ensure_1d_float32(x: Any) -> np.ndarray:
-    arr = np.asarray(x, dtype=np.float32).reshape(-1)
+def _ensure_2d_float32(x: Any) -> np.ndarray:
+    """Convert input to float32 array with shape (T, F)."""
+    arr = np.asarray(x, dtype=np.float32)
+    if arr.ndim == 1:
+        arr = arr.reshape(-1, 1)   # single feature -> (T,1)
+    # if already 2D, leave as is; if higher, raise error
+    if arr.ndim != 2:
+        raise ValueError(f"Expected 1D or 2D input, got {arr.ndim}D")
     return arr
 
 
-def _pad_or_trim_1d(x: np.ndarray, target_length: int) -> np.ndarray:
-    x = _ensure_1d_float32(x)
-
-    if len(x) == target_length:
+def _pad_or_trim_2d(x: np.ndarray, target_length: int) -> np.ndarray:
+    """Pad or trim along the time axis (first dimension)."""
+    T, F = x.shape
+    if T == target_length:
         return x
-
-    if len(x) > target_length:
-        return x[-target_length:]
-
-    out = np.zeros(target_length, dtype=np.float32)
-    out[-len(x):] = x
+    if T > target_length:
+        return x[-target_length:, :]
+    out = np.zeros((target_length, F), dtype=np.float32)
+    out[-T:, :] = x
     return out
 
 
-def _to_model_input(x_1d: np.ndarray, input_length: int) -> np.ndarray:
+def _to_model_input(x_2d: np.ndarray, input_length: int) -> np.ndarray:
     """
-    Returns shape (1, L) for conv/recurrent models expecting channel-first or simple sequence input.
-    Adjust this if your models expect a different shape.
+    Prepare input for model: shape (1, L, F) where L = input_length.
     """
-    x_fixed = _pad_or_trim_1d(x_1d, input_length)
-    return np.expand_dims(x_fixed, axis=0)  # (1, L)
+    x_fixed = _pad_or_trim_2d(x_2d, input_length)
+    return np.expand_dims(x_fixed, axis=0)   # (1, L, F)
 
 
-def _extract_series_items_from_loaded_dataset(
-    loaded: Any,
-    dataset_name: str,
-    split: str,
-) -> Tuple[List[WindowSample], List[Dict[str, Any]]]:
-    
-
-    # Case A: already normalized by your loader
-    if isinstance(loaded, dict) and "window_samples" in loaded and "series_items" in loaded:
-        return loaded["window_samples"], loaded["series_items"]
-
-    # Case X: loader returned a plain list/tuple of sequences (e.g. PANGAEA loader)
-    # Interpret as sequences list with no per-window labels.
-    if isinstance(loaded, (list, tuple)) and len(loaded) > 0:
-        sequences = list(loaded)
-        window_samples: List[WindowSample] = []
-        series_items: List[Dict[str, Any]] = []
-        for i, seq in enumerate(sequences):
-            series_id = f"{dataset_name}_{split}_series_{i}"
-            window_id = f"{series_id}_window_0"
-            window_samples.append(
-                WindowSample(x=_ensure_1d_float32(seq), y=0, series_id=series_id, window_id=window_id)
-            )
-            series_items.append(
-                {"series_id": series_id, "signal": _ensure_1d_float32(seq), "label": None, "transition_index": None}
-            )
-        return window_samples, series_items
-
-    # Case B: split nested dict
-    if isinstance(loaded, dict) and split in loaded and isinstance(loaded[split], dict):
-        split_obj = loaded[split]
-
-        X = split_obj.get("X", split_obj.get("x"))
-        y = split_obj.get("y")
-        series = split_obj.get("series", split_obj.get("series_items"))
-
-        if X is not None and y is not None:
-            window_samples: List[WindowSample] = []
-            for i, (xi, yi) in enumerate(zip(X, y)):
-                series_id = f"{dataset_name}_{split}_series_{i}"
-                window_id = f"{series_id}_window_0"
-                window_samples.append(
-                    WindowSample(
-                        x=_ensure_1d_float32(xi),
-                        y=int(yi),
-                        series_id=series_id,
-                        window_id=window_id,
-                    )
-                )
-
-            series_items: List[Dict[str, Any]] = []
-            if series is not None:
-                for i, item in enumerate(series):
-                    if isinstance(item, dict):
-                        signal = item.get("signal", item.get("x", item.get("series")))
-                        label = item.get("label", item.get("y"))
-                        transition_index = item.get("transition_index", None)
-                        series_id = item.get("series_id", f"{dataset_name}_{split}_series_{i}")
-                    else:
-                        signal = item
-                        label = None
-                        transition_index = None
-                        series_id = f"{dataset_name}_{split}_series_{i}"
-
-                    series_items.append(
-                        {
-                            "series_id": str(series_id),
-                            "signal": _ensure_1d_float32(signal),
-                            "label": None if label is None else int(label),
-                            "transition_index": transition_index,
-                        }
-                    )
-            else:
-                for i, (xi, yi) in enumerate(zip(X, y)):
-                    series_items.append(
-                        {
-                            "series_id": f"{dataset_name}_{split}_series_{i}",
-                            "signal": _ensure_1d_float32(xi),
-                            "label": int(yi),
-                            "transition_index": None,
-                        }
-                    )
-
-            return window_samples, series_items
-
-    # Case C: flat dict
-    if isinstance(loaded, dict):
-        X = loaded.get(f"X_{split}", loaded.get("X"))
-        y = loaded.get(f"y_{split}", loaded.get("y"))
-        series = loaded.get(f"series_{split}", loaded.get("series_items", loaded.get("series")))
-
-        if X is not None and y is not None:
-            window_samples = []
-            for i, (xi, yi) in enumerate(zip(X, y)):
-                series_id = f"{dataset_name}_{split}_series_{i}"
-                window_id = f"{series_id}_window_0"
-                window_samples.append(
-                    WindowSample(
-                        x=_ensure_1d_float32(xi),
-                        y=int(yi),
-                        series_id=series_id,
-                        window_id=window_id,
-                    )
-                )
-
-            series_items = []
-            if series is not None:
-                for i, item in enumerate(series):
-                    if isinstance(item, dict):
-                        signal = item.get("signal", item.get("x", item.get("series")))
-                        label = item.get("label", item.get("y"))
-                        transition_index = item.get("transition_index", None)
-                        series_id = item.get("series_id", f"{dataset_name}_{split}_series_{i}")
-                    else:
-                        signal = item
-                        label = None
-                        transition_index = None
-                        series_id = f"{dataset_name}_{split}_series_{i}"
-
-                    series_items.append(
-                        {
-                            "series_id": str(series_id),
-                            "signal": _ensure_1d_float32(signal),
-                            "label": None if label is None else int(label),
-                            "transition_index": transition_index,
-                        }
-                    )
-            else:
-                for i, (xi, yi) in enumerate(zip(X, y)):
-                    series_items.append(
-                        {
-                            "series_id": f"{dataset_name}_{split}_series_{i}",
-                            "signal": _ensure_1d_float32(xi),
-                            "label": int(yi),
-                            "transition_index": None,
-                        }
-                    )
-
-            return window_samples, series_items
-
-    raise ValueError(
-        "Could not parse dataset loader output into window samples and series items. "
-        "Please adapt _extract_series_items_from_loaded_dataset() to your exact loader format."
-    )
-
-
+# ---------------------------------------------------------------------
+# loader adapter
+# ---------------------------------------------------------------------
 def load_test_dataset_for_inference(
     dataset_name: str,
     split: str,
@@ -487,19 +329,17 @@ def load_test_dataset_for_inference(
     num_classes: int,
 ) -> Dict[str, Any]:
     """
-    Loads dataset through the project loader and converts it into:
-    - window_dataset: for normal classification evaluation
-    - series_dataset: for progressive per-series prediction
+    Load dataset through project loader and convert to window/series format.
+    Assumes the loader returns dict with keys 'X', 'y', 'series' or similar.
+    Adapt this if your loader returns a different structure.
     """
-    # `load_dataset` expects the dataset token as a positional arg (name)
     loaded = load_dataset(dataset_name)
 
     # Normalize older loader outputs that return (sequences, labels, feature_names)
-    # into the dict format expected by `_extract_series_items_from_loaded_dataset()`.
     if isinstance(loaded, (list, tuple)) and len(loaded) >= 2:
         sequences = loaded[0]
         labels = loaded[1]
-        feature_names = loaded[2] if len(loaded) > 2 else None
+        # feature_names = loaded[2] if len(loaded) > 2 else None
 
         series_list = []
         for i, seq in enumerate(sequences):
@@ -512,22 +352,71 @@ def load_test_dataset_for_inference(
 
         loaded = {"X": sequences, "y": labels, "series": series_list}
 
-    window_samples, series_items = _extract_series_items_from_loaded_dataset(
-        loaded=loaded,
-        dataset_name=dataset_name,
-        split=split,
-    )
+    # Try to extract window samples and series items from a dict
+    window_samples: List[WindowSample] = []
+    series_items: List[Dict[str, Any]] = []
 
+    if isinstance(loaded, dict):
+        X = loaded.get("X", loaded.get("x"))
+        y = loaded.get("y")
+        series = loaded.get("series", loaded.get("series_items"))
+
+        if X is not None:
+            # Convert each sample to 2D
+            for i, xi in enumerate(X):
+                xi_2d = _ensure_2d_float32(xi)
+                yi = int(y[i]) if y is not None else 0
+                series_id = f"{dataset_name}_{split}_series_{i}"
+                window_id = f"{series_id}_window_0"
+                window_samples.append(WindowSample(
+                    x=xi_2d,
+                    y=yi,
+                    series_id=series_id,
+                    window_id=window_id,
+                ))
+
+        if series is not None:
+            for i, item in enumerate(series):
+                if isinstance(item, dict):
+                    signal = item.get("signal", item.get("x", item.get("series")))
+                    label = item.get("label", item.get("y"))
+                    transition_index = item.get("transition_index", None)
+                    series_id = item.get("series_id", f"{dataset_name}_{split}_series_{i}")
+                else:
+                    signal = item
+                    label = None
+                    transition_index = None
+                    series_id = f"{dataset_name}_{split}_series_{i}"
+
+                signal_2d = _ensure_2d_float32(signal)
+                series_items.append({
+                    "series_id": str(series_id),
+                    "signal": signal_2d,
+                    "label": None if label is None else int(label),
+                    "transition_index": transition_index,
+                })
+        else:
+            # If no series list but we have windows, create series from windows
+            for i, ws in enumerate(window_samples):
+                series_items.append({
+                    "series_id": ws.series_id,
+                    "signal": ws.x,
+                    "label": ws.y,
+                    "transition_index": None,
+                })
+
+    if not window_samples and not series_items:
+        raise ValueError("Could not parse dataset loader output. Check loader format.")
+
+    # Convert window samples to model input shape (1, L, F)
     normalized_window_samples: List[WindowSample] = []
-    for s in window_samples:
-        normalized_window_samples.append(
-            WindowSample(
-                x=_to_model_input(s.x, input_length=input_length),
-                y=int(s.y),
-                series_id=str(s.series_id),
-                window_id=str(s.window_id),
-            )
-        )
+    for ws in window_samples:
+        normalized_window_samples.append(WindowSample(
+            x=_to_model_input(ws.x, input_length),
+            y=ws.y,
+            series_id=ws.series_id,
+            window_id=ws.window_id,
+        ))
 
     return {
         "window_dataset": WindowDataset(normalized_window_samples),
@@ -536,18 +425,18 @@ def load_test_dataset_for_inference(
 
 
 # ---------------------------------------------------------------------
-# batch / prediction helpers
+# batch and prediction helpers
 # ---------------------------------------------------------------------
 def collate_eval_batch(batch: Sequence[Dict[str, Any]]) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, List[str]]]:
-    x = torch.stack([item["x"] for item in batch], dim=0)
-    y = torch.stack([item["y"] for item in batch], dim=0)
+    # Each item["x"] is shape (1, L, F) after preprocessing
+    x = torch.stack([item["x"] for item in batch], dim=0).squeeze(1)  # -> (batch, L, F)
+    y = torch.stack([item["y"] for item in batch], dim=0)              # -> (batch,)
 
     meta = {
         "series_id": [str(item["series_id"]) for item in batch],
         "window_id": [str(item["window_id"]) for item in batch],
     }
     return x, y, meta
-
 
 def _forward_logits(model: torch.nn.Module, x: torch.Tensor) -> torch.Tensor:
     logits = model(x)
@@ -563,7 +452,7 @@ def predict_batch_probabilities(model: torch.nn.Module, x: torch.Tensor) -> np.n
 
 
 # ---------------------------------------------------------------------
-# progressive series prediction
+# progressive series prediction (multi-feature)
 # ---------------------------------------------------------------------
 def _build_progressive_reveal_indices(
     series_length: int,
@@ -594,7 +483,7 @@ def _build_progressive_reveal_indices(
 def create_progressive_series_records(
     model: torch.nn.Module,
     device: torch.device,
-    x_full: np.ndarray,
+    x_full: np.ndarray,          # shape (T, F)
     series_id: str,
     y_true: Optional[int],
     transition_index: Optional[int],
@@ -605,9 +494,12 @@ def create_progressive_series_records(
     progressive_num_steps: int,
     min_prefix_len: int,
 ) -> List[Dict[str, Any]]:
-    x_full = _ensure_1d_float32(x_full)
+    # Ensure x_full is 2D
+    x_full = _ensure_2d_float32(x_full)
+    total_len = x_full.shape[0]
+
     reveal_indices = _build_progressive_reveal_indices(
-        series_length=len(x_full),
+        series_length=total_len,
         progressive_start_frac=progressive_start_frac,
         progressive_end_frac=progressive_end_frac,
         progressive_num_steps=progressive_num_steps,
@@ -618,23 +510,23 @@ def create_progressive_series_records(
         return []
 
     records: List[Dict[str, Any]] = []
-
     model.eval()
-    with torch.no_grad():
-        for step_idx, reveal_index in enumerate(reveal_indices):
-            prefix = x_full[:reveal_index]
-            x_model = _to_model_input(prefix, input_length=input_length)
-            x_tensor = torch.tensor(x_model, dtype=torch.float32, device=device).unsqueeze(0)
 
-            probs = predict_batch_probabilities(model, x_tensor)[0]
+    with torch.no_grad():
+        for step_idx, reveal_idx in enumerate(reveal_indices):
+            prefix = x_full[:reveal_idx]   # (prefix_len, F)
+            x_model = _to_model_input(prefix, input_length)   # (1, L, F)
+            x_tensor = torch.tensor(x_model, dtype=torch.float32, device=device)
+
+            probs = predict_batch_probabilities(model, x_tensor)[0]  # (num_classes,)
             y_pred = int(np.argmax(probs))
 
             row: Dict[str, Any] = {
                 "series_id": str(series_id),
                 "step_idx": int(step_idx),
-                "reveal_index": int(reveal_index),
-                "reveal_fraction": float(reveal_index / max(len(x_full), 1)),
-                "series_length": int(len(x_full)),
+                "reveal_index": int(reveal_idx),
+                "reveal_fraction": float(reveal_idx / max(total_len, 1)),
+                "series_length": int(total_len),
                 "y_pred": y_pred,
                 "pred_class_name": class_names[y_pred],
                 "transition_index": None if transition_index is None else int(transition_index),

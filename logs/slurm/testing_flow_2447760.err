@@ -1,0 +1,17 @@
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:990: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.1 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/testing/test.py", line 508, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/test.py", line 353, in main
+    model = build_model_from_checkpoint(
+        checkpoint=ckpt,
+    ...<4 lines>...
+        device=device,
+    )
+  File "/home/s466553/Master_thesis/master_thesis/testing/testing_utils.py", line 189, in build_model_from_checkpoint
+    raise KeyError(
+    ...<2 lines>...
+    )
+KeyError: 'No model state dict found in checkpoint: /home/s466553/Master_thesis/master_thesis/checkpoints/cnn_lstm_ts_500_f1_macro.pt. Expected one of: model_state_dict, state_dict, model'

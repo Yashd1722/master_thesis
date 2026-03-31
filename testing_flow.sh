@@ -164,28 +164,36 @@ echo
 "${CSD_CMD[@]}"
 
 # ============================================================
-# Step 3: Compare DL vs CSD
+# Step 3: Compare DL vs CSD (only if dataset has labels)
 # ============================================================
-COMPARE_CMD=(
-    python testing/compare_dl_vs_csd.py
-    --dl-run-dir "$RESULTS_ROOT/testing/$DL_RUN_NAME"
-    --csd-run-dir "$RESULTS_ROOT/testing_csd/$CSD_RUN_NAME"
-    --positive-class-index "$POSITIVE_CLASS_INDEX"
-    --neutral-label "$NEUTRAL_LABEL"
-    --results-root "$RESULTS_ROOT"
-    --run-name "$COMPARE_RUN_NAME"
-)
+if [ "$TEST_DATASET" != "pangaea_923197" ]; then
+    COMPARE_CMD=(
+        python testing/compare_dl_vs_csd.py
+        --dl-run-dir "$RESULTS_ROOT/testing/$DL_RUN_NAME"
+        --csd-run-dir "$RESULTS_ROOT/testing_csd/$CSD_RUN_NAME"
+        --positive-class-index "$POSITIVE_CLASS_INDEX"
+        --neutral-label "$NEUTRAL_LABEL"
+        --results-root "$RESULTS_ROOT"
+        --run-name "$COMPARE_RUN_NAME"
+    )
 
-echo "========================================================"
-echo "[3/3] Running DL vs CSD comparison"
-echo "========================================================"
-printf '%q ' "${COMPARE_CMD[@]}"
-echo
-"${COMPARE_CMD[@]}"
+    echo "========================================================"
+    echo "[3/3] Running DL vs CSD comparison"
+    echo "========================================================"
+    printf '%q ' "${COMPARE_CMD[@]}"
+    echo
+    "${COMPARE_CMD[@]}"
+else
+    echo "========================================================"
+    echo "[3/3] Skipping DL vs CSD comparison (dataset has no labels)"
+    echo "========================================================"
+fi
 
 echo "========================================================"
 echo "Testing flow completed successfully"
 echo "DL results      : $RESULTS_ROOT/testing/$DL_RUN_NAME"
 echo "CSD results     : $RESULTS_ROOT/testing_csd/$CSD_RUN_NAME"
-echo "Comparison      : $RESULTS_ROOT/comparison/$COMPARE_RUN_NAME"
+if [ "$TEST_DATASET" != "pangaea_923197" ]; then
+    echo "Comparison      : $RESULTS_ROOT/comparison/$COMPARE_RUN_NAME"
+fi
 echo "========================================================"
