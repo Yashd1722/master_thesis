@@ -185,10 +185,16 @@ def build_model_from_checkpoint(
             state_dict = checkpoint[key]
             break
 
+    # directly saved state dict (checkpoint is a state_dict itself)
+    if state_dict is None and isinstance(checkpoint, dict):
+        # heuristic: parameter keys typically contain '.' and 'weight' or 'bias'
+        if any("." in str(k) for k in checkpoint.keys()):
+            state_dict = checkpoint
+
     if state_dict is None:
         raise KeyError(
             f"No model state dict found in checkpoint: {checkpoint_path}. "
-            "Expected one of: model_state_dict, state_dict, model"
+            "Expected one of: model_state_dict, state_dict, model (or raw state_dict)"
         )
 
     model.load_state_dict(state_dict, strict=True)
