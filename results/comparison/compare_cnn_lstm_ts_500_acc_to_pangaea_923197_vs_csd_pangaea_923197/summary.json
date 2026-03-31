@@ -1,0 +1,8 @@
+{
+  "num_merged_rows": 15,
+  "num_series": 15,
+  "positive_prob_column": "prob_class_1",
+  "num_roc_methods": 0,
+  "num_per_series_plots": 15,
+  "best_method": null
+}

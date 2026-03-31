@@ -1,2 +1,0 @@
-dataset_name,model_name,metric_name,p_fold,p_hopf,p_transcritical,p_null,p_transition
-pangaea_923197,cnn_lstm,acc,0.24210652709007263,0.25311478972435,0.2538345158100128,0.2509441375732422,0.7490558326244354

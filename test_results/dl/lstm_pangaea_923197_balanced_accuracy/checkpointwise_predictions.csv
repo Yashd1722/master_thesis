@@ -1,2 +1,0 @@
-checkpoint_name,model_name,dataset_name,train_dataset_name,metric_name,num_samples,mean_p_fold,mean_p_hopf,mean_p_transcritical,mean_p_null,mean_p_transition
-lstm_ts_500_balanced_accuracy.pt,lstm,pangaea_923197,ts_500,balanced_accuracy,6,0.2557103211681048,0.21627267450094223,0.21313648422559103,0.31488053244538605,0.6851194798946381

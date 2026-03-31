@@ -1,0 +1,6 @@
+{
+  "num_window_samples": 95620,
+  "num_series": 15,
+  "has_ground_truth": false,
+  "num_progressive_rows": 600
+}
