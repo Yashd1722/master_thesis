@@ -26,6 +26,7 @@ from metrics.f1_macro import compute  # noqa: E402
 from src.plot_testing_results import get_testing_output_dirs, run_all_testing_plots  # noqa: E402
 from testing.testing_utils import (  # noqa: E402
     build_model_from_checkpoint,
+    infer_num_classes_from_checkpoint_dict,
     collate_eval_batch,
     create_progressive_series_records,
     ensure_dir,
@@ -61,6 +62,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--device", type=str, default="auto", help="auto/cpu/cuda")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-classes", type=int, default=None, help="Override number of output classes")
 
     # progressive prediction
     parser.add_argument("--progressive-start-frac", type=float, default=0.60)
@@ -312,7 +314,15 @@ def main() -> None:
         or (ckpt_meta.get("model_config", {}).get("input_size") if isinstance(ckpt_meta.get("model_config"), dict) else None)
         or 2
     )
-    num_classes = int(ckpt_meta.get("num_classes", 3))
+    # Determine num_classes: CLI override -> checkpoint meta -> infer from state_dict -> default 3
+    if getattr(args, "num_classes", None) is not None:
+        num_classes = int(args.num_classes)
+    else:
+        num_classes = (
+            int(ckpt_meta.get("num_classes"))
+            if "num_classes" in ckpt_meta
+            else (infer_num_classes_from_checkpoint_dict(ckpt) or 3)
+        )
     class_names = resolve_class_names(num_classes=num_classes, ckpt_meta=ckpt_meta)
 
     run_name = (
