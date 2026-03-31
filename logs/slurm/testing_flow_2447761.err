@@ -1,0 +1,22 @@
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:990: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.1 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/testing/test.py", line 508, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/test.py", line 353, in main
+    model = build_model_from_checkpoint(
+        checkpoint=ckpt,
+    ...<4 lines>...
+        device=device,
+    )
+  File "/home/s466553/Master_thesis/master_thesis/testing/testing_utils.py", line 200, in build_model_from_checkpoint
+    model.load_state_dict(state_dict, strict=True)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 2635, in load_state_dict
+    raise RuntimeError(
+    ...<3 lines>...
+    )
+RuntimeError: Error(s) in loading state_dict for CNNLSTMClassifier:
+	size mismatch for classifier.3.weight: copying a param with shape torch.Size([4, 5]) from checkpoint, the shape in current model is torch.Size([3, 5]).
+	size mismatch for classifier.3.bias: copying a param with shape torch.Size([4]) from checkpoint, the shape in current model is torch.Size([3]).

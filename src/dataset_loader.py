@@ -1,155 +1,118 @@
-from pathlib import Path
-import argparse
-
+# src/dataset_loader.py
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from pathlib import Path
+from scipy.ndimage import gaussian_filter1d  # you may need to install scipy
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
-def get_project_root() -> Path:
-    # This file is in .../Main/src/, so root is one folder up
-    return Path(__file__).resolve().parents[1]
+def gaussian_smooth_1d(x, sigma):
+    """Gaussian smoothing with edge handling."""
+    if sigma <= 0:
+        return x.copy()
+    return gaussian_filter1d(x, sigma, mode='nearest')
 
-
-# -------------------------
-# TS datasets: ts_1500 / ts_500
-# -------------------------
-def load_ts_dataset(csv_path: Path, feature_cols=("x", "Residuals")):
+def load_dataset(dataset_name: str, split: str = "test", seq_len: int = 500):
     """
-    Loads a TS dataset CSV.
+    Unified loader for all datasets.
 
-    Expected columns:
-      sequence_ID, Time, x, Residuals, class_label
-
-    Returns:
-      sequences: list[np.ndarray]  (one array per sequence, shape (T, F))
-      labels: np.ndarray          (shape (N,))
-      feature_names: list[str]
+    For synthetic datasets (ts_500, ts_1500): reads the split CSV.
+    For pangaea_923197: detrends each proxy, computes residuals, and creates
+    a dummy second feature (zeros). Returns a series for each (core, proxy).
     """
-    df = pd.read_csv(csv_path)
+    dataset_folder = REPO_ROOT / "dataset" / dataset_name
 
-    # ensure time order inside each sequence
-    df = df.sort_values(["sequence_ID", "Time"])
+    if dataset_name in ["ts_500", "ts_1500"]:
+        # ==================== Synthetic datasets ====================
+        csv_path = dataset_folder / f"{dataset_name}_{split}.csv"
+        if not csv_path.exists():
+            raise FileNotFoundError(f"Split CSV not found: {csv_path}")
 
-    sequences = []
-    labels = []
+        df = pd.read_csv(csv_path)
+        required = ["sequence_ID", "Time", "x", "Residuals", "class_label"]
+        if not all(col in df.columns for col in required):
+            raise ValueError(f"CSV missing required columns: {required}")
 
-    groups = df.groupby("sequence_ID")
-    for seq_id, g in tqdm(groups, total=groups.ngroups, desc="Building TS sequences"):
-        X = g[list(feature_cols)].to_numpy(dtype=np.float32)
-        y = int(g["class_label"].iloc[0])  # one label per sequence
-        sequences.append(X)
-        labels.append(y)
+        # Build series list (full signals)
+        series_list = []
+        for sid, group in df.groupby("sequence_ID"):
+            group = group.sort_values("Time")
+            signal = group[["x", "Residuals"]].values.astype(np.float32)  # (T, 2)
+            label = int(group["class_label"].iloc[0])
+            series_list.append({
+                "series_id": str(sid),
+                "signal": signal,
+                "label": label,
+                "transition_index": None,
+            })
 
-    labels = np.array(labels, dtype=np.int64)
-    return sequences, labels, list(feature_cols)
+        # Convert to windows (each row is already a window)
+        X = df[["x", "Residuals"]].values.reshape(-1, seq_len, 2).astype(np.float32)
+        y = df["class_label"].values.astype(np.int64)[::seq_len]
+        return {"X": X, "y": y, "series": series_list}
 
+    elif dataset_name == "pangaea_923197":
+        # ==================== Pangaea (empirical) dataset ====================
+        clean_folder = dataset_folder / "datasets" / "clean_dataset"
+        if not clean_folder.exists():
+            raise FileNotFoundError(f"Clean dataset folder not found: {clean_folder}")
 
-# -------------------------
-# PANGAEA dataset: folder of CSVs
-# -------------------------
-def load_pangaea_dataset(folder_path: Path, time_col="Age [ka BP]"):
-    """
-    Loads PANGAEA dataset from a folder containing multiple CSVs.
-    Each CSV file is treated as one sequence.
+        core_files = sorted(clean_folder.glob("*_calibratedXRF.csv"))
+        if not core_files:
+            raise FileNotFoundError(f"No *calibratedXRF.csv files found in {clean_folder}")
 
-    Returns:
-      sequences: list[np.ndarray]
-      labels: None  (no class label in pangaea)
-      feature_names: list[str]
-    """
-    files = sorted(folder_path.glob("*.csv"))
-    if not files:
-        raise FileNotFoundError(f"No CSV files found in: {folder_path}")
+        # All geochemical proxies
+        proxy_cols = ["Al [mg/kg]", "Ba [mg/kg]", "Mo [mg/kg]", "Ti [mg/kg]", "U [mg/kg]"]
+        # Gaussian filter sigma = bandwidth / 2.35? For now use a fixed sigma (900 years / spacing ~ 10-50 years)
+        # We'll use a sigma of 20 (typical for 900-year filter with ~45-year spacing). You can adjust.
+        sigma = 20.0   # corresponds roughly to 900-year smoothing with ~45-year resolution
 
-    sequences = []
-    feature_names = None
+        all_windows = []
+        all_series = []
 
-    for f in tqdm(files, desc="Loading PANGAEA CSV files"):
-        df = pd.read_csv(f)
+        for core_file in core_files:
+            core_name = core_file.stem.replace("_calibratedXRF", "")
+            df = pd.read_csv(core_file)
 
-        # sort by time if available
-        if time_col in df.columns:
-            df = df.sort_values(time_col)
+            for proxy in proxy_cols:
+                if proxy not in df.columns:
+                    print(f"Warning: Core {core_name} missing column {proxy}; skipping")
+                    continue
 
-        # drop known non-feature columns if they exist
-        drop_cols = [c for c in [time_col, "Depth sed [m]", "Method comm"] if c in df.columns]
-        df = df.drop(columns=drop_cols, errors="ignore")
+                # 1. Extract raw proxy values
+                raw = df[proxy].values.astype(np.float64)
 
-        # make everything numeric; non-numeric becomes NaN
-        df = df.apply(pd.to_numeric, errors="coerce")
+                # 2. Detrend with Gaussian filter
+                smoothed = gaussian_smooth_1d(raw, sigma=sigma)
 
-        # fill missing values with column median
-        df = df.fillna(df.median(numeric_only=True))
+                # 3. Compute residuals
+                residual = (raw - smoothed).astype(np.float32)
 
-        # lock feature columns based on first file
-        if feature_names is None:
-            feature_names = list(df.columns)
+                # 4. Create 2-feature input: [residual, zeros]
+                signal_2d = np.column_stack([residual, np.zeros_like(residual)])  # shape (T, 2)
 
-        # enforce same column order
-        df = df[feature_names]
+                series_id = f"{core_name}_{proxy}"
+                series_item = {
+                    "series_id": series_id,
+                    "signal": signal_2d,
+                    "label": None,
+                    "transition_index": None,
+                }
+                all_series.append(series_item)
 
-        X = df.to_numpy(dtype=np.float32)
-        sequences.append(X)
+                # 5. Create sliding windows
+                T = signal_2d.shape[0]
+                n_windows = max(0, T - seq_len + 1)
+                for i in range(n_windows):
+                    window = signal_2d[i:i+seq_len]  # (seq_len, 2)
+                    all_windows.append(window)
 
-    return sequences, None, feature_names
+        if not all_windows:
+            raise RuntimeError("No windows created from pangaea data")
 
+        X = np.stack(all_windows, axis=0)   # (n_windows, seq_len, 2)
+        y = None
+        return {"X": X, "y": y, "series": all_series}
 
-# -------------------------
-# Universal loader
-# -------------------------
-def load_dataset(name: str):
-    """
-    name: "ts_1500" | "ts_500" | "pangaea_923197"
-    """
-    root = get_project_root()
-    name = name.strip().lower()
-
-    if name == "ts_1500":
-        csv_path = root / "dataset" / "ts_1500" / "ts_1500_final.csv"
-        return load_ts_dataset(csv_path)
-
-    if name == "ts_500":
-        csv_path = root / "dataset" / "ts_500" / "ts_500_final.csv"
-        return load_ts_dataset(csv_path)
-
-    if name == "pangaea_923197":
-        folder = root / "dataset" / "pangaea_923197" / "datasets" / "clean_dataset"
-        return load_pangaea_dataset(folder)
-
-    raise ValueError("Unknown dataset. Use: ts_1500, ts_500, pangaea_923197")
-
-
-# -------------------------
-# Standalone usage
-# -------------------------
-def main():
-    parser = argparse.ArgumentParser(description="Universal dataset loader (standalone)")
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        required=True,
-        choices=["ts_1500", "ts_500", "pangaea_923197"],
-    )
-    args = parser.parse_args()
-
-    sequences, labels, feature_names = load_dataset(args.dataset)
-
-    print("\n=== DATASET INFO ===")
-    print("Dataset:", args.dataset)
-    print("Num sequences:", len(sequences))
-    print("Num features:", len(feature_names))
-    print("Feature names:", feature_names)
-    print("Example sequence shape:", sequences[0].shape)
-
-    if labels is None:
-        print("Labels: None")
     else:
-        print("Labels shape:", labels.shape)
-        u, c = np.unique(labels, return_counts=True)
-        print("Class counts:", dict(zip(u.tolist(), c.tolist())))
-    print()
-
-
-if __name__ == "__main__":
-    main()
+        raise ValueError(f"Unknown dataset: {dataset_name}. Supported: ts_500, ts_1500, pangaea_923197")

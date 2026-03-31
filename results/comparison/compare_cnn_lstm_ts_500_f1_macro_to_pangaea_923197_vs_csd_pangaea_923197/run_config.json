@@ -1,0 +1,8 @@
+{
+  "dl_run_dir": "results/testing/cnn_lstm_ts_500_f1_macro_to_pangaea_923197",
+  "csd_run_dir": "results/testing_csd/csd_pangaea_923197",
+  "positive_class_index": 1,
+  "positive_class_name": null,
+  "neutral_label": 0,
+  "run_name": "compare_cnn_lstm_ts_500_f1_macro_to_pangaea_923197_vs_csd_pangaea_923197"
+}
