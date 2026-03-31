@@ -307,6 +307,11 @@ def main() -> None:
     train_dataset_token = ckpt_meta.get("dataset", "unknown_train_dataset")
     monitor_metric = ckpt_meta.get("metric", "unknown_metric")
     input_length = int(ckpt_meta.get("input_length", ckpt_meta.get("seq_len", 500)))
+    input_size = int(
+        ckpt_meta.get("input_size")
+        or (ckpt_meta.get("model_config", {}).get("input_size") if isinstance(ckpt_meta.get("model_config"), dict) else None)
+        or 2
+    )
     num_classes = int(ckpt_meta.get("num_classes", 3))
     class_names = resolve_class_names(num_classes=num_classes, ckpt_meta=ckpt_meta)
 
@@ -350,7 +355,7 @@ def main() -> None:
         checkpoint_path=checkpoint_path,
         model_name=model_name,
         num_classes=num_classes,
-        input_length=input_length,
+        input_size=input_size,
         device=device,
     )
     model.eval()

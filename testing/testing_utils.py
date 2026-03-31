@@ -142,17 +142,23 @@ def resolve_class_names(num_classes: int, ckpt_meta: Dict[str, Any]) -> List[str
 # ---------------------------------------------------------------------
 # model building
 # ---------------------------------------------------------------------
-def _build_model(model_name: str, num_classes: int, input_length: int) -> torch.nn.Module:
+def _build_model(
+    model_name: str,
+    num_classes: int,
+    input_size: int | None = None,
+    input_length: int | None = None,
+) -> torch.nn.Module:
     model_name = model_name.lower()
+    effective_input_size = int(input_size if input_size is not None else input_length if input_length is not None else 2)
 
     if model_name == "cnn":
-        return CNNClassifier(input_length=input_length, num_classes=num_classes)
+        return CNNClassifier(input_size=effective_input_size, num_classes=num_classes)
 
     if model_name == "lstm":
-        return LSTMClassifier(input_length=input_length, num_classes=num_classes)
+        return LSTMClassifier(input_size=effective_input_size, num_classes=num_classes)
 
     if model_name in {"cnn_lstm", "cnnlstm"}:
-        return CNNLSTMClassifier(input_length=input_length, num_classes=num_classes)
+        return CNNLSTMClassifier(input_size=effective_input_size, num_classes=num_classes)
 
     raise ValueError(f"Unsupported model name: {model_name}")
 
@@ -162,12 +168,14 @@ def build_model_from_checkpoint(
     checkpoint_path: Path,
     model_name: str,
     num_classes: int,
-    input_length: int,
-    device: torch.device,
+    input_size: int = 2,
+    input_length: int = 2,
+    device: torch.device = torch.device("cpu"),
 ) -> torch.nn.Module:
     model = _build_model(
         model_name=model_name,
         num_classes=num_classes,
+        input_size=input_size,
         input_length=input_length,
     )
 
