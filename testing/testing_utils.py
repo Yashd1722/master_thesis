@@ -345,6 +345,23 @@ def _extract_series_items_from_loaded_dataset(
     if isinstance(loaded, dict) and "window_samples" in loaded and "series_items" in loaded:
         return loaded["window_samples"], loaded["series_items"]
 
+    # Case X: loader returned a plain list/tuple of sequences (e.g. PANGAEA loader)
+    # Interpret as sequences list with no per-window labels.
+    if isinstance(loaded, (list, tuple)) and len(loaded) > 0:
+        sequences = list(loaded)
+        window_samples: List[WindowSample] = []
+        series_items: List[Dict[str, Any]] = []
+        for i, seq in enumerate(sequences):
+            series_id = f"{dataset_name}_{split}_series_{i}"
+            window_id = f"{series_id}_window_0"
+            window_samples.append(
+                WindowSample(x=_ensure_1d_float32(seq), y=0, series_id=series_id, window_id=window_id)
+            )
+            series_items.append(
+                {"series_id": series_id, "signal": _ensure_1d_float32(seq), "label": None, "transition_index": None}
+            )
+        return window_samples, series_items
+
     # Case B: split nested dict
     if isinstance(loaded, dict) and split in loaded and isinstance(loaded[split], dict):
         split_obj = loaded[split]
