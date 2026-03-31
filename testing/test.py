@@ -79,6 +79,50 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def resolve_checkpoint_path(checkpoint_arg: str) -> Path:
+    requested_path = Path(checkpoint_arg)
+
+    if requested_path.exists():
+        return requested_path
+
+    # Common mapping from older project layout to current layout
+    if requested_path.is_absolute() and "/Main/" in str(requested_path):
+        corrected_path = Path(str(requested_path).replace("/Main/", "/master_thesis/"))
+        if corrected_path.exists():
+            LOGGER.warning(
+                "Checkpoint %s not found, using corrected path %s",
+                requested_path,
+                corrected_path,
+            )
+            return corrected_path
+
+    ckpt_filename = requested_path.name
+    search_dirs = [
+        REPO_ROOT / "checkpoints",
+        REPO_ROOT.parent / "checkpoints",
+        REPO_ROOT,
+        Path.home() / "Master_thesis" / "master_thesis" / "checkpoints",
+        Path.home() / "Master_thesis" / "Main" / "checkpoints",
+    ]
+
+    tried_paths = [str(requested_path)]
+
+    for sd in search_dirs:
+        candidate = sd / ckpt_filename
+        tried_paths.append(str(candidate))
+        if candidate.exists():
+            LOGGER.warning(
+                "Checkpoint %s not found, using fallback path %s",
+                requested_path,
+                candidate,
+            )
+            return candidate
+
+    raise FileNotFoundError(
+        f"Checkpoint not found: {requested_path}. Tried: {', '.join(tried_paths)}"
+    )
+
+
 # ---------------------------------------------------------------------
 # logging
 # ---------------------------------------------------------------------
@@ -253,9 +297,7 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
 
-    checkpoint_path = Path(args.checkpoint)
-    if not checkpoint_path.exists():
-        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+    checkpoint_path = resolve_checkpoint_path(args.checkpoint)
 
     # read checkpoint metadata first for run naming
     ckpt = load_checkpoint_safely(checkpoint_path)

@@ -18,7 +18,14 @@ echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node: $SLURM_NODELIST"
 echo "========================================="
 
-cd /home/$USER/Master_thesis/Main
+ROOT_DIR="/home/$USER/Master_thesis"
+if [ -d "$ROOT_DIR/master_thesis" ]; then
+    PROJECT_DIR="$ROOT_DIR/master_thesis"
+else
+    PROJECT_DIR="$ROOT_DIR/Main"
+fi
+
+cd "$PROJECT_DIR"
 
 mkdir -p logs results checkpoints
 
