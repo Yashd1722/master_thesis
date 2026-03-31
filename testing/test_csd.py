@@ -1,5 +1,4 @@
 # testing/test_csd.py
-
 from __future__ import annotations
 
 import argparse
@@ -20,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from testing.testing_utils import (  # noqa: E402
+from testing.testing_utils import (
     ensure_dir,
     load_test_dataset_for_inference,
     save_json,
@@ -28,7 +27,6 @@ from testing.testing_utils import (  # noqa: E402
 )
 
 LOGGER = logging.getLogger("testing.test_csd")
-
 
 # ---------------------------------------------------------------------
 # args
@@ -38,8 +36,10 @@ def parse_args() -> argparse.Namespace:
         description="Test CSD indicators progressively on synthetic/empirical datasets."
     )
 
-    parser.add_argument("--dataset", type=str, required=True, help="Dataset token: ts_500, ts_1500, pangaea_923197")
-    parser.add_argument("--split", type=str, default="test", choices=["train", "val", "test"])
+    parser.add_argument("--dataset", type=str, required=True,
+                        help="Dataset token: ts_500, ts_1500, pangaea_923197")
+    parser.add_argument("--split", type=str, default="test",
+                        choices=["train", "val", "test"])
 
     parser.add_argument("--seed", type=int, default=42)
 
@@ -58,7 +58,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true")
 
     return parser.parse_args()
-
 
 # ---------------------------------------------------------------------
 # logging
@@ -86,7 +85,6 @@ def setup_run_logging(log_file: Path, verbose: bool = False) -> None:
     root_logger.addHandler(stream_handler)
     root_logger.addHandler(file_handler)
 
-
 # ---------------------------------------------------------------------
 # folder helpers
 # ---------------------------------------------------------------------
@@ -112,7 +110,6 @@ def get_csd_output_dirs(run_dir: Path) -> Dict[str, Path]:
         "series_csv_dir": series_csv_dir,
     }
 
-
 # ---------------------------------------------------------------------
 # math helpers
 # ---------------------------------------------------------------------
@@ -128,7 +125,6 @@ def gaussian_kernel1d(sigma: float, radius: Optional[int] = None) -> np.ndarray:
     kernel /= np.sum(kernel)
     return kernel
 
-
 def gaussian_smooth_1d(x: np.ndarray, sigma: float) -> np.ndarray:
     x = np.asarray(x, dtype=np.float64).reshape(-1)
     if sigma <= 0 or len(x) < 3:
@@ -140,11 +136,8 @@ def gaussian_smooth_1d(x: np.ndarray, sigma: float) -> np.ndarray:
     smoothed = np.convolve(x_pad, kernel, mode="valid")
     return smoothed
 
-
 def kendall_tau(x: np.ndarray) -> float:
-    """
-    Simple Kendall tau-a implementation without scipy.
-    """
+    """Simple Kendall tau‑a implementation without scipy."""
     x = np.asarray(x, dtype=np.float64).reshape(-1)
     n = len(x)
     if n < 2:
@@ -163,13 +156,11 @@ def kendall_tau(x: np.ndarray) -> float:
         return np.nan
     return (concordant - discordant) / denom
 
-
 def compute_variance(x: np.ndarray) -> float:
     x = np.asarray(x, dtype=np.float64).reshape(-1)
     if len(x) < 2:
         return np.nan
     return float(np.var(x, ddof=1))
-
 
 def compute_lag1_autocorrelation(x: np.ndarray) -> float:
     x = np.asarray(x, dtype=np.float64).reshape(-1)
@@ -188,7 +179,6 @@ def compute_lag1_autocorrelation(x: np.ndarray) -> float:
     if den == 0:
         return np.nan
     return float(num / den)
-
 
 def rolling_indicator_values(
     x: np.ndarray,
@@ -220,7 +210,6 @@ def rolling_indicator_values(
         np.asarray(acs_, dtype=np.float64),
     )
 
-
 def progressive_reveal_indices(
     series_length: int,
     progressive_start_frac: float,
@@ -245,7 +234,6 @@ def progressive_reveal_indices(
     values = np.clip(values, 1, series_length)
 
     return [int(v) for v in values.tolist()]
-
 
 # ---------------------------------------------------------------------
 # plotting
@@ -277,7 +265,6 @@ def plot_indicator_curves(
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close()
 
-
 def plot_tau_curves(
     series_df: pd.DataFrame,
     save_path: Path,
@@ -305,7 +292,6 @@ def plot_tau_curves(
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close()
 
-
 def plot_final_tau_distribution(df_final: pd.DataFrame, save_path: Path) -> None:
     if df_final.empty:
         return
@@ -329,12 +315,11 @@ def plot_final_tau_distribution(df_final: pd.DataFrame, save_path: Path) -> None
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close()
 
-
 # ---------------------------------------------------------------------
 # per-series evaluation
 # ---------------------------------------------------------------------
 def evaluate_single_series_csd(
-    x_full: np.ndarray,
+    x_full: np.ndarray,          # shape (T, F) – we will take only the first column
     series_id: str,
     y_true: Optional[int],
     transition_index: Optional[int],
@@ -345,7 +330,11 @@ def evaluate_single_series_csd(
     min_prefix_len: int,
     gaussian_smooth_sigma: float,
 ) -> List[Dict[str, Any]]:
+    # If the input is 2D (T, F), extract the first column (the real proxy)
+    if x_full.ndim == 2:
+        x_full = x_full[:, 0]   # keep only the first feature
     x_full = np.asarray(x_full, dtype=np.float64).reshape(-1)
+
     n = len(x_full)
 
     reveal_idxs = progressive_reveal_indices(
@@ -394,7 +383,6 @@ def evaluate_single_series_csd(
 
     return records
 
-
 def run_csd_evaluation(
     series_dataset: Any,
     rolling_window_frac: float,
@@ -409,7 +397,7 @@ def run_csd_evaluation(
 
     for idx, item in enumerate(series_dataset.series_items, start=1):
         series_id = str(item["series_id"])
-        x_full = np.asarray(item["signal"], dtype=np.float64).reshape(-1)
+        x_full = np.asarray(item["signal"], dtype=np.float64)   # shape (T, F)
         y_true = item.get("label", None)
         transition_index = item.get("transition_index", None)
 
@@ -418,7 +406,7 @@ def run_csd_evaluation(
             idx,
             total_series,
             series_id,
-            len(x_full),
+            x_full.shape[0],
         )
 
         recs = evaluate_single_series_csd(
@@ -441,7 +429,6 @@ def run_csd_evaluation(
         all_records.extend(recs)
 
     return pd.DataFrame(all_records)
-
 
 # ---------------------------------------------------------------------
 # main
@@ -488,8 +475,8 @@ def main() -> None:
     loaded = load_test_dataset_for_inference(
         dataset_name=args.dataset,
         split=args.split,
-        input_length=500,
-        num_classes=3,
+        input_length=500,          # not used for CSD, but required by function
+        num_classes=3,             # not used
     )
     series_dataset = loaded["series_dataset"]
 

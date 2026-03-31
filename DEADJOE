@@ -1,0 +1,21 @@
+
+*** These modified files were found in JOE when it aborted on Tue Mar 31 23:10:45 2026
+*** JOE was aborted because the terminal closed
+
+*** File '(Unnamed)'
+/home/s466553/Master_thesis/master_thesis/.git/MERGE_MSG
+
+*** File '/home/s466553/Master_thesis/master_thesis/.git/MERGE_MSG'
+Mergeq branch 'main' of https://github.com/Yashd1722/master_thesis
+# Please enter a commit message to explain why this merge is necessary,
+# especially if it merges an updated upstream into a topic branch.
+#
+# Lines starting with '#' will be ignored, and an empty message aborts
+# the commit.
+
+
+*** File '* Startup Log *'
+Processing '/etc/joe/editorrc'...
+Processing '/etc/joe/ftyperc'...
+Finished processing /etc/joe/ftyperc
+Finished processing /etc/joe/editorrc
