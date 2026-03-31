@@ -41,6 +41,16 @@ SAVE_SERIES_CSV="${SAVE_SERIES_CSV:-1}"
 PROJECT_DIR="${PROJECT_DIR:-$HOME/Master_thesis/master_thesis}"
 VENV_PATH="/home/s466553/Master_thesis/myenv"
 
+# normalize old Main path variant for compatibility
+if [[ "$PROJECT_DIR" == *"/Main"* || "$PROJECT_DIR" == *"/Main/"* ]]; then
+    PROJECT_DIR="${PROJECT_DIR//\/Main\//\/master_thesis/}"
+    PROJECT_DIR="${PROJECT_DIR%/Main}" # handle trailing /Main
+fi
+
+if [[ "$CHECKPOINT" == *"/Main/"* ]]; then
+    CHECKPOINT="${CHECKPOINT//\/Main\//\/master_thesis/}"
+fi
+
 # ============================================================
 # Move to project
 # ============================================================
