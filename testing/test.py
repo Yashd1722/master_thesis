@@ -1,4 +1,3 @@
-# testing/test.py
 from __future__ import annotations
 
 import argparse
@@ -6,7 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -20,18 +19,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-# Import metric functions from your files
 from metrics.acc import compute as compute_acc
 from metrics.f1_macro import compute as compute_f1_macro
 from src.plot_testing_results import get_testing_output_dirs, run_all_testing_plots
 from testing.testing_utils import (
     build_model_from_checkpoint,
-    infer_num_classes_from_checkpoint_dict,
     collate_eval_batch,
     create_progressive_series_records,
     ensure_dir,
     extract_checkpoint_metadata,
     infer_model_name_from_checkpoint,
+    infer_num_classes_from_checkpoint_dict,
     load_checkpoint_safely,
     load_test_dataset_for_inference,
     predict_batch_probabilities,
@@ -44,6 +42,7 @@ from testing.testing_utils import (
 )
 
 LOGGER = logging.getLogger("testing.test")
+
 
 # ---------------------------------------------------------------------
 # args
@@ -79,6 +78,7 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 # ---------------------------------------------------------------------
 # logging
 # ---------------------------------------------------------------------
@@ -105,15 +105,16 @@ def setup_run_logging(log_file: Path, verbose: bool = False) -> None:
     root_logger.addHandler(stream_handler)
     root_logger.addHandler(file_handler)
 
+
 # ---------------------------------------------------------------------
 # metrics
 # ---------------------------------------------------------------------
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int) -> Dict[str, float]:
-    """Compute standard metrics using the provided metric functions."""
     return {
         "acc": float(compute_acc(y_true, y_pred)),
         "f1_macro": float(compute_f1_macro(y_true, y_pred, num_classes)),
     }
+
 
 # ---------------------------------------------------------------------
 # sample-level evaluation
@@ -124,6 +125,7 @@ def run_sample_level_evaluation(
     device: torch.device,
     class_names: List[str],
     num_classes: int,
+    has_ground_truth: bool,
 ) -> Dict[str, Any]:
     model.eval()
 
@@ -145,30 +147,33 @@ def run_sample_level_evaluation(
             all_preds.append(preds)
             all_targets.append(y.cpu().numpy())
 
-            batch_series_ids = meta.get("series_id", [])
-            batch_window_ids = meta.get("window_id", [])
-
-            all_series_ids.extend([str(v) for v in batch_series_ids])
-            all_window_ids.extend([str(v) for v in batch_window_ids])
+            all_series_ids.extend([str(v) for v in meta.get("series_id", [])])
+            all_window_ids.extend([str(v) for v in meta.get("window_id", [])])
 
     probs_np = np.concatenate(all_probs, axis=0) if all_probs else np.empty((0, len(class_names)))
     preds_np = np.concatenate(all_preds, axis=0) if all_preds else np.empty((0,), dtype=int)
     targets_np = np.concatenate(all_targets, axis=0) if all_targets else np.empty((0,), dtype=int)
 
-    metrics = compute_metrics(targets_np, preds_np, num_classes)
+    metrics: Optional[Dict[str, float]] = None
+    if has_ground_truth and len(targets_np) > 0:
+        metrics = compute_metrics(targets_np, preds_np, num_classes)
 
     rows: List[Dict[str, Any]] = []
     for i in range(len(preds_np)):
         row: Dict[str, Any] = {
             "series_id": all_series_ids[i] if i < len(all_series_ids) else f"series_{i}",
             "window_id": all_window_ids[i] if i < len(all_window_ids) else str(i),
-            "y_true": int(targets_np[i]),
             "y_pred": int(preds_np[i]),
-            "true_class_name": class_names[int(targets_np[i])],
             "pred_class_name": class_names[int(preds_np[i])],
         }
+
+        if has_ground_truth and i < len(targets_np):
+            row["y_true"] = int(targets_np[i])
+            row["true_class_name"] = class_names[int(targets_np[i])]
+
         for c_idx, c_name in enumerate(class_names):
             row[f"prob_{c_name}"] = float(probs_np[i, c_idx])
+
         rows.append(row)
 
     summary_df = pd.DataFrame(rows)
@@ -176,10 +181,11 @@ def run_sample_level_evaluation(
     return {
         "metrics": metrics,
         "summary_df": summary_df,
-        "y_true": targets_np,
+        "y_true": targets_np if has_ground_truth else None,
         "y_pred": preds_np,
         "probs": probs_np,
     }
+
 
 # ---------------------------------------------------------------------
 # progressive series evaluation
@@ -236,6 +242,16 @@ def run_progressive_series_evaluation(
 
     return pd.DataFrame(series_records)
 
+
+# ---------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------
+def has_series_ground_truth(series_dataset: Any) -> bool:
+    labels = [item.get("label", None) for item in series_dataset.series_items]
+    valid_labels = [label for label in labels if label is not None]
+    return len(valid_labels) == len(labels) and len(valid_labels) > 0
+
+
 # ---------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------
@@ -243,27 +259,31 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
 
-    # Simple checkpoint path validation
     if not args.checkpoint:
         raise ValueError("--checkpoint is required and cannot be empty")
+
     checkpoint_path = Path(args.checkpoint)
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
     ckpt = load_checkpoint_safely(checkpoint_path)
     ckpt_meta = extract_checkpoint_metadata(ckpt)
-    model_name = infer_model_name_from_checkpoint(checkpoint_path, ckpt_meta)
 
+    model_name = infer_model_name_from_checkpoint(checkpoint_path, ckpt_meta)
     train_dataset_token = ckpt_meta.get("dataset", "unknown_train_dataset")
     monitor_metric = ckpt_meta.get("metric", "unknown_metric")
+
     input_length = int(ckpt_meta.get("input_length", ckpt_meta.get("seq_len", 500)))
     input_size = int(
         ckpt_meta.get("input_size")
-        or (ckpt_meta.get("model_config", {}).get("input_size") if isinstance(ckpt_meta.get("model_config"), dict) else None)
+        or (
+            ckpt_meta.get("model_config", {}).get("input_size")
+            if isinstance(ckpt_meta.get("model_config"), dict)
+            else None
+        )
         or 2
     )
 
-    # Determine num_classes
     if args.num_classes is not None:
         num_classes = int(args.num_classes)
         num_source = "cli"
@@ -279,19 +299,18 @@ def main() -> None:
             num_classes = 3
             num_source = "default"
 
-    if "num_classes" in ckpt_meta and inferred is not None:
-        try:
-            meta_nc = int(ckpt_meta.get("num_classes"))
-        except Exception:
-            meta_nc = None
-        if meta_nc is not None and meta_nc != int(inferred):
-            LOGGER.warning(
-                "Checkpoint meta num_classes=%s disagrees with inferred=%s; using inferred",
-                meta_nc,
-                inferred,
-            )
+        if "num_classes" in ckpt_meta and inferred is not None:
+            try:
+                meta_nc = int(ckpt_meta.get("num_classes"))
+            except Exception:
+                meta_nc = None
+            if meta_nc is not None and meta_nc != int(inferred):
+                LOGGER.warning(
+                    "Checkpoint meta num_classes=%s disagrees with inferred=%s; using inferred",
+                    meta_nc,
+                    inferred,
+                )
 
-    LOGGER.info("Num classes         : %d (source: %s)", num_classes, num_source)
     class_names = resolve_class_names(num_classes=num_classes, ckpt_meta=ckpt_meta)
 
     run_name = (
@@ -304,7 +323,6 @@ def main() -> None:
     ensure_dir(run_dir)
 
     output_dirs = get_testing_output_dirs(run_dir)
-
     log_file = output_dirs["logs_dir"] / "test.log"
     setup_run_logging(log_file=log_file, verbose=args.verbose)
 
@@ -314,18 +332,19 @@ def main() -> None:
 
     device = resolve_device(args.device)
 
-    LOGGER.info("Run name            : %s", run_name)
-    LOGGER.info("Checkpoint          : %s", checkpoint_path)
-    LOGGER.info("Model               : %s", model_name)
-    LOGGER.info("Train dataset token : %s", train_dataset_token)
-    LOGGER.info("Test dataset        : %s", args.dataset)
-    LOGGER.info("Metric              : %s", monitor_metric)
-    LOGGER.info("Input length        : %d", input_length)
-    LOGGER.info("Num classes         : %d", num_classes)
-    LOGGER.info("Class names         : %s", class_names)
-    LOGGER.info("Device              : %s", device)
-    LOGGER.info("Run directory       : %s", run_dir)
-    LOGGER.info("Log file            : %s", log_file)
+    LOGGER.info("Run name           : %s", run_name)
+    LOGGER.info("Checkpoint         : %s", checkpoint_path)
+    LOGGER.info("Model              : %s", model_name)
+    LOGGER.info("Train dataset token: %s", train_dataset_token)
+    LOGGER.info("Test dataset       : %s", args.dataset)
+    LOGGER.info("Metric             : %s", monitor_metric)
+    LOGGER.info("Input length       : %d", input_length)
+    LOGGER.info("Input size         : %d", input_size)
+    LOGGER.info("Num classes        : %d (source: %s)", num_classes, num_source)
+    LOGGER.info("Class names        : %s", class_names)
+    LOGGER.info("Device             : %s", device)
+    LOGGER.info("Run directory      : %s", run_dir)
+    LOGGER.info("Log file           : %s", log_file)
 
     model = build_model_from_checkpoint(
         checkpoint=ckpt,
@@ -333,6 +352,7 @@ def main() -> None:
         model_name=model_name,
         num_classes=num_classes,
         input_size=input_size,
+        input_length=input_length,
         device=device,
     )
     model.eval()
@@ -344,9 +364,13 @@ def main() -> None:
         input_length=input_length,
         num_classes=num_classes,
     )
-
     window_dataset = loaded["window_dataset"]
     series_dataset = loaded["series_dataset"]
+    dataset_has_ground_truth = has_series_ground_truth(series_dataset)
+
+    LOGGER.info("Window samples      : %d", len(window_dataset))
+    LOGGER.info("Series items        : %d", len(series_dataset.series_items))
+    LOGGER.info("Ground-truth labels : %s", dataset_has_ground_truth)
 
     loader = DataLoader(
         window_dataset,
@@ -354,7 +378,7 @@ def main() -> None:
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=(device.type == "cuda"),
-        collate_fn=lambda batch: batch,  # keep as list of dicts for custom collation
+        collate_fn=lambda batch: batch,
     )
 
     config_summary = summarise_run_config(
@@ -366,6 +390,7 @@ def main() -> None:
         metric=monitor_metric,
         split=args.split,
         input_length=input_length,
+        input_size=input_size,
         num_classes=num_classes,
         class_names=class_names,
         device=str(device),
@@ -374,9 +399,13 @@ def main() -> None:
         progressive_end_frac=args.progressive_end_frac,
         progressive_num_steps=args.progressive_num_steps,
         min_prefix_len=args.min_prefix_len,
+        has_ground_truth=dataset_has_ground_truth,
     )
     save_json(config_summary, run_dir / "run_config.json")
 
+    # -----------------------------------------------------------------
+    # [1/3] Sample-level evaluation
+    # -----------------------------------------------------------------
     LOGGER.info("-" * 80)
     LOGGER.info("[1/3] Sample-level evaluation")
     LOGGER.info("-" * 80)
@@ -387,6 +416,7 @@ def main() -> None:
         device=device,
         class_names=class_names,
         num_classes=num_classes,
+        has_ground_truth=dataset_has_ground_truth,
     )
 
     metrics_dict = sample_eval["metrics"]
@@ -394,20 +424,28 @@ def main() -> None:
     y_true = sample_eval["y_true"]
     y_pred = sample_eval["y_pred"]
 
-    LOGGER.info("Sample-level metrics:")
-    LOGGER.info(json.dumps(metrics_dict, indent=2))
+    if metrics_dict is not None:
+        LOGGER.info("Sample-level metrics:")
+        LOGGER.info(json.dumps(metrics_dict, indent=2))
+        save_json(metrics_dict, run_dir / "metrics.json")
 
-    save_json(metrics_dict, run_dir / "metrics.json")
-    save_numpy_confusion_inputs(
-        y_true=y_true,
-        y_pred=y_pred,
-        save_dir=run_dir / "confusion_inputs",
-    )
+        if y_true is not None:
+            save_numpy_confusion_inputs(
+                y_true=y_true,
+                y_pred=y_pred,
+                save_dir=run_dir / "confusion_inputs",
+            )
+    else:
+        LOGGER.info("Sample-level metrics skipped because ground-truth labels are not available.")
 
     if args.save_summary_csv:
-        summary_df.to_csv(output_dirs["tables_dir"] / "classification_summary.csv", index=False)
-        LOGGER.info("Saved classification summary: %s", output_dirs["tables_dir"] / "classification_summary.csv")
+        summary_csv_path = output_dirs["tables_dir"] / "classification_summary.csv"
+        summary_df.to_csv(summary_csv_path, index=False)
+        LOGGER.info("Saved classification summary: %s", summary_csv_path)
 
+    # -----------------------------------------------------------------
+    # [2/3] Progressive per-series evaluation
+    # -----------------------------------------------------------------
     LOGGER.info("-" * 80)
     LOGGER.info("[2/3] Progressive per-series evaluation")
     LOGGER.info("-" * 80)
@@ -429,9 +467,8 @@ def main() -> None:
     else:
         progressive_csv_path = run_dir / "all_series_progressive_predictions.csv"
         progressive_df.to_csv(progressive_csv_path, index=False)
-        LOGGER.info("Saved combined progressive predictions: %s", progressive_csv_path)
-
         progressive_df.to_csv(output_dirs["tables_dir"] / "all_series_progressive_predictions.csv", index=False)
+        LOGGER.info("Saved combined progressive predictions: %s", progressive_csv_path)
 
         final_step_df = (
             progressive_df
@@ -443,18 +480,22 @@ def main() -> None:
 
         final_csv_path = run_dir / "final_series_predictions.csv"
         final_step_df.to_csv(final_csv_path, index=False)
-        LOGGER.info("Saved final series predictions: %s", final_csv_path)
-
         final_step_df.to_csv(output_dirs["tables_dir"] / "final_series_predictions.csv", index=False)
+        LOGGER.info("Saved final series predictions: %s", final_csv_path)
 
         if args.save_series_csv:
             series_csv_dir = run_dir / "series_predictions"
             ensure_dir(series_csv_dir)
+
             for series_id, series_df in progressive_df.groupby("series_id", sort=True):
                 safe_name = str(series_id).replace("/", "_").replace("\\", "_").replace(" ", "_")
                 series_df.sort_values("reveal_index").to_csv(series_csv_dir / f"{safe_name}.csv", index=False)
+
             LOGGER.info("Saved per-series progressive CSV files: %s", series_csv_dir)
 
+    # -----------------------------------------------------------------
+    # [3/3] Plot generation
+    # -----------------------------------------------------------------
     LOGGER.info("-" * 80)
     LOGGER.info("[3/3] Plot generation")
     LOGGER.info("-" * 80)
@@ -470,6 +511,14 @@ def main() -> None:
         LOGGER.info("Plot summary: %s", plot_summary)
     else:
         LOGGER.info("Plot generation skipped.")
+
+    summary = {
+        "num_window_samples": int(len(window_dataset)),
+        "num_series": int(len(series_dataset.series_items)),
+        "has_ground_truth": bool(dataset_has_ground_truth),
+        "num_progressive_rows": int(len(progressive_df)) if not progressive_df.empty else 0,
+    }
+    save_json(summary, run_dir / "summary.json")
 
     LOGGER.info("=" * 80)
     LOGGER.info("Testing completed successfully")

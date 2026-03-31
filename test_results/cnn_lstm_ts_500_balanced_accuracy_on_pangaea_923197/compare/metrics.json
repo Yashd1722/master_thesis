@@ -1,9 +1,0 @@
-{
-  "run_name": "cnn_lstm_ts_500_balanced_accuracy_on_pangaea_923197",
-  "dataset": "pangaea_923197",
-  "train_dataset": "ts_500",
-  "model": "cnn_lstm",
-  "metric": "balanced_accuracy",
-  "experiment": "base",
-  "num_matched_files": 6
-}

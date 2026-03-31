@@ -7,5 +7,5 @@
   "progressive_end_frac": 1.0,
   "progressive_num_steps": 40,
   "min_prefix_len": 64,
-  "gaussian_smooth_sigma": 0.0
+  "gaussian_smooth_sigma": -1.0
 }
