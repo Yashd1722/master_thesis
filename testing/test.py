@@ -1,312 +1,460 @@
 # testing/test.py
+
 from __future__ import annotations
 
 import argparse
+import json
+import logging
 import sys
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# ---------------------------------------------------------------------
+# repo root import setup
+# ---------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-from metrics.evaluation import (
-    compute_classification_metrics,
-    compute_multiclass_roc_auc,
-    save_confusion_matrix_csv,
+from metrics.acc import compute  # noqa: E402
+from metrics.f1_macro import compute  # noqa: E402
+from src.plot_testing_results import get_testing_output_dirs, run_all_testing_plots  # noqa: E402
+from testing.testing_utils import (  # noqa: E402
+    build_model_from_checkpoint,
+    collate_eval_batch,
+    create_progressive_series_records,
+    ensure_dir,
+    extract_checkpoint_metadata,
+    infer_model_name_from_checkpoint,
+    load_checkpoint_safely,
+    load_test_dataset_for_inference,
+    predict_batch_probabilities,
+    resolve_class_names,
+    resolve_device,
     save_json,
-    save_roc_curve_csv,
-)
-from models.CNN import CNNClassifier
-from models.LSTM import LSTMClassifier
-from models.CNN_LSTM import CNNLSTMClassifier
-from src.dataset_loader import load_dataset
-from testing.testing_utils import (
-    CLASS_NAMES,
-    build_checkpoint_name,
-    build_run_name,
-    class_index_to_name,
-    extract_samples,
-    get_test_paths,
-    load_checkpoint_state,
-    preprocess_for_dl,
-    save_csv,
-    setup_logger,
+    save_numpy_confusion_inputs,
+    set_seed,
+    summarise_run_config,
 )
 
-
-def build_model(model_name: str, input_dim: int, num_classes: int = 4):
-    model_name = model_name.lower()
-
-    if model_name == "cnn":
-        return CNNClassifier(input_size=input_dim, num_classes=num_classes)
-    if model_name == "lstm":
-        return LSTMClassifier(input_size=input_dim, num_classes=num_classes)
-    if model_name in {"cnn_lstm", "cnnlstm"}:
-        return CNNLSTMClassifier(input_size=input_dim, num_classes=num_classes)
-
-    raise ValueError(f"Unsupported model name: {model_name}")
+LOGGER = logging.getLogger("testing.test")
 
 
-def infer_input_dim_from_state_dict(state: dict) -> int | None:
-    """
-    Infer model input feature dimension from checkpoint weights.
-    """
-    for key, value in state.items():
-        if not hasattr(value, "shape"):
-            continue
-
-        shape = tuple(value.shape)
-
-        if "weight_ih" in key and len(shape) == 2:
-            return int(shape[1])
-
-        if key == "features.0.weight" and len(shape) >= 2:
-            return int(shape[1])
-
-        if "conv" in key and "weight" in key and len(shape) >= 2:
-            return int(shape[1])
-
-    return None
-
-
-def coerce_feature_dim(x: np.ndarray, expected_input_dim: int) -> np.ndarray:
-    """
-    Ensure x has shape [T, expected_input_dim].
-    If there are more features, keep the first ones.
-    If there are fewer, zero-pad feature dimension.
-    """
-    arr = np.asarray(x, dtype=np.float32)
-
-    if arr.ndim != 2:
-        raise ValueError(f"Expected 2D array after preprocessing, got shape={arr.shape}")
-
-    seq_len, feat_dim = arr.shape
-
-    if feat_dim == expected_input_dim:
-        return arr
-
-    if feat_dim > expected_input_dim:
-        return arr[:, :expected_input_dim]
-
-    pad = np.zeros((seq_len, expected_input_dim - feat_dim), dtype=arr.dtype)
-    return np.concatenate([arr, pad], axis=1)
-
-
-def add_transition_probability(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    out["p_transition"] = 1.0 - out["p_null"]
-    return out
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run DL testing on synthetic or empirical datasets")
-    parser.add_argument("--dataset", required=True, type=str)
-    parser.add_argument("--train_dataset", required=True, type=str, choices=["ts_500", "ts_1500"])
-    parser.add_argument("--model", required=True, type=str, choices=["cnn", "lstm", "cnn_lstm"])
-    parser.add_argument("--metric", required=True, type=str)
-    parser.add_argument("--device", default="cpu", type=str)
-    parser.add_argument("--experiment", default="base", type=str, choices=["base", "trend", "season", "trend_season"])
-    parser.add_argument("--length_mode", default="last", type=str, choices=["first", "last"])
-    args = parser.parse_args()
-
-    device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
-
-    run_name = build_run_name(
-        model=args.model,
-        train_dataset=args.train_dataset,
-        metric=args.metric,
-        experiment=args.experiment,
-        test_dataset=args.dataset,
-    )
-    paths = get_test_paths(run_name)
-    logger = setup_logger(paths["dl_log"], logger_name=f"testing.dl.{run_name}")
-
-    checkpoint_name = build_checkpoint_name(
-        model=args.model,
-        train_dataset=args.train_dataset,
-        metric=args.metric,
-        experiment=args.experiment,
-    )
-    checkpoint_path = paths["root"] / "checkpoints" / checkpoint_name
-
-    logger.info("Run name: %s", run_name)
-    logger.info("Dataset: %s", args.dataset)
-    logger.info("Train dataset: %s", args.train_dataset)
-    logger.info("Model: %s", args.model)
-    logger.info("Metric: %s", args.metric)
-    logger.info("Experiment: %s", args.experiment)
-    logger.info("Length mode: %s", args.length_mode)
-    logger.info("Device: %s", device)
-    logger.info("Checkpoint: %s", checkpoint_path)
-
-    state = load_checkpoint_state(checkpoint_path, device=device)
-    expected_input_dim = infer_input_dim_from_state_dict(state)
-    if expected_input_dim is None:
-        raise RuntimeError("Could not infer input_dim from checkpoint state_dict.")
-
-    logger.info("Expected input_dim from checkpoint: %d", expected_input_dim)
-
-    model = build_model(args.model, input_dim=expected_input_dim, num_classes=4)
-    model.load_state_dict(state)
-    model.to(device)
-    model.eval()
-
-    dataset_obj = load_dataset(args.dataset)
-    samples = extract_samples(dataset_obj)
-    logger.info("Loaded %d samples", len(samples))
-
-    rows = []
-    y_true: List[int] = []
-    y_pred: List[int] = []
-    y_prob: List[List[float]] = []
-
-    with torch.no_grad():
-        for sample_idx, (sample_name, sample_x, sample_y) in enumerate(samples):
-            try:
-                x_np = preprocess_for_dl(
-                    sample=sample_x,
-                    train_dataset=args.train_dataset,
-                    length_mode=args.length_mode,
-                )
-                x_np = coerce_feature_dim(x_np, expected_input_dim)
-
-                x_tensor = torch.tensor(x_np, dtype=torch.float32, device=device).unsqueeze(0)  # [1, T, F]
-                logits = model(x_tensor)
-                probs = F.softmax(logits, dim=1).squeeze(0).detach().cpu().numpy()
-
-                pred_idx = int(np.argmax(probs))
-                pred_name = class_index_to_name(pred_idx)
-
-                row = {
-                    "file_name": sample_name,
-                    "dataset_name": args.dataset,
-                    "train_dataset_name": args.train_dataset,
-                    "model_name": args.model,
-                    "metric_name": args.metric,
-                    "experiment": args.experiment,
-                    "sample_index": sample_idx,
-                    "sequence_length_used": int(x_np.shape[0]),
-                    "input_dim_used": int(x_np.shape[1]),
-                    "p_fold": float(probs[0]),
-                    "p_hopf": float(probs[1]),
-                    "p_transcritical": float(probs[2]),
-                    "p_null": float(probs[3]),
-                    "predicted_class_idx": pred_idx,
-                    "predicted_class": pred_name,
-                    "true_class_idx": None if sample_y is None else int(sample_y),
-                    "true_class": None if sample_y is None else class_index_to_name(int(sample_y)),
-                }
-                rows.append(row)
-
-                if sample_y is not None:
-                    y_true.append(int(sample_y))
-                    y_pred.append(pred_idx)
-                    y_prob.append(probs.tolist())
-
-                if sample_idx < 10:
-                    logger.info(
-                        "Sample=%s | len=%d | probs=[%.4f, %.4f, %.4f, %.4f] | pred=%s",
-                        sample_name,
-                        int(x_np.shape[0]),
-                        float(probs[0]),
-                        float(probs[1]),
-                        float(probs[2]),
-                        float(probs[3]),
-                        pred_name,
-                    )
-
-            except Exception as exc:
-                logger.exception("Failed on sample '%s': %s", sample_name, exc)
-
-    if not rows:
-        raise RuntimeError("No inference rows were produced.")
-
-    per_series_df = pd.DataFrame(rows)
-    per_series_df = add_transition_probability(per_series_df)
-
-    prediction_summary_df = (
-        per_series_df.sort_values(by=["p_transition", "file_name"], ascending=[False, True])
-        .reset_index(drop=True)
+# ---------------------------------------------------------------------
+# args
+# ---------------------------------------------------------------------
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Test DL checkpoints with sample-level and progressive per-series predictions."
     )
 
-    aggregated_df = (
-        per_series_df.groupby(["file_name"], as_index=False)[
-            ["p_fold", "p_hopf", "p_transcritical", "p_null", "p_transition"]
-        ].mean()
+    parser.add_argument("--checkpoint", type=str, required=True, help="Path to checkpoint .pt file")
+    parser.add_argument("--dataset", type=str, required=True, help="Dataset token: ts_500, ts_1500, pangaea_923197")
+    parser.add_argument("--split", type=str, default="test", choices=["train", "val", "test"])
+
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--device", type=str, default="auto", help="auto/cpu/cuda")
+    parser.add_argument("--seed", type=int, default=42)
+
+    # progressive prediction
+    parser.add_argument("--progressive-start-frac", type=float, default=0.60)
+    parser.add_argument("--progressive-end-frac", type=float, default=1.00)
+    parser.add_argument("--progressive-num-steps", type=int, default=40)
+    parser.add_argument("--min-prefix-len", type=int, default=64)
+
+    # outputs
+    parser.add_argument("--results-root", type=str, default="results")
+    parser.add_argument("--run-name", type=str, default=None)
+    parser.add_argument("--save-summary-csv", action="store_true")
+    parser.add_argument("--save-series-csv", action="store_true")
+    parser.add_argument("--make-plots", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+
+    return parser.parse_args()
+
+
+# ---------------------------------------------------------------------
+# logging
+# ---------------------------------------------------------------------
+def setup_run_logging(log_file: Path, verbose: bool = False) -> None:
+    ensure_dir(log_file.parent)
+
+    level = logging.DEBUG if verbose else logging.INFO
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
     )
-    aggregated_df["predicted_class"] = (
-        aggregated_df[["p_fold", "p_hopf", "p_transcritical", "p_null"]]
-        .idxmax(axis=1)
-        .str.replace("p_", "", regex=False)
-    )
 
-    save_csv(per_series_df, paths["dl_dir"] / "per_series_predictions.csv")
-    save_csv(prediction_summary_df, paths["dl_dir"] / "prediction_summary.csv")
-    save_csv(aggregated_df, paths["dl_dir"] / "aggregated_predictions.csv")
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
 
-    logger.info("Saved prediction files to %s", paths["dl_dir"])
+    # clear old handlers to avoid duplicate logs
+    if root_logger.handlers:
+        root_logger.handlers.clear()
 
-    metrics_payload = {
-        "run_name": run_name,
-        "dataset": args.dataset,
-        "train_dataset": args.train_dataset,
-        "model": args.model,
-        "metric": args.metric,
-        "experiment": args.experiment,
-        "num_samples": int(len(per_series_df)),
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(level)
+    stream_handler.setFormatter(formatter)
+
+    file_handler = logging.FileHandler(log_file, mode="w")
+    file_handler.setLevel(level)
+    file_handler.setFormatter(formatter)
+
+    root_logger.addHandler(stream_handler)
+    root_logger.addHandler(file_handler)
+
+
+# ---------------------------------------------------------------------
+# metrics
+# ---------------------------------------------------------------------
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    return {
+        "acc": float(compute_acc(y_true, y_pred)),
+        "f1_macro": float(compute_f1_macro(y_true, y_pred)),
+        "precision_macro": float(compute_precision_macro(y_true, y_pred)),
+        "recall_macro": float(compute_recall_macro(y_true, y_pred)),
     }
 
-    if y_true:
-        cls_metrics = compute_classification_metrics(
-            y_true=y_true,
-            y_pred=y_pred,
-            class_names=CLASS_NAMES,
-        )
-        roc_metrics = compute_multiclass_roc_auc(
-            y_true=y_true,
-            y_prob=y_prob,
-            class_names=CLASS_NAMES,
-        )
 
-        metrics_payload.update(cls_metrics)
-        metrics_payload["roc_auc_macro_ovr"] = roc_metrics["roc_auc_macro_ovr"]
-        metrics_payload["roc_auc_weighted_ovr"] = roc_metrics["roc_auc_weighted_ovr"]
+# ---------------------------------------------------------------------
+# sample-level evaluation
+# ---------------------------------------------------------------------
+def run_sample_level_evaluation(
+    model: torch.nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    class_names: List[str],
+) -> Dict[str, Any]:
+    model.eval()
 
-        save_confusion_matrix_csv(
-            cls_metrics["confusion_matrix"],
-            paths["dl_dir"] / "confusion_matrix.csv",
-            class_names=CLASS_NAMES,
-        )
+    all_probs: List[np.ndarray] = []
+    all_preds: List[np.ndarray] = []
+    all_targets: List[np.ndarray] = []
+    all_series_ids: List[str] = []
+    all_window_ids: List[str] = []
 
-        for class_name, payload in roc_metrics["per_class"].items():
-            fpr = payload.get("fpr", [])
-            tpr = payload.get("tpr", [])
-            thresholds = payload.get("thresholds", [])
+    with torch.no_grad():
+        for batch in loader:
+            x, y, meta = collate_eval_batch(batch)
 
-            if len(fpr) == 0:
-                continue
+            x = x.to(device)
+            probs = predict_batch_probabilities(model=model, x=x)
+            preds = np.argmax(probs, axis=1)
 
-            save_roc_curve_csv(
-                np.asarray(fpr, dtype=np.float64),
-                np.asarray(tpr, dtype=np.float64),
-                np.asarray(thresholds, dtype=np.float64),
-                paths["dl_dir"] / "roc_curves" / f"roc_curve_{class_name}.csv",
+            all_probs.append(probs)
+            all_preds.append(preds)
+            all_targets.append(y.cpu().numpy())
+
+            batch_series_ids = meta.get("series_id", [])
+            batch_window_ids = meta.get("window_id", [])
+
+            all_series_ids.extend([str(v) for v in batch_series_ids])
+            all_window_ids.extend([str(v) for v in batch_window_ids])
+
+    probs_np = np.concatenate(all_probs, axis=0) if all_probs else np.empty((0, len(class_names)))
+    preds_np = np.concatenate(all_preds, axis=0) if all_preds else np.empty((0,), dtype=int)
+    targets_np = np.concatenate(all_targets, axis=0) if all_targets else np.empty((0,), dtype=int)
+
+    metrics = compute_metrics(targets_np, preds_np)
+
+    rows: List[Dict[str, Any]] = []
+    for i in range(len(preds_np)):
+        row: Dict[str, Any] = {
+            "series_id": all_series_ids[i] if i < len(all_series_ids) else f"series_{i}",
+            "window_id": all_window_ids[i] if i < len(all_window_ids) else str(i),
+            "y_true": int(targets_np[i]),
+            "y_pred": int(preds_np[i]),
+            "true_class_name": class_names[int(targets_np[i])],
+            "pred_class_name": class_names[int(preds_np[i])],
+        }
+        for c_idx, c_name in enumerate(class_names):
+            row[f"prob_{c_name}"] = float(probs_np[i, c_idx])
+        rows.append(row)
+
+    summary_df = pd.DataFrame(rows)
+
+    return {
+        "metrics": metrics,
+        "summary_df": summary_df,
+        "y_true": targets_np,
+        "y_pred": preds_np,
+        "probs": probs_np,
+    }
+
+
+# ---------------------------------------------------------------------
+# progressive series evaluation
+# ---------------------------------------------------------------------
+def run_progressive_series_evaluation(
+    model: torch.nn.Module,
+    dataset_for_series: Any,
+    device: torch.device,
+    class_names: List[str],
+    input_length: int,
+    progressive_start_frac: float,
+    progressive_end_frac: float,
+    progressive_num_steps: int,
+    min_prefix_len: int,
+) -> pd.DataFrame:
+    model.eval()
+
+    series_records: List[Dict[str, Any]] = []
+    total_series = len(dataset_for_series.series_items)
+
+    with torch.no_grad():
+        for idx, item in enumerate(dataset_for_series.series_items, start=1):
+            series_id = str(item["series_id"])
+            x_full = np.asarray(item["signal"], dtype=np.float32).reshape(-1)
+            y_true = item.get("label", None)
+            transition_index = item.get("transition_index", None)
+
+            LOGGER.info(
+                "Progressive inference [%d/%d] | series_id=%s | length=%d",
+                idx,
+                total_series,
+                series_id,
+                len(x_full),
             )
 
-        logger.info("Accuracy: %.6f", cls_metrics["accuracy"])
-        logger.info("Balanced accuracy: %.6f", cls_metrics["balanced_accuracy"])
-        logger.info("F1 macro: %.6f", cls_metrics["f1_macro"])
-        logger.info("ROC AUC macro OVR: %s", str(roc_metrics["roc_auc_macro_ovr"]))
-    else:
-        logger.info("No labels found for dataset=%s. Saved predictions only.", args.dataset)
+            recs = create_progressive_series_records(
+                model=model,
+                device=device,
+                x_full=x_full,
+                series_id=series_id,
+                y_true=y_true,
+                transition_index=transition_index,
+                input_length=input_length,
+                class_names=class_names,
+                progressive_start_frac=progressive_start_frac,
+                progressive_end_frac=progressive_end_frac,
+                progressive_num_steps=progressive_num_steps,
+                min_prefix_len=min_prefix_len,
+            )
 
-    save_json(metrics_payload, paths["dl_dir"] / "metrics.json")
-    logger.info("Saved metrics to %s", paths["dl_dir"] / "metrics.json")
-    logger.info("Done.")
+            if len(recs) == 0:
+                LOGGER.warning("No progressive records created for series_id=%s", series_id)
+                continue
+
+            series_records.extend(recs)
+
+    return pd.DataFrame(series_records)
+
+
+# ---------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------
+def main() -> None:
+    args = parse_args()
+    set_seed(args.seed)
+
+    checkpoint_path = Path(args.checkpoint)
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+    # read checkpoint metadata first for run naming
+    ckpt = load_checkpoint_safely(checkpoint_path)
+    ckpt_meta = extract_checkpoint_metadata(ckpt)
+    model_name = infer_model_name_from_checkpoint(checkpoint_path, ckpt_meta)
+
+    train_dataset_token = ckpt_meta.get("dataset", "unknown_train_dataset")
+    monitor_metric = ckpt_meta.get("metric", "unknown_metric")
+    input_length = int(ckpt_meta.get("input_length", ckpt_meta.get("seq_len", 500)))
+    num_classes = int(ckpt_meta.get("num_classes", 3))
+    class_names = resolve_class_names(num_classes=num_classes, ckpt_meta=ckpt_meta)
+
+    run_name = (
+        args.run_name
+        if args.run_name is not None
+        else f"{model_name}_{train_dataset_token}_to_{args.dataset}_{monitor_metric}"
+    )
+
+    run_dir = Path(args.results_root) / "testing" / run_name
+    ensure_dir(run_dir)
+
+    # create dedicated folder structure immediately
+    output_dirs = get_testing_output_dirs(run_dir)
+
+    # log file inside dedicated run folder
+    log_file = output_dirs["logs_dir"] / "test.log"
+    setup_run_logging(log_file=log_file, verbose=args.verbose)
+
+    LOGGER.info("=" * 80)
+    LOGGER.info("Starting testing run")
+    LOGGER.info("=" * 80)
+
+    device = resolve_device(args.device)
+
+    LOGGER.info("Run name            : %s", run_name)
+    LOGGER.info("Checkpoint          : %s", checkpoint_path)
+    LOGGER.info("Model               : %s", model_name)
+    LOGGER.info("Train dataset token : %s", train_dataset_token)
+    LOGGER.info("Test dataset        : %s", args.dataset)
+    LOGGER.info("Metric              : %s", monitor_metric)
+    LOGGER.info("Input length        : %d", input_length)
+    LOGGER.info("Num classes         : %d", num_classes)
+    LOGGER.info("Class names         : %s", class_names)
+    LOGGER.info("Device              : %s", device)
+    LOGGER.info("Run directory       : %s", run_dir)
+    LOGGER.info("Log file            : %s", log_file)
+
+    model = build_model_from_checkpoint(
+        checkpoint=ckpt,
+        checkpoint_path=checkpoint_path,
+        model_name=model_name,
+        num_classes=num_classes,
+        input_length=input_length,
+        device=device,
+    )
+    model.eval()
+
+    LOGGER.info("Loading test dataset...")
+    loaded = load_test_dataset_for_inference(
+        dataset_name=args.dataset,
+        split=args.split,
+        input_length=input_length,
+        num_classes=num_classes,
+    )
+
+    window_dataset = loaded["window_dataset"]
+    series_dataset = loaded["series_dataset"]
+
+    loader = DataLoader(
+        window_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=(device.type == "cuda"),
+    )
+
+    config_summary = summarise_run_config(
+        checkpoint_path=str(checkpoint_path),
+        run_name=run_name,
+        model_name=model_name,
+        train_dataset=train_dataset_token,
+        test_dataset=args.dataset,
+        metric=monitor_metric,
+        split=args.split,
+        input_length=input_length,
+        num_classes=num_classes,
+        class_names=class_names,
+        device=str(device),
+        batch_size=args.batch_size,
+        progressive_start_frac=args.progressive_start_frac,
+        progressive_end_frac=args.progressive_end_frac,
+        progressive_num_steps=args.progressive_num_steps,
+        min_prefix_len=args.min_prefix_len,
+    )
+    save_json(config_summary, run_dir / "run_config.json")
+
+    LOGGER.info("-" * 80)
+    LOGGER.info("[1/3] Sample-level evaluation")
+    LOGGER.info("-" * 80)
+
+    sample_eval = run_sample_level_evaluation(
+        model=model,
+        loader=loader,
+        device=device,
+        class_names=class_names,
+    )
+
+    metrics_dict = sample_eval["metrics"]
+    summary_df = sample_eval["summary_df"]
+    y_true = sample_eval["y_true"]
+    y_pred = sample_eval["y_pred"]
+
+    LOGGER.info("Sample-level metrics:")
+    LOGGER.info(json.dumps(metrics_dict, indent=2))
+
+    save_json(metrics_dict, run_dir / "metrics.json")
+    save_numpy_confusion_inputs(
+        y_true=y_true,
+        y_pred=y_pred,
+        save_dir=run_dir / "confusion_inputs",
+    )
+
+    if args.save_summary_csv:
+        summary_df.to_csv(output_dirs["tables_dir"] / "classification_summary.csv", index=False)
+        LOGGER.info("Saved classification summary: %s", output_dirs["tables_dir"] / "classification_summary.csv")
+
+    LOGGER.info("-" * 80)
+    LOGGER.info("[2/3] Progressive per-series evaluation")
+    LOGGER.info("-" * 80)
+
+    progressive_df = run_progressive_series_evaluation(
+        model=model,
+        dataset_for_series=series_dataset,
+        device=device,
+        class_names=class_names,
+        input_length=input_length,
+        progressive_start_frac=args.progressive_start_frac,
+        progressive_end_frac=args.progressive_end_frac,
+        progressive_num_steps=args.progressive_num_steps,
+        min_prefix_len=args.min_prefix_len,
+    )
+
+    if progressive_df.empty:
+        LOGGER.warning("No progressive predictions were generated.")
+    else:
+        # save combined progressive CSV at run root
+        progressive_csv_path = run_dir / "all_series_progressive_predictions.csv"
+        progressive_df.to_csv(progressive_csv_path, index=False)
+        LOGGER.info("Saved combined progressive predictions: %s", progressive_csv_path)
+
+        # save copy into dedicated tables folder too
+        progressive_df.to_csv(output_dirs["tables_dir"] / "all_series_progressive_predictions.csv", index=False)
+
+        # save final step per series
+        final_step_df = (
+            progressive_df
+            .sort_values(["series_id", "reveal_index"])
+            .groupby("series_id", as_index=False)
+            .tail(1)
+            .reset_index(drop=True)
+        )
+
+        final_csv_path = run_dir / "final_series_predictions.csv"
+        final_step_df.to_csv(final_csv_path, index=False)
+        LOGGER.info("Saved final series predictions: %s", final_csv_path)
+
+        final_step_df.to_csv(output_dirs["tables_dir"] / "final_series_predictions.csv", index=False)
+
+        # optional per-series csv files
+        if args.save_series_csv:
+            series_csv_dir = run_dir / "series_predictions"
+            ensure_dir(series_csv_dir)
+
+            for series_id, series_df in progressive_df.groupby("series_id", sort=True):
+                safe_name = str(series_id).replace("/", "_").replace("\\", "_").replace(" ", "_")
+                series_df.sort_values("reveal_index").to_csv(series_csv_dir / f"{safe_name}.csv", index=False)
+
+            LOGGER.info("Saved per-series progressive CSV files: %s", series_csv_dir)
+
+    LOGGER.info("-" * 80)
+    LOGGER.info("[3/3] Plot generation")
+    LOGGER.info("-" * 80)
+
+    if args.make_plots and not progressive_df.empty:
+        plot_summary = run_all_testing_plots(
+            run_dir=run_dir,
+            class_names=class_names,
+            progressive_csv_name="all_series_progressive_predictions.csv",
+            final_predictions_csv_name="final_series_predictions.csv",
+        )
+        save_json(plot_summary, run_dir / "plot_summary.json")
+        LOGGER.info("Plot summary: %s", plot_summary)
+    else:
+        LOGGER.info("Plot generation skipped.")
+
+    LOGGER.info("=" * 80)
+    LOGGER.info("Testing completed successfully")
+    LOGGER.info("All outputs saved in: %s", run_dir)
+    LOGGER.info("=" * 80)
 
 
 if __name__ == "__main__":
