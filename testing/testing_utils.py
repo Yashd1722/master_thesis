@@ -139,6 +139,55 @@ def resolve_class_names(num_classes: int, ckpt_meta: Dict[str, Any]) -> List[str
     return [f"class_{i}" for i in range(num_classes)]
 
 
+def infer_num_classes_from_checkpoint_dict(checkpoint: Dict[str, Any]) -> Optional[int]:
+    """Try to infer the number of output classes from a checkpoint or raw state_dict.
+
+    Looks for typical final linear weight parameter names such as
+    'classifier.*.weight', 'fc.*.weight', 'output.*.weight' and falls back
+    to any 2-D weight tensor if found.
+    """
+    state_dict = None
+    for key in ["model_state_dict", "state_dict", "model"]:
+        if key in checkpoint:
+            state_dict = checkpoint[key]
+            break
+
+    # checkpoint might be a raw state_dict itself
+    if state_dict is None and isinstance(checkpoint, dict):
+        if any("." in str(k) for k in checkpoint.keys()):
+            state_dict = checkpoint
+
+    if not isinstance(state_dict, dict):
+        return None
+
+    # Prefer keys that contain 'classifier' or 'fc' or 'output'
+    candidates = []
+    for k, v in state_dict.items():
+        if not k.lower().endswith(".weight"):
+            continue
+        lname = k.lower()
+        try:
+            shape0 = int(v.shape[0])
+        except Exception:
+            shape0 = None
+
+        if any(x in lname for x in ("classifier", "fc", "output", "linear")):
+            if shape0 is not None:
+                return shape0
+            candidates.append((k, shape0))
+
+    # fallback: any 2-D weight param
+    for k, v in state_dict.items():
+        if k.lower().endswith(".weight"):
+            try:
+                if hasattr(v, "shape") and len(v.shape) == 2:
+                    return int(v.shape[0])
+            except Exception:
+                continue
+
+    return None
+
+
 # ---------------------------------------------------------------------
 # model building
 # ---------------------------------------------------------------------
