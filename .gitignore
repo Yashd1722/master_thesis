@@ -19,28 +19,22 @@ __pycache__/
 
 # ----------------------------
 # DATASET RULES
-# Ignore everything in dataset/ ...
 # ----------------------------
+# Ignore everything in dataset/ ...
 dataset/**
 
 # ... but allow the dataset folder structure itself
 !dataset/
 !dataset/**/
 
-# Allow ONLY these final CSVs
-!dataset/ts_1500/ts_1500_final.csv
-!dataset/ts_500/ts_500_final.csv
-
-# Allow the clean_dataset folder and all CSVs inside it
+# Allow only the cleaned pangaea CSVs (required for the code)
 !dataset/pangaea_923197/datasets/clean_dataset/
-!dataset/pangaea_923197/datasets/clean_dataset/*csv
+!dataset/pangaea_923197/datasets/clean_dataset/*.csv
 
-# (optional) If you only want CSVs inside clean_dataset:
-# dataset/pangaea_923197/datasets/clean_dataset/*
-# !dataset/pangaea_923197/datasets/clean_dataset/*.csv
-dataset/ts_1500/
-dataset/ts_500/
-dataset/pangaea_923197/
-dataset/ts_1500/
-dataset/ts_500/
-dataset/pangaea_923197/
+# ----------------------------
+# RESULTS & LOGS – track these
+# ----------------------------
+!results/
+!results/**/*
+!logs/
+!logs/**/*
