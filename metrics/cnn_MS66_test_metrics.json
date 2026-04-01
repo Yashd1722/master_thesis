@@ -1,0 +1,27 @@
+{
+  "model": "cnn",
+  "dataset": "ts_500",
+  "core": "MS66",
+  "sapropels": {
+    "S3": {
+      "n_series": 145,
+      "n_steps": 40,
+      "ktau_variance": 0.3432,
+      "ktau_lag1_ac": -0.5419,
+      "mean_p_transition": 0.7352346777915955,
+      "auc_cnn": 1.0,
+      "auc_variance": 0.699,
+      "auc_lag1_ac": 0.0
+    },
+    "S1": {
+      "n_series": 229,
+      "n_steps": 40,
+      "ktau_variance": 0.9256,
+      "ktau_lag1_ac": 0.2821,
+      "mean_p_transition": 0.9602157473564148,
+      "auc_cnn": 0.965,
+      "auc_variance": 1.0,
+      "auc_lag1_ac": 0.781
+    }
+  }
+}

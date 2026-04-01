@@ -1,0 +1,142 @@
+==============================================
+  Job ID        : 2450621
+  Array task    : 0
+  Model         : cnn_lstm
+  Dataset       : ts_500
+  Node          : jnultra02
+  GPUs          : 0
+  Start time    : Wed Apr  1 08:15:01 PM CEST 2026
+==============================================
+
+>>> Step 1/3: Running inference — cnn_lstm on all cores ...
+
+20:15:04 | INFO | Model      : cnn_lstm
+20:15:04 | INFO | Dataset    : ts_500
+20:15:04 | INFO | ts_len     : 500
+20:15:04 | INFO | num_classes: 4  ['fold', 'hopf', 'transcritical', 'null']
+20:15:04 | INFO | Cores      : ['MS21', 'MS66', '64PE406E1']
+20:15:04 | INFO | Device     : cuda
+20:15:04 | INFO |   Loaded: cnn_lstm_ts_500_v1_best.ckpt
+20:15:04 | INFO |   Loaded: cnn_lstm_ts_500_v2_best.ckpt
+20:15:04 | INFO |   Using 2 checkpoint(s) for ensemble average
+20:15:04 | INFO | Core: MS21
+20:15:04 | INFO | 
+  Processing MS21/S1
+20:15:04 | INFO |   Saved predictions → cnn_lstm_MS21_S1_predictions.csv
+20:15:04 | INFO | 
+  MS21 done in 0.2s
+20:15:04 | INFO |   Metrics saved → cnn_lstm_MS21_test_metrics.json
+20:15:04 | INFO | Core: MS66
+20:15:04 | INFO | 
+  Processing MS66/S3
+20:15:04 | INFO |   Saved predictions → cnn_lstm_MS66_S3_predictions.csv
+20:15:04 | INFO | 
+  Processing MS66/S1
+20:15:04 | INFO |   Saved predictions → cnn_lstm_MS66_S1_predictions.csv
+20:15:04 | INFO | 
+  MS66 done in 0.0s
+20:15:04 | INFO |   Metrics saved → cnn_lstm_MS66_test_metrics.json
+20:15:04 | INFO | Core: 64PE406E1
+20:15:04 | INFO | 
+  Processing 64PE406E1/S6
+20:15:04 | INFO |   Saved predictions → cnn_lstm_64PE406E1_S6_predictions.csv
+20:15:04 | INFO | 
+  Processing 64PE406E1/S5
+20:15:04 | INFO |   Saved predictions → cnn_lstm_64PE406E1_S5_predictions.csv
+20:15:04 | INFO | 
+  Processing 64PE406E1/S4
+20:15:04 | INFO |   Saved predictions → cnn_lstm_64PE406E1_S4_predictions.csv
+20:15:04 | INFO | 
+  Processing 64PE406E1/S3
+20:15:04 | INFO |   Saved predictions → cnn_lstm_64PE406E1_S3_predictions.csv
+20:15:04 | INFO | 
+  64PE406E1 done in 0.0s
+20:15:04 | INFO |   Metrics saved → cnn_lstm_64PE406E1_test_metrics.json
+20:15:04 | INFO | 
+All cores done. Results in /home/s466553/Master_thesis/master_thesis/results
+20:15:04 | INFO | Next: python testing/compute_metrics.py --model cnn_lstm --dataset ts_500
+
+>>> Step 2/3: Computing metrics — cnn_lstm ...
+
+
+============================================================
+  Computing metrics: cnn_lstm / ts_500
+============================================================
+  MS21/S1: AUC cnn_lstm=0.918 var=0.027 ac=0.000
+  MS66/S3: AUC cnn_lstm=0.887 var=0.699 ac=0.000
+  MS66/S1: AUC cnn_lstm=0.363 var=1.000 ac=0.781
+  64PE406E1/S6: AUC cnn_lstm=0.984 var=1.000 ac=0.000
+  64PE406E1/S5: AUC cnn_lstm=0.043 var=0.000 ac=0.543
+  64PE406E1/S4: AUC cnn_lstm=0.684 var=0.930 ac=0.355
+  64PE406E1/S3: AUC cnn_lstm=0.918 var=0.195 ac=0.320
+  ROC data saved → cnn_lstm_MS21_S1_roc.json
+  ROC data saved → cnn_lstm_MS66_S3_roc.json
+  ROC data saved → cnn_lstm_MS66_S1_roc.json
+  ROC data saved → cnn_lstm_64PE406E1_S6_roc.json
+  ROC data saved → cnn_lstm_64PE406E1_S5_roc.json
+  ROC data saved → cnn_lstm_64PE406E1_S4_roc.json
+  ROC data saved → cnn_lstm_64PE406E1_S3_roc.json
+
+============================================================
+  Building AUC comparison table (all models)
+============================================================
+
+AUC table saved → auc_comparison_all_models.csv
+     core sapropel  auc_cnn_lstm  auc_lstm  auc_cnn  auc_variance  auc_lag1_ac
+     MS21       S1         0.918     0.496      NaN         0.027        0.000
+     MS66       S3         0.887     0.367      NaN         0.699        0.000
+     MS66       S1         0.363     0.773      NaN         1.000        0.781
+64PE406E1       S6         0.984     0.633      NaN         1.000        0.000
+64PE406E1       S5         0.043     0.035      NaN         0.000        0.543
+64PE406E1       S4         0.684     0.633      NaN         0.930        0.355
+64PE406E1       S3         0.918     0.316      NaN         0.195        0.320
+
+Next: python testing/plot_figures.py --model all
+
+>>> Step 3/3: Generating figures — cnn_lstm ...
+
+
+--- Figure 3: PANGAEA overview ---
+  Saved → pangaea_overview_fig3.png
+
+=== Model: cnn_lstm ===
+
+--- Figure 2: theoretical model ---
+  Saved → cnn_lstm_ts_500_fold_fig2.png
+
+--- Figure 4: MS21 ---
+  Saved → cnn_lstm_MS21_fig4.png
+
+--- Figure 5 (single model): MS21 ---
+  Saved → cnn_lstm_MS21_roc_fig5.png
+
+--- Figure 4: MS66 ---
+  Saved → cnn_lstm_MS66_fig4.png
+
+--- Figure 5 (single model): MS66 ---
+  Saved → cnn_lstm_MS66_roc_fig5.png
+
+--- Figure 4: 64PE406E1 ---
+  Saved → cnn_lstm_64PE406E1_fig4.png
+
+--- Figure 5 (single model): 64PE406E1 ---
+  Saved → cnn_lstm_64PE406E1_roc_fig5.png
+
+--- Figure 5 (all models comparison): MS21 ---
+  Saved → all_models_MS21_roc_comparison_fig5.png
+
+--- Figure 5 (all models comparison): MS66 ---
+  Saved → all_models_MS66_roc_comparison_fig5.png
+
+--- Figure 5 (all models comparison): 64PE406E1 ---
+  Saved → all_models_64PE406E1_roc_comparison_fig5.png
+
+All figures saved to /home/s466553/Master_thesis/master_thesis/test_results
+
+==============================================
+  All done: cnn_lstm
+  Predictions : results/
+  Metrics     : metrics/
+  Figures     : test_results/
+  End time    : Wed Apr  1 08:15:13 PM CEST 2026
+==============================================
