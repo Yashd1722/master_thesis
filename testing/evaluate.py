@@ -1,29 +1,29 @@
 """
-testing/evaluate.py
-===================
-Universal inference script — runs one trained model on all PANGAEA cores.
+    testing/evaluate.py
+    ===================
+    Universal inference script — runs one trained model on all PANGAEA cores.
 
-What one run does:
-    For each core in [MS21, MS66, 64PE406E1]:
-        For each test sapropel in that core:
-            1. Load checkpoint(s) for this model
-            2. Run rolling window → compute variance + lag-1 AC
-            3. Run model inference → get p_transition at each step
-            4. Save predictions CSV → results/
-            5. Save test metrics  → metrics/
+    What one run does:
+        For each core in [MS21, MS66, 64PE406E1]:
+            For each test sapropel in that core:
+                1. Load checkpoint(s) for this model
+                2. Run rolling window → compute variance + lag-1 AC
+                3. Run model inference → get p_transition at each step
+                4. Save predictions CSV → results/
+                5. Save test metrics  → metrics/
 
-Called by test_array.sh with --model argument.
+    Called by test_array.sh with --model argument.
 
-Usage:
-    python testing/evaluate.py --model cnn_lstm
-    python testing/evaluate.py --model lstm --dataset ts_500
-    python testing/evaluate.py --model cnn --dataset ts_1500
+    Usage:
+        python testing/evaluate.py --model cnn_lstm
+        python testing/evaluate.py --model lstm --dataset ts_500
+        python testing/evaluate.py --model cnn --dataset ts_1500
 
-Output files:
-    results/{model}_{core}_{sapropel}_predictions.csv
-    metrics/{model}_{core}_test_metrics.json
-    test_logs/{model}_{core}_inference.log
-"""
+    Output files:
+        results/{model}_{core}_{sapropel}_predictions.csv
+        metrics/{model}_{core}_test_metrics.json
+        test_logs/{model}_{core}_inference.log
+    """
 
 import argparse
 import json
@@ -44,7 +44,6 @@ sys.path.insert(0, str(REPO_ROOT))
 from models import get_model, list_models
 from src.dataset_loader import load_config, get_dataset_info
 from src.rolling_window import run_all_sapropels, RollingWindowResult
-
 
 # =============================================================================
 #  Logging
@@ -89,7 +88,14 @@ def load_checkpoints(
         checkpoints/{model}_{dataset}_v2_best.ckpt
     """
     ckpt_dir  = REPO_ROOT / cfg["paths"]["checkpoints"]
-    pad_variants = cfg["training"]["bury"]["pad_variants"]  # [1, 2]
+    # Determine pad variants based on the model's training configuration.  In the
+    # updated configuration, each model (cnn_lstm, lstm, cnn, sdml) defines its
+    # own list of pad_variants.  We attempt to read this list; if the model
+    # isn't explicitly listed or the key is missing, we default to [1].
+    try:
+        pad_variants = cfg["training"][model_name]["pad_variants"]
+    except Exception:
+        pad_variants = [1]
 
     models = []
     for v in pad_variants:
