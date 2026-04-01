@@ -1,0 +1,22 @@
+18:09:26 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn  dataset=ts_1500  pad_variant=1  num_classes=4
+────────────────────────────────────────────────────────────
+18:09:31 | INFO |   Batches — train:2968 val:125 test:32
+18:09:31 | INFO |   Parameters: 6,157,252
+18:09:39 | INFO |   Epoch     1/100 | tr_loss=0.5904 tr_f1=0.7822 | vl_loss=0.5372 vl_f1=0.8067 | best=0.8067 | 0.1min
+18:10:34 | INFO |   Early stopping at epoch 8
+18:10:34 | INFO | 
+  Test results: loss=0.5176 acc=0.8185 f1=0.8181
+18:10:34 | INFO |   Training time: 1.1 min
+18:10:34 | INFO |   Checkpoint: cnn_ts_1500_v1_best.ckpt
+18:10:34 | INFO |   Metrics: cnn_ts_1500_v1_train_metrics.json
+18:10:35 | INFO |   Completed cnn_ts_1500_v1 | test_f1=0.8181
+18:10:35 | INFO | 
+============================================================
+18:10:35 | INFO |   SUMMARY — cnn
+18:10:35 | INFO | ============================================================
+18:10:35 | INFO |   ts_500 v1 | best_val_f1=0.7728 | test_f1=0.7622 | test_acc=0.7634
+18:10:35 | INFO |   ts_1500 v1 | best_val_f1=0.8189 | test_f1=0.8181 | test_acc=0.8185
+18:10:35 | INFO | 
+All done. Logs in /home/s466553/Master_thesis/master_thesis/logs

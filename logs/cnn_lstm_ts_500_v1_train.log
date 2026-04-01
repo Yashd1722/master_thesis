@@ -1,0 +1,78 @@
+17:59:32 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn_lstm  dataset=ts_500  pad_variant=1  num_classes=4
+────────────────────────────────────────────────────────────
+17:59:44 | INFO |   Batches — train:1855 val:79 test:20
+17:59:44 | INFO |   Parameters: 23,574
+17:59:55 | INFO |   Epoch     1/1500 | tr_loss=0.8090 tr_f1=0.6851 | vl_loss=0.6787 vl_f1=0.7429 | best=0.7429 | 0.2min
+18:06:39 | INFO |   Epoch    50/1500 | tr_loss=0.4706 tr_f1=0.8281 | vl_loss=0.4637 vl_f1=0.8314 | best=0.8314 | 6.9min
+18:13:20 | INFO |   Epoch   100/1500 | tr_loss=0.4460 tr_f1=0.8372 | vl_loss=0.4593 vl_f1=0.8304 | best=0.8346 | 13.6min
+18:19:12 | INFO |   Early stopping at epoch 144
+18:19:12 | INFO | 
+  Test results: loss=0.4609 acc=0.8332 f1=0.8330
+18:19:12 | INFO |   Training time: 19.4 min
+18:19:12 | INFO |   Checkpoint: cnn_lstm_ts_500_v1_best.ckpt
+18:19:12 | INFO |   Metrics: cnn_lstm_ts_500_v1_train_metrics.json
+18:19:12 | INFO |   Completed cnn_lstm_ts_500_v1 | test_f1=0.8330
+18:19:12 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn_lstm  dataset=ts_500  pad_variant=2  num_classes=4
+────────────────────────────────────────────────────────────
+18:19:25 | INFO |   Batches — train:1855 val:79 test:20
+18:19:25 | INFO |   Parameters: 23,574
+18:19:33 | INFO |   Epoch     1/1500 | tr_loss=0.8103 tr_f1=0.6837 | vl_loss=0.6890 vl_f1=0.7359 | best=0.7359 | 0.1min
+18:25:58 | INFO |   Epoch    50/1500 | tr_loss=0.4730 tr_f1=0.8273 | vl_loss=0.4642 vl_f1=0.8293 | best=0.8307 | 6.6min
+18:32:34 | INFO |   Epoch   100/1500 | tr_loss=0.4480 tr_f1=0.8367 | vl_loss=0.4552 vl_f1=0.8332 | best=0.8340 | 13.2min
+18:39:12 | INFO |   Epoch   150/1500 | tr_loss=0.4370 tr_f1=0.8410 | vl_loss=0.4739 vl_f1=0.8280 | best=0.8360 | 19.8min
+18:41:51 | INFO |   Early stopping at epoch 170
+18:41:52 | INFO | 
+  Test results: loss=0.4651 acc=0.8302 f1=0.8304
+18:41:52 | INFO |   Training time: 22.4 min
+18:41:52 | INFO |   Checkpoint: cnn_lstm_ts_500_v2_best.ckpt
+18:41:52 | INFO |   Metrics: cnn_lstm_ts_500_v2_train_metrics.json
+18:41:52 | INFO |   Completed cnn_lstm_ts_500_v2 | test_f1=0.8304
+18:41:52 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn_lstm  dataset=ts_1500  pad_variant=1  num_classes=4
+────────────────────────────────────────────────────────────
+18:41:56 | INFO |   Batches — train:742 val:32 test:8
+18:41:56 | INFO |   Parameters: 23,574
+18:42:03 | INFO |   Epoch     1/1500 | tr_loss=0.8598 tr_f1=0.6645 | vl_loss=0.6836 vl_f1=0.7497 | best=0.7497 | 0.1min
+18:46:48 | INFO |   Epoch    50/1500 | tr_loss=0.3669 tr_f1=0.8736 | vl_loss=0.3758 vl_f1=0.8674 | best=0.8683 | 4.9min
+18:51:38 | INFO |   Epoch   100/1500 | tr_loss=0.3379 tr_f1=0.8830 | vl_loss=0.3541 vl_f1=0.8774 | best=0.8774 | 9.7min
+18:56:29 | INFO |   Epoch   150/1500 | tr_loss=0.3232 tr_f1=0.8878 | vl_loss=0.3540 vl_f1=0.8774 | best=0.8815 | 14.5min
+19:01:18 | INFO |   Epoch   200/1500 | tr_loss=0.2997 tr_f1=0.8970 | vl_loss=0.3537 vl_f1=0.8808 | best=0.8838 | 19.4min
+19:05:51 | INFO |   Early stopping at epoch 247
+19:05:51 | INFO | 
+  Test results: loss=0.3415 acc=0.8885 f1=0.8880
+19:05:51 | INFO |   Training time: 23.9 min
+19:05:51 | INFO |   Checkpoint: cnn_lstm_ts_1500_v1_best.ckpt
+19:05:51 | INFO |   Metrics: cnn_lstm_ts_1500_v1_train_metrics.json
+19:05:51 | INFO |   Completed cnn_lstm_ts_1500_v1 | test_f1=0.8880
+19:05:51 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn_lstm  dataset=ts_1500  pad_variant=2  num_classes=4
+────────────────────────────────────────────────────────────
+19:05:56 | INFO |   Batches — train:742 val:32 test:8
+19:05:56 | INFO |   Parameters: 23,574
+19:06:02 | INFO |   Epoch     1/1500 | tr_loss=0.8529 tr_f1=0.6678 | vl_loss=0.6853 vl_f1=0.7437 | best=0.7437 | 0.1min
+19:10:47 | INFO |   Epoch    50/1500 | tr_loss=0.3679 tr_f1=0.8731 | vl_loss=0.3796 vl_f1=0.8671 | best=0.8688 | 4.8min
+19:15:38 | INFO |   Epoch   100/1500 | tr_loss=0.3335 tr_f1=0.8846 | vl_loss=0.3612 vl_f1=0.8771 | best=0.8785 | 9.7min
+19:20:28 | INFO |   Epoch   150/1500 | tr_loss=0.3176 tr_f1=0.8904 | vl_loss=0.3609 vl_f1=0.8758 | best=0.8805 | 14.5min
+19:24:37 | INFO |   Early stopping at epoch 193
+19:24:37 | INFO | 
+  Test results: loss=0.3325 acc=0.8885 f1=0.8882
+19:24:37 | INFO |   Training time: 18.7 min
+19:24:37 | INFO |   Checkpoint: cnn_lstm_ts_1500_v2_best.ckpt
+19:24:37 | INFO |   Metrics: cnn_lstm_ts_1500_v2_train_metrics.json
+19:24:38 | INFO |   Completed cnn_lstm_ts_1500_v2 | test_f1=0.8882
+19:24:38 | INFO | 
+============================================================
+19:24:38 | INFO |   SUMMARY — cnn_lstm
+19:24:38 | INFO | ============================================================
+19:24:38 | INFO |   ts_500 v1 | best_val_f1=0.8346 | test_f1=0.8330 | test_acc=0.8332
+19:24:38 | INFO |   ts_500 v2 | best_val_f1=0.8360 | test_f1=0.8304 | test_acc=0.8302
+19:24:38 | INFO |   ts_1500 v1 | best_val_f1=0.8838 | test_f1=0.8880 | test_acc=0.8885
+19:24:38 | INFO |   ts_1500 v2 | best_val_f1=0.8805 | test_f1=0.8882 | test_acc=0.8885
+19:24:38 | INFO | 
+All done. Logs in /home/s466553/Master_thesis/master_thesis/logs

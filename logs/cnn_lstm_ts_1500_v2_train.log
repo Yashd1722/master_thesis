@@ -1,0 +1,27 @@
+19:05:51 | INFO | 
+────────────────────────────────────────────────────────────
+  model=cnn_lstm  dataset=ts_1500  pad_variant=2  num_classes=4
+────────────────────────────────────────────────────────────
+19:05:56 | INFO |   Batches — train:742 val:32 test:8
+19:05:56 | INFO |   Parameters: 23,574
+19:06:02 | INFO |   Epoch     1/1500 | tr_loss=0.8529 tr_f1=0.6678 | vl_loss=0.6853 vl_f1=0.7437 | best=0.7437 | 0.1min
+19:10:47 | INFO |   Epoch    50/1500 | tr_loss=0.3679 tr_f1=0.8731 | vl_loss=0.3796 vl_f1=0.8671 | best=0.8688 | 4.8min
+19:15:38 | INFO |   Epoch   100/1500 | tr_loss=0.3335 tr_f1=0.8846 | vl_loss=0.3612 vl_f1=0.8771 | best=0.8785 | 9.7min
+19:20:28 | INFO |   Epoch   150/1500 | tr_loss=0.3176 tr_f1=0.8904 | vl_loss=0.3609 vl_f1=0.8758 | best=0.8805 | 14.5min
+19:24:37 | INFO |   Early stopping at epoch 193
+19:24:37 | INFO | 
+  Test results: loss=0.3325 acc=0.8885 f1=0.8882
+19:24:37 | INFO |   Training time: 18.7 min
+19:24:37 | INFO |   Checkpoint: cnn_lstm_ts_1500_v2_best.ckpt
+19:24:37 | INFO |   Metrics: cnn_lstm_ts_1500_v2_train_metrics.json
+19:24:38 | INFO |   Completed cnn_lstm_ts_1500_v2 | test_f1=0.8882
+19:24:38 | INFO | 
+============================================================
+19:24:38 | INFO |   SUMMARY — cnn_lstm
+19:24:38 | INFO | ============================================================
+19:24:38 | INFO |   ts_500 v1 | best_val_f1=0.8346 | test_f1=0.8330 | test_acc=0.8332
+19:24:38 | INFO |   ts_500 v2 | best_val_f1=0.8360 | test_f1=0.8304 | test_acc=0.8302
+19:24:38 | INFO |   ts_1500 v1 | best_val_f1=0.8838 | test_f1=0.8880 | test_acc=0.8885
+19:24:38 | INFO |   ts_1500 v2 | best_val_f1=0.8805 | test_f1=0.8882 | test_acc=0.8885
+19:24:38 | INFO | 
+All done. Logs in /home/s466553/Master_thesis/master_thesis/logs

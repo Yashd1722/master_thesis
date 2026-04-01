@@ -1,0 +1,19 @@
+==============================================
+  Job ID        : 2450545
+  Array task    : 0
+  Model         : cnn_lstm
+  Dataset       : ts_500
+  Node          : jnultra02
+  GPUs          : 0
+  Start time    : Wed Apr  1 07:29:42 PM CEST 2026
+==============================================
+
+>>> Step 1/3: Running inference — cnn_lstm on all cores ...
+
+19:29:45 | INFO | Model      : cnn_lstm
+19:29:45 | INFO | Dataset    : ts_500
+19:29:45 | INFO | ts_len     : 500
+19:29:45 | INFO | num_classes: 4  ['fold', 'hopf', 'transcritical', 'null']
+19:29:45 | INFO | Cores      : ['MS21', 'MS66', '64PE406E1']
+19:29:45 | INFO | Device     : cuda
+ERROR: evaluate.py failed for cnn_lstm

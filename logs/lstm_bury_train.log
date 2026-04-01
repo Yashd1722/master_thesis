@@ -1,0 +1,41 @@
+17:59:38 | INFO | Model      : lstm
+17:59:38 | INFO | Mode       : bury
+17:59:38 | INFO | Datasets   : ['ts_500', 'ts_1500']
+17:59:38 | INFO | Variants   : [1]
+17:59:38 | INFO | Device     : cuda
+17:59:38 | INFO | 
+────────────────────────────────────────────────────────────
+  model=lstm  dataset=ts_500  pad_variant=1  num_classes=4
+────────────────────────────────────────────────────────────
+17:59:50 | INFO |   Batches — train:7421 val:313 test:79
+17:59:50 | INFO |   Parameters: 190,852
+18:00:33 | INFO |   Epoch     1/100 | tr_loss=0.7332 tr_f1=0.7135 | vl_loss=0.6296 vl_f1=0.7611 | best=0.7611 | 0.7min
+18:13:24 | INFO |   Early stopping at epoch 15
+18:13:25 | INFO | 
+  Test results: loss=0.5144 acc=0.8142 f1=0.8138
+18:13:25 | INFO |   Training time: 13.6 min
+18:13:25 | INFO |   Checkpoint: lstm_ts_500_v1_best.ckpt
+18:13:25 | INFO |   Metrics: lstm_ts_500_v1_train_metrics.json
+18:13:25 | INFO |   Completed lstm_ts_500_v1 | test_f1=0.8138
+18:13:25 | INFO | 
+────────────────────────────────────────────────────────────
+  model=lstm  dataset=ts_1500  pad_variant=1  num_classes=4
+────────────────────────────────────────────────────────────
+18:13:30 | INFO |   Batches — train:2968 val:125 test:32
+18:13:30 | INFO |   Parameters: 190,852
+18:14:10 | INFO |   Epoch     1/100 | tr_loss=0.7057 tr_f1=0.7244 | vl_loss=0.5760 vl_f1=0.7760 | best=0.7760 | 0.7min
+18:27:49 | INFO |   Early stopping at epoch 22
+18:27:49 | INFO | 
+  Test results: loss=0.3923 acc=0.8645 f1=0.8637
+18:27:49 | INFO |   Training time: 14.3 min
+18:27:49 | INFO |   Checkpoint: lstm_ts_1500_v1_best.ckpt
+18:27:49 | INFO |   Metrics: lstm_ts_1500_v1_train_metrics.json
+18:27:49 | INFO |   Completed lstm_ts_1500_v1 | test_f1=0.8637
+18:27:49 | INFO | 
+============================================================
+18:27:49 | INFO |   SUMMARY — lstm
+18:27:49 | INFO | ============================================================
+18:27:49 | INFO |   ts_500 v1 | best_val_f1=0.8172 | test_f1=0.8138 | test_acc=0.8142
+18:27:49 | INFO |   ts_1500 v1 | best_val_f1=0.8558 | test_f1=0.8637 | test_acc=0.8645
+18:27:49 | INFO | 
+All done. Logs in /home/s466553/Master_thesis/master_thesis/logs
