@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/home/s466553/Master_thesis/master_thesis/testing/test.py", line 24, in <module>
-    from metrics.acc import compute_acc  # noqa: E402
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ImportError: cannot import name 'compute_acc' from 'metrics.acc' (/home/s466553/Master_thesis/master_thesis/metrics/acc.py)

@@ -1,0 +1,22 @@
+# Core
+numpy
+pandas
+scipy
+
+# Deep Learning
+torch
+torchvision
+torchaudio
+
+# Data handling / utils
+pyyaml
+tqdm
+
+# ML / metrics
+scikit-learn
+
+# Plotting
+matplotlib
+
+# Optional (very useful for your project)
+seaborn

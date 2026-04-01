@@ -1,0 +1,474 @@
+# =============================================================================
+#  config.yaml
+#  Master thesis — Early Warning Signals with Deep Learning
+#  Single source of truth. Every script reads ONLY from here.
+#  Never hardcode any path, hyperparameter, or dataset name in any script.
+# =============================================================================
+
+
+# ── Project info ──────────────────────────────────────────────────────────────
+project:
+  name:        "early_warning_signals_thesis"
+  author:      "Yash Dhameliya"
+  seed:        42
+
+
+# =============================================================================
+#  PATHS
+#  All relative to the repo root (master_thesis/).
+#  Every script resolves these relative to the location of this config file.
+# =============================================================================
+paths:
+
+  # ── Input data ──────────────────────────────────────────────────────────────
+  ts_500:        "dataset/ts_500/"
+  ts_1500:       "dataset/ts_1500/"
+  pangaea_raw:   "dataset/pangaea_923197/"
+  pangaea_clean: "dataset/pangaea_923197/datasets/clean_dataset/"
+
+  # ── Output: training ────────────────────────────────────────────────────────
+  checkpoints:   "checkpoints/"       # {model}_{dataset}_best.ckpt
+  metrics:       "metrics/"           # {model}_{dataset}_train_metrics.json
+  logs:          "logs/"              # {model}_{dataset}_train.log / .err
+
+  # ── Output: testing ─────────────────────────────────────────────────────────
+  results:       "results/"           # {model}_{core}_{sapropel}_predictions.csv
+  figures:       "test_results/"      # all figures (.png)
+  test_logs:     "test_logs/"         # {model}_{core}_inference.log
+  inference_logs: "inference_logs/"   # SLURM .out / .err for inference jobs
+
+
+# =============================================================================
+#  FILE NAMING CONVENTION
+#  Every output file follows: {model}_{dataset}_{descriptor}.{ext}
+#  These templates are used by all scripts — format them with str.format().
+# =============================================================================
+naming:
+  # checkpoints
+  checkpoint:         "{model}_{dataset}_best.ckpt"
+
+  # metrics (training)
+  train_metrics:      "{model}_{dataset}_train_metrics.json"
+  train_log:          "{model}_{dataset}_train.log"
+  train_err:          "{model}_{dataset}_train.err"
+
+  # predictions (testing / inference)
+  predictions:        "{model}_{core}_{sapropel}_predictions.csv"
+  test_metrics:       "{model}_{core}_test_metrics.json"
+  inference_log:      "{model}_{core}_inference.log"
+
+  # figures
+  fig2:               "{model}_{dataset}_fold_fig2.png"
+  fig3:               "pangaea_overview_fig3.png"          # shared, no model
+  fig4:               "{model}_{core}_fig4.png"
+  fig5_per_model:     "{model}_{core}_roc_fig5.png"
+  fig5_comparison:    "all_models_{core}_roc_comparison_fig5.png"
+
+  # summary
+  auc_table:          "auc_comparison_all_models.csv"
+
+  # SLURM logs (%j = SLURM job ID, filled in by sbatch automatically)
+  slurm_train_out:    "slurm_train_{model}_{dataset}_%j.out"
+  slurm_train_err:    "slurm_train_{model}_{dataset}_%j.err"
+  slurm_test_out:     "slurm_test_{model}_%j.out"
+  slurm_test_err:     "slurm_test_{model}_%j.err"
+
+
+# =============================================================================
+#  DATASETS
+# =============================================================================
+datasets:
+
+  # ── Synthetic (Zenodo) ──────────────────────────────────────────────────────
+  ts_500:
+    path_key:    "ts_500"            # maps to paths.ts_500
+    ts_length:   500
+    num_classes: 4
+    class_names: ["fold", "hopf", "transcritical", "null"]
+    # Bury 2021 split (95 / 4 / 1)
+    train_frac:  0.95
+    val_frac:    0.04
+    test_frac:   0.01
+
+  ts_1500:
+    path_key:    "ts_1500"
+    ts_length:   1500
+    num_classes: 4
+    class_names: ["fold", "hopf", "transcritical", "null"]
+    train_frac:  0.95
+    val_frac:    0.04
+    test_frac:   0.01
+
+  # ── SDML surrogate (generated from PANGAEA historical transitions) ──────────
+  # Binary classification: neutral vs pre-transition
+  sdml_MS21:
+    path_key:    "pangaea_clean"
+    core:        "MS21"
+    ts_length:   500                 # surrogate length matches ts_500
+    num_classes: 2
+    class_names: ["neutral", "pre_transition"]
+    train_frac:  0.60
+    val_frac:    0.20
+    test_frac:   0.20
+
+  sdml_MS66:
+    path_key:    "pangaea_clean"
+    core:        "MS66"
+    ts_length:   500
+    num_classes: 2
+    class_names: ["neutral", "pre_transition"]
+    train_frac:  0.60
+    val_frac:    0.20
+    test_frac:   0.20
+
+  sdml_64PE406E1:
+    path_key:    "pangaea_clean"
+    core:        "64PE406E1"
+    ts_length:   500
+    num_classes: 2
+    class_names: ["neutral", "pre_transition"]
+    train_frac:  0.60
+    val_frac:    0.20
+    test_frac:   0.20
+
+
+# =============================================================================
+#  PANGAEA EMPIRICAL DATA
+#  Sapropel definitions for each core.
+#  Each sapropel has a pre-transition window and a neutral window.
+#  Used by: pangea_cleaner.py, rolling_window.py, evaluate.py
+# =============================================================================
+pangaea:
+
+  variable:            "Mo"          # proxy variable (Mo ppm = anoxia proxy)
+  bandwidth_years:     900           # Gaussian kernel bandwidth (Hennekam 2020)
+  rolling_window_frac: 0.50          # 50% of series length
+
+  cores:
+
+    MS21:
+      n_events: 2
+      sapropels:
+        - id:              "S3"
+          role:            "train"    # historical — used for SDML surrogate
+          # approximate age bounds in kyr BP (before present)
+          neutral_start:   -27.0
+          neutral_end:     -25.0
+          pretrans_start:  -25.0
+          pretrans_end:    -22.5
+          transition_kyr:  -22.5
+
+        - id:              "S1"
+          role:            "test"     # future — used for testing
+          neutral_start:   -17.0
+          neutral_end:     -15.0
+          pretrans_start:  -15.0
+          pretrans_end:    -11.5
+          transition_kyr:  -11.5
+
+    MS66:
+      n_events: 4
+      sapropels:
+        - id:              "S5"
+          role:            "train"
+          neutral_start:   -60.0
+          neutral_end:     -57.0
+          pretrans_start:  -57.0
+          pretrans_end:    -54.0
+          transition_kyr:  -54.0
+
+        - id:              "S4"
+          role:            "train"
+          neutral_start:   -45.0
+          neutral_end:     -42.0
+          pretrans_start:  -42.0
+          pretrans_end:    -39.0
+          transition_kyr:  -39.0
+
+        - id:              "S3"
+          role:            "test"
+          neutral_start:   -27.0
+          neutral_end:     -25.0
+          pretrans_start:  -25.0
+          pretrans_end:    -22.5
+          transition_kyr:  -22.5
+
+        - id:              "S1"
+          role:            "test"
+          neutral_start:   -17.0
+          neutral_end:     -15.0
+          pretrans_start:  -15.0
+          pretrans_end:    -11.5
+          transition_kyr:  -11.5
+
+    64PE406E1:
+      n_events: 7
+      sapropels:
+        - id:              "S9"
+          role:            "train"
+          neutral_start:   -110.0
+          neutral_end:     -107.0
+          pretrans_start:  -107.0
+          pretrans_end:    -104.0
+          transition_kyr:  -104.0
+
+        - id:              "S8"
+          role:            "train"
+          neutral_start:   -95.0
+          neutral_end:     -92.0
+          pretrans_start:  -92.0
+          pretrans_end:    -89.0
+          transition_kyr:  -89.0
+
+        - id:              "S7"
+          role:            "train"
+          neutral_start:   -80.0
+          neutral_end:     -77.0
+          pretrans_start:  -77.0
+          pretrans_end:    -74.0
+          transition_kyr:  -74.0
+
+        - id:              "S6"
+          role:            "test"
+          neutral_start:   -65.0
+          neutral_end:     -62.0
+          pretrans_start:  -62.0
+          pretrans_end:    -59.0
+          transition_kyr:  -59.0
+
+        - id:              "S5"
+          role:            "test"
+          neutral_start:   -60.0
+          neutral_end:     -57.0
+          pretrans_start:  -57.0
+          pretrans_end:    -54.0
+          transition_kyr:  -54.0
+
+        - id:              "S4"
+          role:            "test"
+          neutral_start:   -45.0
+          neutral_end:     -42.0
+          pretrans_start:  -42.0
+          pretrans_end:    -39.0
+          transition_kyr:  -39.0
+
+        - id:              "S3"
+          role:            "test"
+          neutral_start:   -27.0
+          neutral_end:     -25.0
+          pretrans_start:  -25.0
+          pretrans_end:    -22.5
+          transition_kyr:  -22.5
+
+
+# =============================================================================
+#  MODELS
+#  All models use the same interface: forward(x) → logits
+#  num_classes is set automatically from the dataset config at runtime.
+# =============================================================================
+models:
+  - name:        "cnn_lstm"
+    description: "CNN-LSTM hybrid — Bury 2021 baseline (exact reproduction)"
+
+  - name:        "lstm"
+    description: "Standalone LSTM — Ma 2025"
+
+  - name:        "cnn"
+    description: "Standalone CNN  — Ma 2025"
+
+
+# =============================================================================
+#  TRAINING HYPERPARAMETERS — per model
+#  cnn_lstm : Bury 2021 (1500 epochs, batch=256, pad variants 1+2)
+#  lstm, cnn : Ma 2025  (100 epochs,  batch=64,  pad variant 1 only)
+#  train.py reads cfg["training"][model_name] automatically.
+# =============================================================================
+training:
+
+  cnn_lstm:
+    epochs:             1500
+    lr:                 0.0005
+    batch_size:         256
+    patience:           50
+    pad_variants:       [1, 2]
+    weight_decay:       0.0
+    grad_clip:          1.0
+    optimizer:          "adam"
+    scheduler:          "reduce_on_plateau"
+    scheduler_patience: 20
+    scheduler_factor:   0.5
+    min_lr:             0.000001
+
+  lstm:
+    epochs:             100
+    lr:                 0.001
+    batch_size:         64
+    patience:           5
+    pad_variants:       [1]
+    weight_decay:       0.0
+    grad_clip:          1.0
+    optimizer:          "adam"
+    scheduler:          "none"
+    min_lr:             0.000001
+
+  cnn:
+    epochs:             100
+    lr:                 0.001
+    batch_size:         64
+    patience:           5
+    pad_variants:       [1]
+    weight_decay:       0.0
+    grad_clip:          1.0
+    optimizer:          "adam"
+    scheduler:          "none"
+    min_lr:             0.000001
+
+  sdml:
+    epochs:             100
+    lr:                 0.001
+    batch_size:         64
+    patience:           5
+    pad_variants:       [1]
+    weight_decay:       0.0
+    grad_clip:          1.0
+    optimizer:          "adam"
+    scheduler:          "none"
+    min_lr:             0.000001
+
+  # ── Defaults used by get_dataloader() when no model name is available ────────
+  # get_dataloader does not know the model — it uses these fallback values.
+  # bury = Zenodo datasets (ts_500, ts_1500)
+  # sdml_default = PANGAEA surrogate datasets
+  defaults:
+    bury:         { batch_size: 256 }
+    sdml_default: { batch_size: 64  }
+
+
+# =============================================================================
+#  INFERENCE / ROLLING WINDOW
+#  Matches Bury 2021 and Ma 2025 evaluation protocol exactly.
+# =============================================================================
+inference:
+
+  rolling_window_frac: 0.50         # window = 50% of series length
+
+  # Bury 2021: 40 steps between 60% and 100% for most datasets
+  # Exception: PANGAEA cores use 80-100% (shorter series)
+  prediction_steps:    40
+
+  # per-dataset start fraction (overrides default if specified)
+  start_frac:
+    default:           0.60
+    MS21:              0.60         # N=883, enough length
+    MS66:              0.80         # N=416, shorter
+    64PE406E1:         0.80         # N=212-376, shorter
+  end_frac:            1.00
+
+
+# =============================================================================
+#  SURROGATE DATA (SDML mode only)
+#  AAFT is the primary method from Ma 2025.
+#  Others available for robustness checks.
+# =============================================================================
+surrogate:
+  method:          "AAFT"           # primary: AAFT (Ma 2025 Fig 4)
+  n_surrogates:    1000             # surrogates per segment
+  available_methods:
+    - "RP"                          # random permutation
+    - "FT"                          # Fourier transform
+    - "AAFT"                        # amplitude-adjusted FT (default)
+    - "IAAFT1"                      # iterative AAFT (exact histogram)
+    - "IAAFT2"                      # iterative AAFT (exact power spectrum)
+
+
+# =============================================================================
+#  FIGURE SETTINGS
+#  Replicates exact style from Bury 2021 and Ma 2025.
+# =============================================================================
+figures:
+  dpi:             150
+  format:          "png"
+  style:           "seaborn-v0_8-whitegrid"
+
+  colors:
+    trajectory:    "#1f77b4"        # blue
+    smoothing:     "#888888"        # gray
+    variance:      "#E07B1A"        # orange  (matches Bury Fig 1)
+    lag1_ac:       "#2D8A4E"        # green
+    dl_prob:       "#7165D0"        # purple
+
+    # Figure 3 segment colours (Ma 2025)
+    train_segment: "#2D8A4E"        # green  — historical / used for surrogates
+    post_segment:  "#E24B4A"        # red    — post-transition / ignored
+    test_segment:  "#1f77b4"        # blue   — future / used for testing
+
+    # ROC curves per model
+    roc_cnn_lstm:  "#1f77b4"        # blue   (Bury baseline)
+    roc_lstm:      "#E07B1A"        # orange
+    roc_cnn:       "#2D8A4E"        # green
+    roc_variance:  "#E24B4A"        # red dashed  (EWS baseline)
+    roc_lag1_ac:   "#17BECF"        # cyan dashed (EWS baseline)
+    roc_random:    "#AAAAAA"        # gray diagonal (chance level)
+
+  # Figure 2 layout
+  fig2:
+    figsize:       [10, 8]
+    n_panels:      5               # A=trajectory, B=var, C=ac, D=DL, E=your model
+    confusion_matrix_side: true    # show F and G panels
+
+  # Figure 3 layout
+  fig3:
+    figsize:       [18, 6]
+    cores:         ["MS21", "MS66", "64PE406E1"]
+
+  # Figure 4 layout (4 rows × n_transitions columns)
+  fig4:
+    row_labels:    ["Trajectory", "Variance", "Lag-1 AC", "DL probability"]
+    figsize_per_col: [2.5, 7]      # width × height per transition column
+
+  # Figure 5 layout
+  fig5:
+    figsize:       [18, 6]
+    cores:         ["MS21", "MS66", "64PE406E1"]
+    show_auc:      true
+    show_inset:    true            # bar chart inset (pre-tran vs neutral)
+
+
+# =============================================================================
+#  SLURM CONFIGURATION
+#  Used by training/train_array.sh and testing/test_array.sh
+# =============================================================================
+slurm:
+
+  # ── Train array job ──────────────────────────────────────────────────────────
+  train:
+    partition:      "h100"
+    gres:           "gpu:1"
+    cpus_per_task:  4
+    mem:            "32G"
+    time:           "24:00:00"      # 24 hrs — enough for 1500 epochs on ts_1500
+    job_name:       "ews_train"
+    array_size:     3               # one job per model (cnn_lstm, lstm, cnn)
+
+  # ── Test array job ────────────────────────────────────────────────────────────
+  test:
+    partition:      "h100"
+    gres:           "gpu:1"
+    cpus_per_task:  4
+    mem:            "16G"
+    time:           "02:00:00"      # inference is fast
+    job_name:       "ews_test"
+    array_size:     3               # one job per model
+
+  # ── Model index map (SLURM_ARRAY_TASK_ID → model name) ───────────────────────
+  # Must match array_size above
+  model_array:
+    0: "cnn_lstm"
+    1: "lstm"
+    2: "cnn"
+
+  # ── Dataset array for training (trained in sequence within one job) ───────────
+  train_datasets:   ["ts_500", "ts_1500"]
+
+  # ── PANGAEA cores for testing (all tested in sequence within one job) ─────────
+  test_cores:       ["MS21", "MS66", "64PE406E1"]

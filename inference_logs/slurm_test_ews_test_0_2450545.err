@@ -1,0 +1,15 @@
+/var/lib/slurm/slurmd/job2450545/slurm_script: line 54: /home/s466553/myenv/bin/activate: No such file or directory
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/testing/evaluate.py", line 346, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/evaluate.py", line 260, in main
+    models = load_checkpoints(
+        model_name   = args.model,
+    ...<5 lines>...
+        logger       = logger,
+    )
+  File "/home/s466553/Master_thesis/master_thesis/testing/evaluate.py", line 92, in load_checkpoints
+    pad_variants = cfg["training"]["bury"]["pad_variants"]  # [1, 2]
+                   ~~~~~~~~~~~~~~~^^^^^^^^
+KeyError: 'bury'
