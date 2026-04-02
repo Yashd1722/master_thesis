@@ -260,96 +260,133 @@ def plot_figure3(cfg: dict):
 
 def plot_figure4(model_name: str, core_name: str, cfg: dict):
     """
-    One figure per (model, core).
-    Rows: trajectory | variance | lag-1 AC | p_transition
-    Columns: one per test sapropel × one per element.
+    Reproduces Ma 2025 Fig 4 exactly — per-element, per-sapropel.
+
+    Layout for each element:
+      Row 1: Raw signal (grey) + Gaussian smoothing (dark grey)
+             Rolling window arrow showing window size
+             N shown in title
+      Row 2: Variance (orange) — should INCREASE toward transition
+      Row 3: Lag-1 AC (green) — trend depends on bifurcation type
+      Row 4: DL probability p_transition (purple) — rises toward transition
+
+    One figure per (model, core, element).
+    Columns = one per test sapropel.
+
+    CSD fix: rolling window now sweeps from start→end of segment,
+    not just the last 20%. This makes variance/AC trends visible.
     """
-    fig_cfg  = cfg["figures"]["fig4"]
-    fig_dir  = REPO_ROOT / cfg["paths"]["figures"]
-    test_saps= get_test_sapropels(core_name, cfg)
+    fig_cfg   = cfg["figures"]["fig4"]
+    fig_dir   = REPO_ROOT / cfg["paths"]["figures"]
+    test_saps = get_test_sapropels(core_name, cfg)
 
     if not test_saps:
+        print(f"  No test sapropels for {core_name}")
         return
 
-    # One figure per element (keeps figures readable)
     for element in ELEMENTS:
-        n_cols = len(test_saps)
+        n_cols    = len(test_saps)
         col_w, col_h = fig_cfg["figsize_per_col"]
+
         fig, axes = plt.subplots(
             4, n_cols,
-            figsize=(col_w * n_cols, col_h),
-            squeeze=False,
+            figsize  = (col_w * n_cols, col_h),
+            squeeze  = False,
         )
-        row_labels = fig_cfg["row_labels"]
 
         for col_idx, sap in enumerate(test_saps):
             sap_id = sap["id"]
 
-            # Load forced segment (has raw + smoothed + residuals)
+            # Load forced segment CSV (raw + smoothed + residuals)
             seg_df = load_segment_csv(core_name, sap_id, "forced", cfg)
+
+            # Load prediction CSV (variance, lag1_ac, p_transition over time)
             pred_f = load_pred(model_name, core_name, sap_id,
                                element, "forced", cfg)
 
-            # ── Row 0: trajectory + smoothing ─────────────────────────────────
+            N = len(seg_df) if seg_df is not None else 0
+
+            # ── Row 0: raw trajectory + smoothing ─────────────────────────────
             ax = axes[0][col_idx]
             if seg_df is not None and element in seg_df.columns:
-                age_full  = -seg_df["age_kyr_bp"].values  # negative for x-axis
-                mo_full   = seg_df[element].values
-                trend_col = f"{element}_trend"
-                trend     = seg_df[trend_col].values if trend_col in seg_df.columns \
-                            else np.zeros_like(mo_full)
-                ax.plot(age_full, mo_full,  color=C(cfg,"trajectory"), lw=0.7)
-                ax.plot(age_full, trend,    color=C(cfg,"smoothing"),  lw=1.0)
-                N = len(mo_full)
+                age_full   = seg_df["age_kyr_bp"].values
+                raw_vals   = seg_df[element].values
+                trend_col  = f"{element}_trend"
+                trend_vals = seg_df[trend_col].values                              if trend_col in seg_df.columns                              else np.full_like(raw_vals, np.nan)
+
+                # Raw signal in light grey, smoothed trend in dark
+                ax.plot(age_full, raw_vals,
+                        color="#AAAAAA", lw=0.6, zorder=1, label="raw")
+                ax.plot(age_full, trend_vals,
+                        color=C(cfg,"smoothing"), lw=1.4,
+                        zorder=2, label="smoothed")
+                ax.invert_xaxis()
+
                 # Rolling window arrow
-                win = max(2, int(cfg["inference"]["rolling_window_frac"] * N))
+                win_size = max(2, int(cfg["inference"]["rolling_window_frac"] * N))
+                y_arrow  = np.nanmax(raw_vals) * 0.97
                 ax.annotate("",
-                    xy=(age_full[min(win, N-1)], np.nanmax(mo_full) * 0.95),
-                    xytext=(age_full[0], np.nanmax(mo_full) * 0.95),
-                    arrowprops=dict(arrowstyle="<->", color="k", lw=0.6))
-                ax.text(0.5, 0.98, f"N={N}",
-                        transform=ax.transAxes, fontsize=6,
-                        ha="center", va="top")
+                    xy     = (age_full[min(win_size, N-1)], y_arrow),
+                    xytext = (age_full[0], y_arrow),
+                    arrowprops=dict(arrowstyle="<->", color="k", lw=0.8))
+
+                ax.set_title(
+                    f"{core_name}\n{sap_id}\nN={N}", fontsize=7
+                )
             else:
                 ax.text(0.5, 0.5, "No data",
-                        ha="center", va="center", transform=ax.transAxes,
-                        fontsize=7)
+                        ha="center", va="center",
+                        transform=ax.transAxes, fontsize=7)
+                ax.set_title(f"{sap_id}", fontsize=7)
 
-            ax.set_title(f"{sap_id}", fontsize=8)
             if col_idx == 0:
-                ax.set_ylabel(f"{element}\n{row_labels[0]}", fontsize=7)
+                ax.set_ylabel(f"{element}\nTrajectory", fontsize=7)
 
             # ── Row 1: variance ────────────────────────────────────────────────
             ax = axes[1][col_idx]
             if pred_f is not None and "variance" in pred_f.columns:
-                age_s = -pred_f["age_kyr_bp"].values
-                ax.plot(age_s, pred_f["variance"].values,
-                        color=C(cfg,"variance"), lw=1.0)
+                age_s = pred_f["age_kyr_bp"].values
+                var_s = pred_f["variance"].values
+                ax.plot(age_s, var_s, color=C(cfg,"variance"), lw=1.2)
+                ax.invert_xaxis()
+                # Show Kendall tau value
+                if "ktau_variance" in pred_f.columns:
+                    ktau = pred_f["ktau_variance"].iloc[0]
+                    ax.text(0.05, 0.88, f"τ={ktau:.2f}",
+                            transform=ax.transAxes, fontsize=6,
+                            color=C(cfg,"variance"))
             if col_idx == 0:
-                ax.set_ylabel(row_labels[1], fontsize=7)
+                ax.set_ylabel("Variance", fontsize=7)
 
             # ── Row 2: lag-1 AC ────────────────────────────────────────────────
             ax = axes[2][col_idx]
             if pred_f is not None and "lag1_ac" in pred_f.columns:
-                age_s = -pred_f["age_kyr_bp"].values
-                ax.plot(age_s, pred_f["lag1_ac"].values,
-                        color=C(cfg,"lag1_ac"), lw=1.0)
+                age_s = pred_f["age_kyr_bp"].values
+                ac_s  = pred_f["lag1_ac"].values
+                ax.plot(age_s, ac_s, color=C(cfg,"lag1_ac"), lw=1.2)
+                ax.invert_xaxis()
+                if "ktau_lag1_ac" in pred_f.columns:
+                    ktau = pred_f["ktau_lag1_ac"].iloc[0]
+                    ax.text(0.05, 0.88, f"τ={ktau:.2f}",
+                            transform=ax.transAxes, fontsize=6,
+                            color=C(cfg,"lag1_ac"))
             if col_idx == 0:
-                ax.set_ylabel(row_labels[2], fontsize=7)
+                ax.set_ylabel("Lag-1 AC", fontsize=7)
 
-            # ── Row 3: DL probability ──────────────────────────────────────────
+            # ── Row 3: DL probability p_transition ────────────────────────────
             ax = axes[3][col_idx]
             if pred_f is not None and "p_transition" in pred_f.columns:
-                age_s = -pred_f["age_kyr_bp"].values
-                ax.plot(age_s, pred_f["p_transition"].values,
-                        color=C(cfg,"dl_prob"), lw=1.2)
+                age_s  = pred_f["age_kyr_bp"].values
+                prob_s = pred_f["p_transition"].values
+                ax.plot(age_s, prob_s, color=C(cfg,"dl_prob"), lw=1.4)
                 ax.set_ylim(-0.05, 1.05)
-                ax.axhline(0.5, color="gray", lw=0.4, ls=":")
+                ax.axhline(0.5, color="gray", lw=0.5, ls=":")
+                ax.invert_xaxis()
             if col_idx == 0:
-                ax.set_ylabel(row_labels[3], fontsize=7)
-            ax.set_xlabel("Time (ka BP)", fontsize=7)
+                ax.set_ylabel("DL probability", fontsize=7)
+            ax.set_xlabel("Age (ka BP)", fontsize=7)
 
-            # Transition shading
+            # Formatting
             for row in range(4):
                 axes[row][col_idx].tick_params(labelsize=6)
             for row in range(3):
@@ -363,14 +400,19 @@ def plot_figure4(model_name: str, core_name: str, cfg: dict):
         savefig(fig, fig_dir / fname, cfg)
 
 
+
 # =============================================================================
-#  FIGURE 5 — ROC curves matching paper style (Ma 2025 Fig 5)
+#  ROC inset helper
 # =============================================================================
 
 def _roc_inset(ax, mean_p_forced: float, mean_p_neutral: float):
-    """Add bar chart inset. Uses numeric y positions to avoid unit conflict."""
+    """
+    Inset bar chart showing mean p_transition for pre-tran vs neutral.
+    Matches Ma 2025 Fig 5 inset style.
+    Uses numeric y positions to avoid matplotlib unit conflict.
+    """
     inset  = ax.inset_axes([0.52, 0.05, 0.45, 0.32])
-    ypos   = [0.0, 1.0]          # numeric positions, not strings
+    ypos   = [0.0, 1.0]
     vals   = [mean_p_neutral, mean_p_forced]
     colors = ["#888888", "#E07B1A"]
     inset.barh(ypos, vals, color=colors, height=0.6)
@@ -510,9 +552,10 @@ def plot_figure5_comparison(core_name: str, element: str, cfg: dict):
     plt.tight_layout()
     fname = f"all_models_{core_name}_{element}_roc_fig5.png"
     savefig(fig, fig_dir / fname, cfg)
-#  FIGURE 2 — Theoretical model (fold bifurcation)
-# =============================================================================
 
+
+# =============================================================================
+#  FIGURE 2 — Theoretical model (fold bifurcation)
 # =============================================================================
 #  Load one test sample per class from ts_500/ts_1500 cache
 # =============================================================================
