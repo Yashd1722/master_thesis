@@ -2,16 +2,35 @@
   "model": "cnn",
   "dataset": "ts_500",
   "core": "MS21",
+  "elements": [
+    "Al",
+    "Ba",
+    "Mo",
+    "Ti",
+    "U"
+  ],
   "sapropels": {
     "S1": {
-      "n_series": 497,
-      "n_steps": 40,
-      "ktau_variance": -0.541,
-      "ktau_lag1_ac": -0.8821,
-      "mean_p_transition": 0.7612608075141907,
-      "auc_cnn": 0.34,
-      "auc_variance": 0.027,
-      "auc_lag1_ac": 0.0
+      "Al": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ba": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Mo": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ti": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "U": {
+        "n_forced": 40,
+        "n_neutral": 40
+      }
     }
   }
 }

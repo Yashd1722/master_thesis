@@ -2,46 +2,101 @@
   "model": "lstm",
   "dataset": "ts_500",
   "core": "64PE406E1",
+  "elements": [
+    "Al",
+    "Ba",
+    "Mo",
+    "Ti",
+    "U"
+  ],
   "sapropels": {
     "S6": {
-      "n_series": 151,
-      "n_steps": 40,
-      "ktau_variance": 0.7088,
-      "ktau_lag1_ac": -0.6495,
-      "mean_p_transition": 0.980676531791687,
-      "auc_lstm": 0.633,
-      "auc_variance": 1.0,
-      "auc_lag1_ac": 0.0
+      "Al": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ba": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Mo": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ti": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "U": {
+        "n_forced": 40,
+        "n_neutral": 40
+      }
     },
     "S5": {
-      "n_series": 132,
-      "n_steps": 40,
-      "ktau_variance": -0.8993,
-      "ktau_lag1_ac": 0.0362,
-      "mean_p_transition": 0.7122822999954224,
-      "auc_lstm": 0.035,
-      "auc_variance": 0.0,
-      "auc_lag1_ac": 0.543
+      "Al": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ba": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Mo": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ti": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "U": {
+        "n_forced": 40,
+        "n_neutral": 40
+      }
     },
     "S4": {
-      "n_series": 151,
-      "n_steps": 40,
-      "ktau_variance": 0.549,
-      "ktau_lag1_ac": -0.1701,
-      "mean_p_transition": 0.944413959980011,
-      "auc_lstm": 0.633,
-      "auc_variance": 0.93,
-      "auc_lag1_ac": 0.355
+      "Al": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ba": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Mo": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ti": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "U": {
+        "n_forced": 40,
+        "n_neutral": 40
+      }
     },
     "S3": {
-      "n_series": 113,
-      "n_steps": 40,
-      "ktau_variance": -0.5493,
-      "ktau_lag1_ac": -0.1658,
-      "mean_p_transition": 0.9772610664367676,
-      "auc_lstm": 0.316,
-      "auc_variance": 0.195,
-      "auc_lag1_ac": 0.32
+      "Al": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ba": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Mo": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "Ti": {
+        "n_forced": 40,
+        "n_neutral": 40
+      },
+      "U": {
+        "n_forced": 40,
+        "n_neutral": 40
+      }
     }
   }
 }

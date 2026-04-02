@@ -1,0 +1,267 @@
+==============================================
+  Job ID        : 2451173
+  Array task    : 0
+  Model         : cnn_lstm
+  Dataset       : ts_500
+  Node          : jnultra02
+  GPUs          : 0
+  Repo dir      : /home/s466553/Master_thesis/master_thesis
+  Venv          : /home/s466553/Master_thesis/myenv/bin/activate
+  Python        : /home/s466553/Master_thesis/myenv/bin/python
+  Start time    : Thu Apr  2 11:48:24 AM CEST 2026
+==============================================
+
+>>> Step 1/3: Running inference — cnn_lstm on all cores ...
+
+11:48:29 | Model   : cnn_lstm
+11:48:29 | Dataset : ts_500  ts_len=500  classes=['fold', 'hopf', 'transcritical', 'null']
+11:48:29 | Cores   : ['MS21', 'MS66', '64PE406E1']
+11:48:29 | Elements: ['Al', 'Ba', 'Mo', 'Ti', 'U']
+11:48:29 | Device  : cuda
+11:48:30 |   Loaded: cnn_lstm_ts_500_v1_best.ckpt
+11:48:30 |   Loaded: cnn_lstm_ts_500_v2_best.ckpt
+11:48:30 | Core: MS21
+11:48:30 | 
+  Sapropel: S1
+11:48:30 |     Al/forced: N=365  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Al_forced.csv
+11:48:30 |     Al/neutral: N=132  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Al_neutral.csv
+11:48:30 |     Ba/forced: N=365  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Ba_forced.csv
+11:48:30 |     Ba/neutral: N=132  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Ba_neutral.csv
+11:48:30 |     Mo/forced: N=365  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Mo_forced.csv
+11:48:30 |     Mo/neutral: N=132  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Mo_neutral.csv
+11:48:30 |     Ti/forced: N=365  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Ti_forced.csv
+11:48:30 |     Ti/neutral: N=132  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_Ti_neutral.csv
+11:48:30 |     U/forced: N=365  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_U_forced.csv
+11:48:30 |     U/neutral: N=132  steps=40
+11:48:30 |   Saved → cnn_lstm_MS21_S1_U_neutral.csv
+11:48:30 | 
+  MS21 done in 0.6s
+11:48:30 |   Metrics → cnn_lstm_MS21_test_metrics.json
+11:48:30 | Core: MS66
+11:48:31 | 
+  Sapropel: S3
+11:48:31 |     Al/forced: N=102  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Al_forced.csv
+11:48:31 |     Al/neutral: N=43  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Al_neutral.csv
+11:48:31 |     Ba/forced: N=102  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=43  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=102  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=43  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=102  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=43  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_Ti_neutral.csv
+11:48:31 |     U/forced: N=102  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_U_forced.csv
+11:48:31 |     U/neutral: N=43  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S3_U_neutral.csv
+11:48:31 | 
+  Sapropel: S1
+11:48:31 |     Al/forced: N=146  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Al_forced.csv
+11:48:31 |     Al/neutral: N=83  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Al_neutral.csv
+11:48:31 |     Ba/forced: N=146  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=83  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=146  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=83  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=146  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=83  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_Ti_neutral.csv
+11:48:31 |     U/forced: N=146  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_U_forced.csv
+11:48:31 |     U/neutral: N=83  steps=40
+11:48:31 |   Saved → cnn_lstm_MS66_S1_U_neutral.csv
+11:48:31 | 
+  MS66 done in 0.2s
+11:48:31 |   Metrics → cnn_lstm_MS66_test_metrics.json
+11:48:31 | Core: 64PE406E1
+11:48:31 | 
+  Sapropel: S6
+11:48:31 |     Al/forced: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Al_forced.csv
+11:48:31 |     Al/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Al_neutral.csv
+11:48:31 |     Ba/forced: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_Ti_neutral.csv
+11:48:31 |     U/forced: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_U_forced.csv
+11:48:31 |     U/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S6_U_neutral.csv
+11:48:31 | 
+  Sapropel: S5
+11:48:31 |     Al/forced: N=57  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Al_forced.csv
+11:48:31 |     Al/neutral: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Al_neutral.csv
+11:48:31 |     Ba/forced: N=57  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=57  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=57  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_Ti_neutral.csv
+11:48:31 |     U/forced: N=57  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_U_forced.csv
+11:48:31 |     U/neutral: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S5_U_neutral.csv
+11:48:31 | 
+  Sapropel: S4
+11:48:31 |     Al/forced: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Al_forced.csv
+11:48:31 |     Al/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Al_neutral.csv
+11:48:31 |     Ba/forced: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_Ti_neutral.csv
+11:48:31 |     U/forced: N=75  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_U_forced.csv
+11:48:31 |     U/neutral: N=76  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S4_U_neutral.csv
+11:48:31 | 
+  Sapropel: S3
+11:48:31 |     Al/forced: N=63  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Al_forced.csv
+11:48:31 |     Al/neutral: N=50  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Al_neutral.csv
+11:48:31 |     Ba/forced: N=63  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Ba_forced.csv
+11:48:31 |     Ba/neutral: N=50  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Ba_neutral.csv
+11:48:31 |     Mo/forced: N=63  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Mo_forced.csv
+11:48:31 |     Mo/neutral: N=50  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Mo_neutral.csv
+11:48:31 |     Ti/forced: N=63  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Ti_forced.csv
+11:48:31 |     Ti/neutral: N=50  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_Ti_neutral.csv
+11:48:31 |     U/forced: N=63  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_U_forced.csv
+11:48:31 |     U/neutral: N=50  steps=40
+11:48:31 |   Saved → cnn_lstm_64PE406E1_S3_U_neutral.csv
+11:48:31 | 
+  64PE406E1 done in 0.4s
+11:48:31 |   Metrics → cnn_lstm_64PE406E1_test_metrics.json
+11:48:31 | 
+All cores done.
+11:48:31 | Next: python testing/compute_metrics.py --model cnn_lstm --dataset ts_500
+
+>>> Step 1/3 completed successfully.
+
+>>> Step 2/3: Computing metrics — cnn_lstm ...
+
+
+============================================================
+  Model: cnn_lstm  Dataset: ts_500
+============================================================
+
+  Core: MS21
+  MS21/Al: AUC cnn_lstm=0.674  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Ba: AUC cnn_lstm=1.000  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Mo: AUC cnn_lstm=1.000  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Ti: AUC cnn_lstm=0.927  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/U: AUC cnn_lstm=1.000  var=1.000  ac=0.441  N_forced=40  N_neutral=40
+
+  Core: MS66
+  MS66/Al: AUC cnn_lstm=0.534  var=0.688  ac=0.722  N_forced=80  N_neutral=80
+  MS66/Ba: AUC cnn_lstm=0.832  var=0.276  ac=0.124  N_forced=80  N_neutral=80
+  MS66/Mo: AUC cnn_lstm=0.537  var=0.163  ac=0.655  N_forced=80  N_neutral=80
+  MS66/Ti: AUC cnn_lstm=0.515  var=0.570  ac=0.751  N_forced=80  N_neutral=80
+  MS66/U: AUC cnn_lstm=0.571  var=0.415  ac=0.367  N_forced=80  N_neutral=80
+
+  Core: 64PE406E1
+  64PE406E1/Al: AUC cnn_lstm=0.713  var=0.424  ac=0.279  N_forced=160  N_neutral=160
+  64PE406E1/Ba: AUC cnn_lstm=0.470  var=0.493  ac=0.528  N_forced=160  N_neutral=160
+  64PE406E1/Mo: AUC cnn_lstm=0.508  var=0.376  ac=0.208  N_forced=160  N_neutral=160
+  64PE406E1/Ti: AUC cnn_lstm=0.664  var=0.386  ac=0.238  N_forced=160  N_neutral=160
+  64PE406E1/U: AUC cnn_lstm=0.442  var=0.340  ac=0.595  N_forced=160  N_neutral=160
+
+============================================================
+  Building AUC comparison table
+============================================================
+
+AUC table → auc_comparison_all_models.csv
+     core element  auc_cnn_lstm  auc_variance  auc_lag1_ac   N  auc_lstm  auc_cnn
+     MS21      Al         0.674         0.000        0.000  80     1.000      NaN
+     MS21      Ba         1.000         0.000        0.000  80     0.496      NaN
+     MS21      Mo         1.000         0.000        0.000  80     0.999      NaN
+     MS21      Ti         0.927         0.000        0.000  80     0.689      NaN
+     MS21       U         1.000         1.000        0.441  80     1.000      NaN
+     MS66      Al         0.534         0.688        0.722 160     0.907      NaN
+     MS66      Ba         0.832         0.276        0.124 160     0.796      NaN
+     MS66      Mo         0.537         0.163        0.655 160     0.878      NaN
+     MS66      Ti         0.515         0.570        0.751 160     0.878      NaN
+     MS66       U         0.571         0.415        0.367 160     0.393      NaN
+64PE406E1      Al         0.713         0.424        0.279 320     0.458      NaN
+64PE406E1      Ba         0.470         0.493        0.528 320     0.408      NaN
+64PE406E1      Mo         0.508         0.376        0.208 320     0.462      NaN
+64PE406E1      Ti         0.664         0.386        0.238 320     0.704      NaN
+64PE406E1       U         0.442         0.340        0.595 320     0.328      NaN
+
+Next: python testing/plot_figures.py --model all --dataset ts_500
+
+>>> Step 2/3 completed successfully.
+
+>>> Step 3/3: Generating figures — cnn_lstm ...
+
+
+--- Figure 3: PANGAEA overview ---
+  Saved → pangaea_overview_fig3.png
+
+=== Model: cnn_lstm ===
+
+--- Figure 2: theoretical model ---
+  Saved → cnn_lstm_ts_500_fold_fig2.png
+
+--- Figure 4: MS21 (all elements) ---
+  Saved → cnn_lstm_MS21_Al_fig4.png
+  Saved → cnn_lstm_MS21_Ba_fig4.png
+  Saved → cnn_lstm_MS21_Mo_fig4.png
+  Saved → cnn_lstm_MS21_Ti_fig4.png
+  Saved → cnn_lstm_MS21_U_fig4.png
+
+--- Figure 5 single: MS21 ---
