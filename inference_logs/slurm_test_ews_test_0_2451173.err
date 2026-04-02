@@ -1,0 +1,51 @@
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/torch/nn/modules/conv.py:370: UserWarning: Using padding='same' with even kernel lengths and odd dilation may require a zero-padded copy of the input be created (Triggered internally at /pytorch/aten/src/ATen/native/Convolution.cpp:1024.)
+  return F.conv1d(
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/axis.py", line 1811, in convert_units
+    ret = self._converter.convert(x, self.units, self)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/category.py", line 49, in convert
+    raise ValueError(
+    ...<2 lines>...
+        'numeric data')
+ValueError: Missing category information for StrCategoryConverter; this might be caused by unintendedly mixing categorical and numeric data
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/testing/plot_figures.py", line 726, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/plot_figures.py", line 713, in main
+    plot_figure5_single(model_name, core_name, cfg)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/plot_figures.py", line 435, in plot_figure5_single
+    _roc_inset(ax,
+    ~~~~~~~~~~^^^^
+               roc_data.get("mean_p_forced", 0.5),
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               roc_data.get("mean_p_neutral", 0.5))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/master_thesis/testing/plot_figures.py", line 372, in _roc_inset
+    bars  = inset.barh(
+        ["Neutral", "Pre-tran"],
+    ...<2 lines>...
+        height=0.5,
+    )
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/axes/_axes.py", line 2834, in barh
+    patches = self.bar(x=left, height=height, width=width, bottom=y,
+                       align=align, data=data, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/__init__.py", line 1524, in inner
+    return func(
+        ax,
+        *map(cbook.sanitize_sequence, args),
+        **{k: cbook.sanitize_sequence(v) for k, v in kwargs.items()})
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/axes/_axes.py", line 2578, in bar
+    y = np.asarray(self.convert_yunits(y))
+                   ~~~~~~~~~~~~~~~~~~~^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/artist.py", line 290, in convert_yunits
+    return ax.yaxis.convert_units(y)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/matplotlib/axis.py", line 1813, in convert_units
+    raise munits.ConversionError('Failed to convert value(s) to axis '
+                                 f'units: {x!r}') from e
+matplotlib.units.ConversionError: Failed to convert value(s) to axis units: ['Neutral', 'Pre-tran']

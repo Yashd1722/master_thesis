@@ -1,0 +1,224 @@
+==============================================
+  Job ID        : 2451252
+  Array task    : 1
+  Model         : lstm
+  Dataset       : ts_500
+  Node          : jnultra02
+  GPUs          : 0
+  Repo dir      : /home/s466553/Master_thesis/master_thesis
+  Venv          : /home/s466553/Master_thesis/myenv/bin/activate
+  Python        : /home/s466553/Master_thesis/myenv/bin/python
+  Start time    : Thu Apr  2 12:06:56 PM CEST 2026
+==============================================
+
+>>> Step 1/3: Running inference — lstm on all cores ...
+
+12:06:58 | Model   : lstm
+12:06:58 | Dataset : ts_500  ts_len=500  classes=['fold', 'hopf', 'transcritical', 'null']
+12:06:58 | Cores   : ['MS21', 'MS66', '64PE406E1']
+12:06:58 | Elements: ['Al', 'Ba', 'Mo', 'Ti', 'U']
+12:06:58 | Device  : cuda
+12:06:59 |   Loaded: lstm_ts_500_v1_best.ckpt
+12:06:59 | Core: MS21
+12:06:59 | 
+  Sapropel: S1
+12:06:59 |     Al/forced: N=365  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Al_forced.csv
+12:06:59 |     Al/neutral: N=132  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Al_neutral.csv
+12:06:59 |     Ba/forced: N=365  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Ba_forced.csv
+12:06:59 |     Ba/neutral: N=132  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Ba_neutral.csv
+12:06:59 |     Mo/forced: N=365  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Mo_forced.csv
+12:06:59 |     Mo/neutral: N=132  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Mo_neutral.csv
+12:06:59 |     Ti/forced: N=365  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Ti_forced.csv
+12:06:59 |     Ti/neutral: N=132  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_Ti_neutral.csv
+12:06:59 |     U/forced: N=365  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_U_forced.csv
+12:06:59 |     U/neutral: N=132  steps=40
+12:06:59 |   Saved → lstm_MS21_S1_U_neutral.csv
+12:06:59 | 
+  MS21 done in 0.2s
+12:06:59 |   Metrics → lstm_MS21_test_metrics.json
+12:06:59 | Core: MS66
+12:06:59 | 
+  Sapropel: S3
+12:06:59 |     Al/forced: N=102  steps=40
+12:06:59 |   Saved → lstm_MS66_S3_Al_forced.csv
+12:06:59 |     Al/neutral: N=43  steps=40
+12:06:59 |   Saved → lstm_MS66_S3_Al_neutral.csv
+12:06:59 |     Ba/forced: N=102  steps=40
+12:06:59 |   Saved → lstm_MS66_S3_Ba_forced.csv
+12:06:59 |     Ba/neutral: N=43  steps=40
+12:06:59 |   Saved → lstm_MS66_S3_Ba_neutral.csv
+12:06:59 |     Mo/forced: N=102  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=43  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=102  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=43  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_Ti_neutral.csv
+12:07:00 |     U/forced: N=102  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_U_forced.csv
+12:07:00 |     U/neutral: N=43  steps=40
+12:07:00 |   Saved → lstm_MS66_S3_U_neutral.csv
+12:07:00 | 
+  Sapropel: S1
+12:07:00 |     Al/forced: N=146  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Al_forced.csv
+12:07:00 |     Al/neutral: N=83  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Al_neutral.csv
+12:07:00 |     Ba/forced: N=146  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Ba_forced.csv
+12:07:00 |     Ba/neutral: N=83  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Ba_neutral.csv
+12:07:00 |     Mo/forced: N=146  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=83  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=146  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=83  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_Ti_neutral.csv
+12:07:00 |     U/forced: N=146  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_U_forced.csv
+12:07:00 |     U/neutral: N=83  steps=40
+12:07:00 |   Saved → lstm_MS66_S1_U_neutral.csv
+12:07:00 | 
+  MS66 done in 0.2s
+12:07:00 |   Metrics → lstm_MS66_test_metrics.json
+12:07:00 | Core: 64PE406E1
+12:07:00 | 
+  Sapropel: S6
+12:07:00 |     Al/forced: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Al_forced.csv
+12:07:00 |     Al/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Al_neutral.csv
+12:07:00 |     Ba/forced: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Ba_forced.csv
+12:07:00 |     Ba/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Ba_neutral.csv
+12:07:00 |     Mo/forced: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_Ti_neutral.csv
+12:07:00 |     U/forced: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_U_forced.csv
+12:07:00 |     U/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S6_U_neutral.csv
+12:07:00 | 
+  Sapropel: S5
+12:07:00 |     Al/forced: N=57  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Al_forced.csv
+12:07:00 |     Al/neutral: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Al_neutral.csv
+12:07:00 |     Ba/forced: N=57  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Ba_forced.csv
+12:07:00 |     Ba/neutral: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Ba_neutral.csv
+12:07:00 |     Mo/forced: N=57  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=57  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_Ti_neutral.csv
+12:07:00 |     U/forced: N=57  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_U_forced.csv
+12:07:00 |     U/neutral: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S5_U_neutral.csv
+12:07:00 | 
+  Sapropel: S4
+12:07:00 |     Al/forced: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Al_forced.csv
+12:07:00 |     Al/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Al_neutral.csv
+12:07:00 |     Ba/forced: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Ba_forced.csv
+12:07:00 |     Ba/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Ba_neutral.csv
+12:07:00 |     Mo/forced: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_Ti_neutral.csv
+12:07:00 |     U/forced: N=75  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_U_forced.csv
+12:07:00 |     U/neutral: N=76  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S4_U_neutral.csv
+12:07:00 | 
+  Sapropel: S3
+12:07:00 |     Al/forced: N=63  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Al_forced.csv
+12:07:00 |     Al/neutral: N=50  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Al_neutral.csv
+12:07:00 |     Ba/forced: N=63  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Ba_forced.csv
+12:07:00 |     Ba/neutral: N=50  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Ba_neutral.csv
+12:07:00 |     Mo/forced: N=63  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Mo_forced.csv
+12:07:00 |     Mo/neutral: N=50  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Mo_neutral.csv
+12:07:00 |     Ti/forced: N=63  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Ti_forced.csv
+12:07:00 |     Ti/neutral: N=50  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_Ti_neutral.csv
+12:07:00 |     U/forced: N=63  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_U_forced.csv
+12:07:00 |     U/neutral: N=50  steps=40
+12:07:00 |   Saved → lstm_64PE406E1_S3_U_neutral.csv
+12:07:00 | 
+  64PE406E1 done in 0.4s
+12:07:00 |   Metrics → lstm_64PE406E1_test_metrics.json
+12:07:00 | 
+All cores done.
+12:07:00 | Next: python testing/compute_metrics.py --model lstm --dataset ts_500
+
+>>> Step 1/3 completed successfully.
+
+>>> Step 2/3: Computing metrics — lstm ...
+
+
+============================================================
+  Model: lstm  Dataset: ts_500
+============================================================
+
+  Core: MS21
+  MS21/Al: AUC lstm=1.000  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Ba: AUC lstm=0.496  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Mo: AUC lstm=0.999  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/Ti: AUC lstm=0.689  var=0.000  ac=0.000  N_forced=40  N_neutral=40
+  MS21/U: AUC lstm=1.000  var=1.000  ac=0.441  N_forced=40  N_neutral=40
+
+  Core: MS66
+  MS66/Al: AUC lstm=0.907  var=0.688  ac=0.722  N_forced=80  N_neutral=80
+  MS66/Ba: AUC lstm=0.796  var=0.276  ac=0.124  N_forced=80  N_neutral=80
+  MS66/Mo: AUC lstm=0.878  var=0.163  ac=0.655  N_forced=80  N_neutral=80
+  MS66/Ti: AUC lstm=0.878  var=0.570  ac=0.751  N_forced=80  N_neutral=80
+  MS66/U: AUC lstm=0.393  var=0.415  ac=0.367  N_forced=80  N_neutral=80
+
+  Core: 64PE406E1
+  64PE406E1/Al: AUC lstm=0.458  var=0.424  ac=0.279  N_forced=160  N_neutral=160
+  64PE406E1/Ba: AUC lstm=0.408  var=0.493  ac=0.528  N_forced=160  N_neutral=160
+  64PE406E1/Mo: AUC lstm=0.462  var=0.376  ac=0.208  N_forced=160  N_neutral=160
+  64PE406E1/Ti: AUC lstm=0.704  var=0.386  ac=0.238  N_forced=160  N_neutral=160
+  64PE406E1/U: AUC lstm=0.328  var=0.340  ac=0.595  N_forced=160  N_neutral=160
+
+============================================================
+  Building AUC comparison table
+============================================================
