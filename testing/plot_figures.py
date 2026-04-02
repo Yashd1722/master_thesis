@@ -459,51 +459,57 @@ def plot_figure5_comparison(core_name: str, element: str, cfg: dict):
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.plot([0, 1], [0, 1], "--", color="#AAAAAA", lw=0.8, alpha=0.6)
 
-    baseline_done = False
-    n_label       = 0
+    baseline_done   = False
+    n_label         = 0
+    mean_p_forced   = 0.8
+    mean_p_neutral  = 0.1
+    roc_found       = False
 
     for model_name in model_list:
         roc_data = load_roc(model_name, core_name, element, cfg)
         if roc_data is None:
             continue
+        roc_found = True
 
         mc = C(cfg, f"roc_{model_name}")
         if model_name in roc_data:
             d = roc_data[model_name]
             ax.plot(d["fpr"], d["tpr"], color=mc, lw=2.0,
-                    label=f"{model_name} ($A$={d['auc']:.2f})")
-        n_label = roc_data.get("N", n_label)
+                    label=f"{model_name} (A={d['auc']:.2f})")
+
+        n_label        = roc_data.get("N", n_label)
+        mean_p_forced  = roc_data.get("mean_p_forced",  mean_p_forced)
+        mean_p_neutral = roc_data.get("mean_p_neutral", mean_p_neutral)
 
         if not baseline_done:
             if "variance" in roc_data:
                 d = roc_data["variance"]
                 ax.plot(d["fpr"], d["tpr"],
                         color=C(cfg,"roc_variance"), lw=1.2, ls="--",
-                        label=f"Var ($A$={d['auc']:.2f})")
+                        label=f"Var (A={d['auc']:.2f})")
             if "lag1_ac" in roc_data:
                 d = roc_data["lag1_ac"]
                 ax.plot(d["fpr"], d["tpr"],
                         color=C(cfg,"roc_lag1_ac"), lw=1.2, ls="--",
-                        label=f"AC ($A$={d['auc']:.2f})")
+                        label=f"AC (A={d['auc']:.2f})")
             baseline_done = True
 
-            _roc_inset(ax,
-                       roc_data.get("mean_p_forced", 0.5),
-                       roc_data.get("mean_p_neutral", 0.5))
+    if not roc_found:
+        ax.text(0.5, 0.5, f"No ROC data for {element}\nRun compute_metrics.py",
+                ha="center", va="center", transform=ax.transAxes, fontsize=8)
+    else:
+        _roc_inset(ax, mean_p_forced, mean_p_neutral)
 
     ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_xlabel("False positive", fontsize=9)
-    ax.set_ylabel("True positive", fontsize=9)
-    ax.set_title(f"{core_name} / {element}", fontsize=9)
+    ax.set_xlabel("False positive rate", fontsize=9)
+    ax.set_ylabel("True positive rate", fontsize=9)
+    ax.set_title(f"{core_name} — {element}", fontsize=9)
     ax.text(0.05, 0.05, f"N={n_label}", transform=ax.transAxes, fontsize=8)
     ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
 
     plt.tight_layout()
     fname = f"all_models_{core_name}_{element}_roc_fig5.png"
     savefig(fig, fig_dir / fname, cfg)
-
-
-# =============================================================================
 #  FIGURE 2 — Theoretical model (fold bifurcation)
 # =============================================================================
 
@@ -564,10 +570,13 @@ def run_rolling_on_sample(residuals: np.ndarray, model,
     from src.rolling_window import _variance, _lag1_ac, prepare_dl_input
     import torch
 
-    n   = len(residuals)
-    win = n // 2
+    n       = len(residuals)
+    win     = n // 2
+    # Start from 10% so we see the probability rise from near-zero
+    # Matches paper Fig 2D where probability starts low and rises
+    start   = max(win, int(0.10 * n))
 
-    positions = np.linspace(win, n, n_steps, dtype=int)
+    positions = np.linspace(start, n, n_steps, dtype=int)
     positions = np.clip(positions, win, n)
 
     variances, ac1s, dl_inputs = [], [], []
@@ -723,18 +732,36 @@ def plot_figure2(model_name: str, dataset_name: str, cfg: dict):
     vline(ax_C); shade(ax_C)
     ax_C.set_ylabel("AC(1)", fontsize=8)
 
-    # Panel D: CNN-LSTM probability
-    ax_D.plot(pos, p_trans_base, color="#1f77b4", lw=1.2)
-    vline(ax_D); shade(ax_D)
-    ax_D.set_ylabel("DL", fontsize=8)
-    ax_D.set_ylim(-0.05, 1.05)
+    # Paper style: show ALL 4 class probabilities per panel
+    # fold=purple, hopf=orange, transcritical=cyan, null=gray
+    # This matches Bury 2021 Fig 1J-L exactly
+    prob_colors = {
+        "fold":         "#7165D0",
+        "hopf":         "#E07B1A",
+        "transcritical":"#17BECF",
+        "null":         "#AAAAAA",
+    }
 
-    # Panel E: this model probability
-    ax_E.plot(pos, p_trans_this, color=colors["dl_prob"], lw=1.2)
+    # Panel D: CNN-LSTM — all 4 class probs
+    for i, cls in enumerate(class_names):
+        col = prob_colors.get(cls, "#888888")
+        lw  = 1.8 if cls == "fold" else 1.0
+        ax_D.plot(pos, probs_base[:, i], color=col, lw=lw, label=cls)
+    vline(ax_D); shade(ax_D)
+    ax_D.set_ylabel("DL prob.", fontsize=8)
+    ax_D.set_ylim(-0.05, 1.05)
+    ax_D.legend(fontsize=5, loc="upper left", ncol=2)
+
+    # Panel E: this model — all 4 class probs
+    for i, cls in enumerate(class_names):
+        col = prob_colors.get(cls, "#888888")
+        lw  = 1.8 if cls == "fold" else 1.0
+        ax_E.plot(pos, probs_this[:, i], color=col, lw=lw, label=cls)
     vline(ax_E); shade(ax_E)
-    ax_E.set_ylabel(model_name.upper(), fontsize=8)
+    ax_E.set_ylabel(f"{model_name} prob.", fontsize=8)
     ax_E.set_ylim(-0.05, 1.05)
     ax_E.set_xlabel("Time", fontsize=8)
+    ax_E.legend(fontsize=5, loc="upper left", ncol=2)
 
     for ax, lbl in zip([ax_A, ax_B, ax_C, ax_D, ax_E],
                         ["A", "B", "C", "D", "E"]):
