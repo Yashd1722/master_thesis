@@ -124,17 +124,19 @@ def compute_rolling_ews(
     Compute rolling window EWS for one element on one segment.
     Returns RollingWindowResult with dl_inputs ready for model inference.
     """
-    inf_cfg    = cfg["inference"]
-    n          = len(residuals)
-    win        = max(10, int(inf_cfg["rolling_window_frac"] * n))
-    start_frac = inf_cfg["start_frac"].get(core_name,
-                                            inf_cfg["start_frac"]["default"])
-    n_steps    = inf_cfg["prediction_steps"]
+    inf_cfg = cfg["inference"]
+    n       = len(residuals)
+    win     = max(10, int(inf_cfg["rolling_window_frac"] * n))
 
-    start_pos  = max(win, int(start_frac * n))
-    end_pos    = min(n,   int(inf_cfg["end_frac"] * n))
-    if start_pos >= end_pos:
-        start_pos, end_pos = win, n
+    # KEY FIX: always sweep from the FIRST valid position (win) to the END.
+    # Using start_frac = 0.80 on a 130-point series gives only 26 steps
+    # which makes variance/AC look flat. We need the full sweep to see
+    # the CSD trend clearly — exactly as Bury 2021 and Ma 2025 do.
+    # The start_frac (60% or 80%) is only used for ROC threshold sweeping
+    # NOT for the time series indicator plots.
+    n_steps   = inf_cfg["prediction_steps"]
+    start_pos = win          # always start from first valid window position
+    end_pos   = n            # always go to end of series
 
     positions = np.clip(
         np.linspace(start_pos, end_pos, n_steps, dtype=int), win, n
