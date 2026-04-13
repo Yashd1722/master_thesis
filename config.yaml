@@ -141,7 +141,9 @@ datasets:
 pangaea:
 
   variable:            "Mo"          # proxy variable (Mo ppm = anoxia proxy)
-  bandwidth_years:     900           # Gaussian kernel bandwidth (Hennekam 2020)
+  bandwidth_years:     400           # Gaussian kernel bandwidth
+                                           # 900 destroys AC structure in residuals
+                                           # 400 preserves geological autocorrelation
   rolling_window_frac: 0.50          # 50% of series length
 
   cores:

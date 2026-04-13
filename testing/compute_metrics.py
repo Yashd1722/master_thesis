@@ -118,11 +118,19 @@ def compute_core_roc(model_name: str, dataset_name: str,
                              element, "neutral", cfg)
 
             if df_f is not None and "p_transition" in df_f.columns:
-                all_forced_dl.extend(df_f["p_transition"].tolist())
-                all_forced_var.extend(df_f["variance"].tolist())
-                all_forced_ac.extend(df_f["lag1_ac"].tolist())
+                # Bury 2021 protocol: use only LAST 40% of forced predictions
+                # (the 80-100% of the pre-transition window).
+                # Early forced predictions have baseline variance — identical
+                # to null. Only the last portion shows elevated CSD.
+                n_f   = len(df_f)
+                start = int(0.60 * n_f)   # last 40%
+                df_f_late = df_f.iloc[start:]
+                all_forced_dl.extend(df_f_late["p_transition"].tolist())
+                all_forced_var.extend(df_f_late["variance"].tolist())
+                all_forced_ac.extend(df_f_late["lag1_ac"].tolist())
 
             if df_n is not None and "p_transition" in df_n.columns:
+                # Use ALL neutral predictions as negative class
                 all_neutral_dl.extend(df_n["p_transition"].tolist())
                 all_neutral_var.extend(df_n["variance"].tolist())
                 all_neutral_ac.extend(df_n["lag1_ac"].tolist())

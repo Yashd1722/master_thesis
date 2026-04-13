@@ -188,45 +188,55 @@ def plot_figure3(cfg: dict):
         ax.plot(-age, mo, color="#CCCCCC", lw=0.4, zorder=1)
 
         # Colour-code each sapropel
+        # The Mo peaks (150-300 ppm) dwarf the pre-transition baseline (0-5 ppm).
+        # Fix: draw coloured segments with thick lines AND add shaded spans
+        # so they are visible even at low Mo values.
+        y_max = np.nanmax(mo)
+        y_min = np.nanmin(mo)
+
         for sap in get_all_sapropels(core_name, cfg):
             sap_id = sap["id"]
             role   = sap["role"]
 
-            # Full sapropel window = pretrans_start to pretrans_end
             p_start = abs(sap["pretrans_start"])
             p_end   = abs(sap["pretrans_end"])
-
-            # Neutral (pre-sapropel) window
             n_start = abs(sap["neutral_start"])
             n_end   = abs(sap["neutral_end"])
 
-            # Green: neutral/historical segment
+            # Determine colours
+            if role == "train":
+                neutral_color  = C(cfg, "train_segment")   # green
+                sapropel_color = C(cfg, "post_segment")     # red
+            else:
+                neutral_color  = C(cfg, "test_segment")     # blue
+                sapropel_color = C(cfg, "test_segment")     # blue
+
+            # Neutral/historical segment — thick coloured line + shaded span
             mask_n = (age <= n_start) & (age >= n_end)
             seg_n  = df[mask_n]
             if not seg_n.empty:
-                color = C(cfg, "train_segment") if role == "train" else C(cfg, "test_segment")
                 ax.plot(-seg_n["age_kyr_bp"], seg_n["Mo"],
-                        color=color, lw=0.8, zorder=3)
+                        color=neutral_color, lw=2.5, zorder=4)
+                ax.axvspan(-n_start, -n_end,
+                           alpha=0.12, color=neutral_color, zorder=2)
 
-            # Blue or red: the sapropel itself
-            mask_s = (age <= p_start) & (age >= p_end)
-            seg_s  = df[mask_s]
-            if not seg_s.empty:
-                if role == "test":
-                    color = C(cfg, "test_segment")      # blue
-                else:
-                    color = C(cfg, "post_segment")      # red (historical peak)
-                ax.plot(-seg_s["age_kyr_bp"], seg_s["Mo"],
-                        color=color, lw=0.8, zorder=4)
+            # Pre-transition (forced) segment
+            mask_p = (age <= p_start) & (age >= p_end)
+            seg_p  = df[mask_p]
+            if not seg_p.empty:
+                ax.plot(-seg_p["age_kyr_bp"], seg_p["Mo"],
+                        color=sapropel_color, lw=2.5, zorder=5)
+                ax.axvspan(-p_start, -p_end,
+                           alpha=0.12, color=sapropel_color, zorder=2)
 
             # Vertical dashed line at transition onset
             trans = -abs(sap["transition_kyr"])
-            ax.axvline(trans, color="black", lw=0.7, ls="--", alpha=0.8, zorder=5)
+            ax.axvline(trans, color="black", lw=0.8,
+                       ls="--", alpha=0.9, zorder=6)
 
-            # Sapropel label above the dashed line
-            y_top = np.nanmax(mo) * 1.02
-            ax.text(trans, y_top, sap_id, fontsize=6,
-                    ha="center", va="bottom", color="black")
+            # Sapropel label at top of panel
+            ax.text(trans, y_max * 1.01, sap_id,
+                    fontsize=6, ha="center", va="bottom", color="black")
 
         ax.set_xlabel("Time (ka BP)", fontsize=8)
         ax.set_ylabel("Mo [ppm]", fontsize=8)

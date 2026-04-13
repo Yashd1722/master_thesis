@@ -247,31 +247,45 @@ def fit_ar1(series: np.ndarray) -> Tuple[float, float]:
 
 def generate_ar1_null_series(residuals: np.ndarray,
                               n_null: int,
-                              seed: int = 42) -> List[np.ndarray]:
+                              seed: int = 42,
+                              ref_residuals: Optional[np.ndarray] = None
+                              ) -> List[np.ndarray]:
     """
-    Generate AR(1) null series matching Bury 2021 protocol exactly:
-      "Null time series of the same length are generated from an
-       AR(1) process fit to the initial 20% of the data."
+    Generate AR(1) null series matching Bury 2021 protocol.
 
-    The AR(1) fit preserves the autocorrelation structure of the
-    real geological data, so the model cannot trivially distinguish
-    null from forced by autocorrelation alone. This is the correct
-    null hypothesis for ROC construction.
+    Key fix: fit AR(1) to a NEUTRAL REFERENCE period, not to the
+    forced series itself. When fit to forced data, AR(1) captures
+    the elevated variance/AC of the pre-transition period and generates
+    null series that look MORE like approaching-bifurcation than the
+    real forced data — giving inverted ROC (AUC < 0.5).
+
+    Protocol:
+      - If ref_residuals provided: fit AR(1) to ref (neutral period)
+      - Otherwise: fit to first 20% of forced (Bury fallback)
+      - Generate n_null series of same length as forced
 
     Parameters
     ----------
-    residuals : pre-transition residuals (full length)
-    n_null    : number of null series to generate (Bury uses 10 per series)
-    seed      : reproducibility seed
-
-    Returns list of null series, each same length as residuals.
+    residuals     : pre-transition residuals (defines output length)
+    n_null        : number of null series (Bury uses 10)
+    seed          : reproducibility
+    ref_residuals : neutral reference residuals to fit AR(1) to
+                    (inter-sapropel period far from any transition)
     """
-    n     = len(residuals)
-    # Fit AR(1) to INITIAL 20% only (Bury 2021 protocol)
-    init  = residuals[:max(3, int(0.20 * n))]
-    phi, sigma = fit_ar1(init)
+    n = len(residuals)
 
-    rng  = np.random.default_rng(seed)
+    # Fit AR(1) to reference period (neutral, not forced)
+    if ref_residuals is not None and len(ref_residuals) >= 5:
+        fit_data = ref_residuals
+    else:
+        # Fallback: first 20% of forced (Bury protocol)
+        fit_data = residuals[:max(3, int(0.20 * n))]
+
+    phi, sigma = fit_ar1(fit_data)
+    logger.info(f"    AR(1) fit: phi={phi:.3f}  sigma={sigma:.4f}  "
+                f"from {len(fit_data)} reference points")
+
+    rng   = np.random.default_rng(seed)
     nulls = []
 
     for _ in range(n_null):
@@ -409,14 +423,20 @@ def process_core(core_name: str, cfg: dict,
                 forced_seg = None
 
             # ── Generate AR(1) null series (Bury 2021 protocol) ───────────────
-            # "Null time series generated from AR(1) process fit to
-            #  the initial 20% of the data" — Bury 2021 Methods
-            # This is the CORRECT null for ROC — NOT inter-sapropel periods.
-            # Inter-sapropel data has geological structure that the model
-            # classifies as bifurcation-type, giving AUC ≈ 0.50.
-            # AR(1) null preserves autocorrelation but has no CSD trend.
+            # AR(1) is fit to the NEUTRAL reference period (inter-sapropel),
+            # NOT to the forced data. This ensures the null series has the
+            # correct baseline variance/AC without any CSD buildup.
             if forced_seg is not None and len(forced_seg) >= 10:
                 ages_forced = forced_seg["age_kyr_bp"].values
+
+                # Load neutral reference for AR(1) fitting
+                # Use the neutral window defined in config (far from transition)
+                neutral_ref = extract_segment(
+                    df,
+                    start_ka = sap["neutral_start"],
+                    end_ka   = sap["neutral_end"],
+                )
+
                 for elem in ELEMENTS:
                     resid_col = f"{elem}_residuals"
                     if resid_col not in forced_seg.columns:
@@ -424,10 +444,19 @@ def process_core(core_name: str, cfg: dict,
                     resids = forced_seg[resid_col].dropna().values
                     if len(resids) < 10:
                         continue
-                    # Generate 10 AR(1) null series (Bury uses 10 per event)
+
+                    # Get neutral reference residuals for AR(1) fitting
+                    ref_resids = None
+                    if resid_col in neutral_ref.columns:
+                        ref_resids = neutral_ref[resid_col].dropna().values
+                        if len(ref_resids) < 5:
+                            ref_resids = None
+
+                    # Generate 10 AR(1) null series
                     null_series = generate_ar1_null_series(
                         resids, n_null=10,
-                        seed=seed + hash(f"{core_name}{sap_id}{elem}") % 100000
+                        seed=seed + hash(f"{core_name}{sap_id}{elem}") % 100000,
+                        ref_residuals=ref_resids,
                     )
                     save_null_series(
                         null_series, ages_forced,
