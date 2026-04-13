@@ -227,6 +227,87 @@ SURROGATE_METHODS = {
     "IAAFT2": lambda s, r: _iaaft_surrogate(s, r, preserve="spectrum"),
 }
 
+# =============================================================================
+#  AR(1) null series generation — Bury 2021 protocol
+# =============================================================================
+
+def fit_ar1(series: np.ndarray) -> Tuple[float, float]:
+    """
+    Fit AR(1) model to a series. Returns (phi, sigma) where:
+      phi   = lag-1 autocorrelation coefficient
+      sigma = noise standard deviation
+    """
+    if len(series) < 3:
+        return 0.0, float(np.std(series))
+    phi   = float(np.corrcoef(series[:-1], series[1:])[0, 1])
+    resid = series[1:] - phi * series[:-1]
+    sigma = float(np.std(resid))
+    return phi, sigma
+
+
+def generate_ar1_null_series(residuals: np.ndarray,
+                              n_null: int,
+                              seed: int = 42) -> List[np.ndarray]:
+    """
+    Generate AR(1) null series matching Bury 2021 protocol exactly:
+      "Null time series of the same length are generated from an
+       AR(1) process fit to the initial 20% of the data."
+
+    The AR(1) fit preserves the autocorrelation structure of the
+    real geological data, so the model cannot trivially distinguish
+    null from forced by autocorrelation alone. This is the correct
+    null hypothesis for ROC construction.
+
+    Parameters
+    ----------
+    residuals : pre-transition residuals (full length)
+    n_null    : number of null series to generate (Bury uses 10 per series)
+    seed      : reproducibility seed
+
+    Returns list of null series, each same length as residuals.
+    """
+    n     = len(residuals)
+    # Fit AR(1) to INITIAL 20% only (Bury 2021 protocol)
+    init  = residuals[:max(3, int(0.20 * n))]
+    phi, sigma = fit_ar1(init)
+
+    rng  = np.random.default_rng(seed)
+    nulls = []
+
+    for _ in range(n_null):
+        null    = np.zeros(n, dtype=np.float64)
+        null[0] = rng.normal(0, sigma)
+        for t in range(1, n):
+            null[t] = phi * null[t-1] + rng.normal(0, sigma)
+        nulls.append(null.astype(np.float32))
+
+    return nulls
+
+
+def save_null_series(null_series: List[np.ndarray],
+                     ages: np.ndarray,
+                     core_name: str,
+                     sapropel_id: str,
+                     element: str,
+                     cfg: dict) -> Path:
+    """
+    Save AR(1) null series as a single CSV for use by rolling_window.py.
+    Each column = one null series.
+    Output: {core}/{core}_{sap}_{element}_ar1_null.csv
+    """
+    out_dir = _repo_root() / cfg["paths"]["pangaea_clean"] / core_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    fname   = f"{core_name}_{sapropel_id}_{element}_ar1_null.csv"
+    df_null = pd.DataFrame(
+        np.stack(null_series, axis=1),
+        columns=[f"null_{i:03d}" for i in range(len(null_series))]
+    )
+    df_null.insert(0, "age_kyr_bp", ages[:len(null_series[0])])
+    df_null.to_csv(out_dir / fname, index=False)
+    logger.info(f"    Saved {fname}  ({len(null_series)} null series × {len(null_series[0])} steps)")
+    return out_dir / fname
+
 
 def generate_surrogates(residuals: np.ndarray, n_surr: int,
                         method: str, seed: int) -> List[np.ndarray]:
@@ -325,18 +406,33 @@ def process_core(core_name: str, cfg: dict,
                                   "forced", cfg)
             else:
                 logger.warning(f"  {sap_id} forced: only {len(forced_seg)} rows")
+                forced_seg = None
 
-            # ── Save NEUTRAL segment (for ROC null class) ─────────────────────
-            neutral_seg = extract_segment(
-                df,
-                start_ka = sap["neutral_start"],
-                end_ka   = sap["neutral_end"],
-            )
-            if len(neutral_seg) >= 10:
-                save_test_segment(neutral_seg, core_name, sap_id,
-                                  "neutral_test", cfg)
-            else:
-                logger.warning(f"  {sap_id} neutral_test: only {len(neutral_seg)} rows")
+            # ── Generate AR(1) null series (Bury 2021 protocol) ───────────────
+            # "Null time series generated from AR(1) process fit to
+            #  the initial 20% of the data" — Bury 2021 Methods
+            # This is the CORRECT null for ROC — NOT inter-sapropel periods.
+            # Inter-sapropel data has geological structure that the model
+            # classifies as bifurcation-type, giving AUC ≈ 0.50.
+            # AR(1) null preserves autocorrelation but has no CSD trend.
+            if forced_seg is not None and len(forced_seg) >= 10:
+                ages_forced = forced_seg["age_kyr_bp"].values
+                for elem in ELEMENTS:
+                    resid_col = f"{elem}_residuals"
+                    if resid_col not in forced_seg.columns:
+                        continue
+                    resids = forced_seg[resid_col].dropna().values
+                    if len(resids) < 10:
+                        continue
+                    # Generate 10 AR(1) null series (Bury uses 10 per event)
+                    null_series = generate_ar1_null_series(
+                        resids, n_null=10,
+                        seed=seed + hash(f"{core_name}{sap_id}{elem}") % 100000
+                    )
+                    save_null_series(
+                        null_series, ages_forced,
+                        core_name, sap_id, elem, cfg
+                    )
 
         elif role == "train" and generate_surr:
             # ── Generate AAFT surrogates from Mo residuals ────────────────────
