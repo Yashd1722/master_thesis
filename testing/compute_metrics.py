@@ -118,12 +118,13 @@ def compute_core_roc(model_name: str, dataset_name: str,
                              element, "neutral", cfg)
 
             if df_f is not None and "p_transition" in df_f.columns:
-                # Bury 2021 protocol: use only LAST 40% of forced predictions
-                # (the 80-100% of the pre-transition window).
-                # Early forced predictions have baseline variance — identical
-                # to null. Only the last portion shows elevated CSD.
+                # Use LAST 50% of forced predictions as positive class.
+                # (equivalent to Bury's 80-100% of the pre-transition window)
+                # The last half has the most elevated variance/AC from CSD.
+                # AR(1) null is fit to first 10% (quiet baseline) so null
+                # stays at baseline variance throughout.
                 n_f   = len(df_f)
-                start = int(0.60 * n_f)   # last 40%
+                start = int(0.50 * n_f)   # last 50%
                 df_f_late = df_f.iloc[start:]
                 all_forced_dl.extend(df_f_late["p_transition"].tolist())
                 all_forced_var.extend(df_f_late["variance"].tolist())
