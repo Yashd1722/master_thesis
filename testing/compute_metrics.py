@@ -118,23 +118,40 @@ def compute_core_roc(model_name: str, dataset_name: str,
                              element, "neutral", cfg)
 
             if df_f is not None and "p_transition" in df_f.columns:
-                # Use LAST 50% of forced predictions as positive class.
-                # (equivalent to Bury's 80-100% of the pre-transition window)
-                # The last half has the most elevated variance/AC from CSD.
-                # AR(1) null is fit to first 10% (quiet baseline) so null
-                # stays at baseline variance throughout.
+                # Bury 2021 exact protocol:
+                # "computing predictions over the FINAL 20% of both the
+                #  empirical and null time series"
+                # We use last 25% (slightly more than Bury for stability
+                # since we have fewer events per core than his 26 total).
                 n_f   = len(df_f)
-                start = int(0.50 * n_f)   # last 50%
+                start = max(0, int(0.75 * n_f))   # last 25%
                 df_f_late = df_f.iloc[start:]
                 all_forced_dl.extend(df_f_late["p_transition"].tolist())
                 all_forced_var.extend(df_f_late["variance"].tolist())
                 all_forced_ac.extend(df_f_late["lag1_ac"].tolist())
 
             if df_n is not None and "p_transition" in df_n.columns:
-                # Use ALL neutral predictions as negative class
-                all_neutral_dl.extend(df_n["p_transition"].tolist())
-                all_neutral_var.extend(df_n["variance"].tolist())
-                all_neutral_ac.extend(df_n["lag1_ac"].tolist())
+                # CRITICAL: use same relative window (last 25%) from null.
+                # Using ALL null predictions vs last 25% of forced creates
+                # an asymmetric comparison that distorts the ROC.
+                # At the last 25% of null: variance is still at baseline.
+                # At the last 25% of forced: variance has built up from CSD.
+                # This asymmetry is what gives AUC > 0.5.
+                n_n   = len(df_n)
+                # null has 20 series × 40 steps = 800 predictions
+                # Take last 25% of EACH null series independently
+                # Each null series has n_steps predictions → group by series
+                n_steps = 40   # predictions per series
+                n_null_series = n_n // n_steps
+                for s in range(n_null_series):
+                    series_start = s * n_steps
+                    series_end   = (s + 1) * n_steps
+                    series_df    = df_n.iloc[series_start:series_end]
+                    late_start   = max(0, int(0.75 * n_steps))
+                    series_late  = series_df.iloc[late_start:]
+                    all_neutral_dl.extend(series_late["p_transition"].tolist())
+                    all_neutral_var.extend(series_late["variance"].tolist())
+                    all_neutral_ac.extend(series_late["lag1_ac"].tolist())
 
         n_forced  = len(all_forced_dl)
         n_neutral = len(all_neutral_dl)

@@ -13,89 +13,89 @@
     "S6": {
       "Al": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ba": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Mo": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ti": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "U": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       }
     },
     "S5": {
       "Al": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ba": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Mo": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ti": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "U": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       }
     },
     "S4": {
       "Al": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ba": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Mo": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ti": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "U": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       }
     },
     "S3": {
       "Al": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ba": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Mo": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "Ti": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       },
       "U": {
         "n_forced": 40,
-        "n_neutral": 800
+        "n_neutral": 400
       }
     }
   }

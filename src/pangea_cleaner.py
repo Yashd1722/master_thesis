@@ -275,11 +275,13 @@ def generate_ar1_null_series(residuals: np.ndarray,
     n = len(residuals)
 
     # Fit AR(1) to reference period (neutral, not forced)
-    # ALWAYS use first 10% of forced series (Bury 2021 exact protocol).
-    # Using neutral reference causes INVERTED ROC because inter-sapropel
-    # periods have higher geological variance than pre-transition periods.
-    # First 10% of forced = true quiet baseline before any CSD buildup.
-    init_frac = max(3, int(0.10 * n))
+    # Bury 2021 exact protocol:
+    # "Null time series generated from AR(1) process fit to
+    #  the initial 20% of the data"
+    # The first 20% of the pre-transition window is before CSD starts.
+    # At 80-100% of the window, CSD has built up → variance/AC elevated.
+    # The null series stays at the first-20% baseline level throughout.
+    init_frac = max(3, int(0.20 * n))
     fit_data  = residuals[:init_frac]
 
     phi, sigma = fit_ar1(fit_data)
@@ -453,10 +455,10 @@ def process_core(core_name: str, cfg: dict,
                         if len(ref_resids) < 5:
                             ref_resids = None
 
-                    # Generate 20 AR(1) null series (more = smoother ROC)
-                    # AR(1) fit to first 10% of forced = quiet baseline
+                    # Generate 10 AR(1) null series (Bury uses 10 per event)
+                    # AR(1) fit to first 20% = baseline before CSD
                     null_series = generate_ar1_null_series(
-                        resids, n_null=20,
+                        resids, n_null=10,
                         seed=seed + hash(f"{core_name}{sap_id}{elem}") % 100000,
                     )
                     save_null_series(
