@@ -455,12 +455,47 @@ def process_core(core_name: str, cfg: dict,
                         if len(ref_resids) < 5:
                             ref_resids = None
 
-                    # Generate 10 AR(1) null series (Bury uses 10 per event)
-                    # AR(1) fit to first 20% = baseline before CSD
-                    null_series = generate_ar1_null_series(
-                        resids, n_null=10,
-                        seed=seed + hash(f"{core_name}{sap_id}{elem}") % 100000,
-                    )
+                    # Bury 2021 / Ma 2025: use AAFT surrogates as null.
+                    # AAFT preserves both the histogram (amplitude distribution)
+                    # AND the power spectrum of the original series, making it
+                    # more statistically rigorous than AR(1) which only
+                    # preserves the lag-1 autocorrelation.
+                    # n_null read from config (default 20 per Bury).
+                    n_null      = cfg["inference"].get("n_null_series", 20)
+                    null_method = cfg["inference"].get("null_method", "AAFT")
+
+                    if null_method == "AR1":
+                        null_series = generate_ar1_null_series(
+                            resids, n_null=n_null,
+                            seed=seed + hash(
+                                f"{core_name}{sap_id}{elem}") % 100000,
+                        )
+                    else:
+                        # AAFT: fit to first 20% baseline (Bury protocol)
+                        init_n      = max(3, int(0.20 * len(resids)))
+                        ref         = resids[:init_n]
+                        surr_fn     = SURROGATE_METHODS.get(null_method,
+                                      _aaft_surrogate)
+                        rng_s       = np.random.default_rng(
+                            seed + hash(f"{core_name}{sap_id}{elem}") % 100000
+                        )
+                        # Scale to baseline level then generate surrogates
+                        null_series = [
+                            surr_fn(ref, rng_s).astype(np.float32)
+                            for _ in range(n_null)
+                        ]
+                        # Pad/trim each surrogate to full segment length
+                        full_len    = len(resids)
+                        padded_null = []
+                        for surr in null_series:
+                            if len(surr) >= full_len:
+                                padded_null.append(surr[:full_len])
+                            else:
+                                # Repeat surrogate to fill full length
+                                reps = (full_len // len(surr)) + 1
+                                extended = np.tile(surr, reps)[:full_len]
+                                padded_null.append(extended.astype(np.float32))
+                        null_series = padded_null
                     save_null_series(
                         null_series, ages_forced,
                         core_name, sap_id, elem, cfg

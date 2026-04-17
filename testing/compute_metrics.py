@@ -89,19 +89,35 @@ def get_test_sapropels(core: str, cfg: dict) -> List[str]:
 #  Compute ROC per (model, core, element) combining all test sapropels
 # =============================================================================
 
+def _get_roc_start(core_name: str, cfg: dict) -> float:
+    """Read per-core ROC start fraction from config."""
+    roc_cfg = cfg["inference"].get("roc_start_frac", {})
+    return roc_cfg.get(core_name, roc_cfg.get("default", 0.60))
+
+
 def compute_core_roc(model_name: str, dataset_name: str,
                      core_name: str, cfg: dict) -> Dict:
     """
     Compute ROC for all elements on one core.
-    Combines predictions across ALL test sapropels for that core
-    to get more data points (matching paper approach of combining events).
+    Combines predictions across all test sapropels.
 
-    Returns:
-        {element: {"fpr": [...], "tpr": [...], "auc": float,
-                   "n_forced": int, "n_neutral": int}}
+    Protocol (Bury 2021):
+      Positive class: last (1 - roc_start_frac) of FORCED predictions
+      Negative class: last (1 - roc_start_frac) of each NULL series
+      Both windows use the same relative position → fair comparison.
+
+    roc_start_frac = 0.60 → use predictions from 60-100%
+    roc_start_frac = 0.80 → use predictions from 80-100%
+    Configurable per core in config.yaml inference.roc_start_frac.
     """
-    sap_ids = get_test_sapropels(core_name, cfg)
-    roc_results = {}
+    sap_ids        = get_test_sapropels(core_name, cfg)
+    roc_start      = _get_roc_start(core_name, cfg)
+    n_steps        = cfg["inference"].get("prediction_steps", 40)
+    n_null_series  = cfg["inference"].get("n_null_series", 20)
+    roc_results    = {}
+
+    print(f"  ROC window: {int(roc_start*100)}–100%  "
+          f"n_null={n_null_series}  n_steps={n_steps}")
 
     for element in ELEMENTS:
         all_forced_dl  = []
@@ -117,41 +133,31 @@ def compute_core_roc(model_name: str, dataset_name: str,
             df_n = load_pred(model_name, core_name, sap_id,
                              element, "neutral", cfg)
 
+            # ── Forced (positive class) ───────────────────────────────────────
             if df_f is not None and "p_transition" in df_f.columns:
-                # Bury 2021 exact protocol:
-                # "computing predictions over the FINAL 20% of both the
-                #  empirical and null time series"
-                # We use last 25% (slightly more than Bury for stability
-                # since we have fewer events per core than his 26 total).
-                n_f   = len(df_f)
-                start = max(0, int(0.75 * n_f))   # last 25%
-                df_f_late = df_f.iloc[start:]
+                n_f       = len(df_f)
+                late_start = max(0, int(roc_start * n_f))
+                df_f_late  = df_f.iloc[late_start:]
                 all_forced_dl.extend(df_f_late["p_transition"].tolist())
                 all_forced_var.extend(df_f_late["variance"].tolist())
                 all_forced_ac.extend(df_f_late["lag1_ac"].tolist())
 
+            # ── Null (negative class) — same relative window per series ───────
             if df_n is not None and "p_transition" in df_n.columns:
-                # CRITICAL: use same relative window (last 25%) from null.
-                # Using ALL null predictions vs last 25% of forced creates
-                # an asymmetric comparison that distorts the ROC.
-                # At the last 25% of null: variance is still at baseline.
-                # At the last 25% of forced: variance has built up from CSD.
-                # This asymmetry is what gives AUC > 0.5.
-                n_n   = len(df_n)
-                # null has 20 series × 40 steps = 800 predictions
-                # Take last 25% of EACH null series independently
-                # Each null series has n_steps predictions → group by series
-                n_steps = 40   # predictions per series
-                n_null_series = n_n // n_steps
-                for s in range(n_null_series):
-                    series_start = s * n_steps
-                    series_end   = (s + 1) * n_steps
-                    series_df    = df_n.iloc[series_start:series_end]
-                    late_start   = max(0, int(0.75 * n_steps))
-                    series_late  = series_df.iloc[late_start:]
-                    all_neutral_dl.extend(series_late["p_transition"].tolist())
-                    all_neutral_var.extend(series_late["variance"].tolist())
-                    all_neutral_ac.extend(series_late["lag1_ac"].tolist())
+                n_n          = len(df_n)
+                # null CSV has n_null_series × n_steps rows stacked
+                actual_null  = n_n // n_steps
+                late_per_ser = max(1, int((1.0 - roc_start) * n_steps))
+
+                for s in range(actual_null):
+                    s_start  = s * n_steps
+                    s_end    = s_start + n_steps
+                    ser_df   = df_n.iloc[s_start:s_end]
+                    # Take last (1-roc_start) fraction of this null series
+                    ser_late = ser_df.iloc[-late_per_ser:]
+                    all_neutral_dl.extend(ser_late["p_transition"].tolist())
+                    all_neutral_var.extend(ser_late["variance"].tolist())
+                    all_neutral_ac.extend(ser_late["lag1_ac"].tolist())
 
         n_forced  = len(all_forced_dl)
         n_neutral = len(all_neutral_dl)
@@ -307,8 +313,23 @@ def main():
     out_path  = (REPO_ROOT / cfg["paths"]["metrics"]
                  / cfg["naming"]["auc_table"])
     auc_table.to_csv(out_path, index=False)
-    print(f"\nAUC table → {out_path.name}")
+    print(f"\nFull AUC table → {out_path.name}")
     print(auc_table.to_string(index=False))
+
+    # Mo-only table — direct comparison with Bury 2021
+    mo_table = auc_table[auc_table["element"] == "Mo"].copy()
+    mo_path  = REPO_ROOT / cfg["paths"]["metrics"] / "auc_Mo_primary.csv"
+    mo_table.to_csv(mo_path, index=False)
+    print(f"\n{'='*60}")
+    print("  Mo-only (Bury 2021 scope)")
+    print(f"{'='*60}")
+    print(mo_table.to_string(index=False))
+
+    # Extension elements — original contribution
+    ext_table = auc_table[auc_table["element"] != "Mo"].copy()
+    ext_path  = REPO_ROOT / cfg["paths"]["metrics"] / "auc_extension_elements.csv"
+    ext_table.to_csv(ext_path, index=False)
+    print(f"\nExtension elements (Al,Ba,Ti,U) → {ext_path.name}")
 
     print("\nNext: python testing/plot_figures.py --model all --dataset ts_500")
 

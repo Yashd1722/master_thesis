@@ -354,17 +354,30 @@ inference:
 
   rolling_window_frac: 0.50         # window = 50% of series length
 
-  # Bury 2021: 40 steps between 60% and 100% for most datasets
-  # Exception: PANGAEA cores use 80-100% (shorter series)
+  # Bury 2021: 40 steps between 60-100% for most, 80-100% for shorter series
   prediction_steps:    40
 
-  # per-dataset start fraction (overrides default if specified)
+  # Per-core start fraction for rolling window (indicator plots)
   start_frac:
     default:           0.60
-    MS21:              0.60         # N=883, enough length
-    MS66:              0.80         # N=416, shorter
-    64PE406E1:         0.80         # N=212-376, shorter
+    MS21:              0.60         # N=365, long enough
+    MS66:              0.60         # N=102-146
+    64PE406E1:         0.60         # N=57-76, short but consistent
+
   end_frac:            1.00
+
+  # ROC evaluation window — Bury et al. 2021
+  # "predictions computed from 60-100% (or 80-100% for shorter series)"
+  # Parameterised here so it can be changed without editing code.
+  roc_start_frac:
+    default:           0.60         # use last 40% → captures peak CSD
+    MS21:              0.60         # long series — more data available
+    MS66:              0.60         # moderate length
+    64PE406E1:         0.60         # short segments — keep at 60%
+
+  # Null series for ROC negative class (Bury uses ~20 AAFT surrogates)
+  n_null_series:       20           # 20 × 40 steps = 800 null predictions
+  null_method:         "AAFT"       # AAFT preserves histogram + power spectrum
 
 
 # =============================================================================
