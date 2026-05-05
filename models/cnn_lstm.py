@@ -26,6 +26,11 @@ Input  : (B, 1, T)        — batch, channel, time
 Output : (B, num_classes) — raw logits, use CrossEntropyLoss during training
 """
 
+MODEL_NAME  = "cnn_lstm"
+MODEL_CLASS = "CNNLSTM"
+IS_SKLEARN  = False
+
+
 import torch
 import torch.nn as nn
 

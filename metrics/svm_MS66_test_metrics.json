@@ -1,0 +1,25 @@
+{
+  "model": "svm",
+  "dataset": "ts_500",
+  "core": "MS66",
+  "sapropels": {
+    "S3": {
+      "elements": [
+        "Al",
+        "Ba",
+        "Mo",
+        "Ti",
+        "U"
+      ]
+    },
+    "S1": {
+      "elements": [
+        "Al",
+        "Ba",
+        "Mo",
+        "Ti",
+        "U"
+      ]
+    }
+  }
+}

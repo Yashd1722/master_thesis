@@ -41,7 +41,7 @@ fi
 
 # ── Environment ──────────────────────────────────────────────────────────────
 cd ~/Master_thesis/master_thesis || exit 1
-source ~/myenv/bin/activate
+source ~/Master_thesis/myenv/bin/activate
 
 echo "=============================================="
 echo "  Job ID        : $SLURM_JOB_ID"

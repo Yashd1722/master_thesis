@@ -42,7 +42,7 @@ from sklearn.metrics import f1_score, confusion_matrix, accuracy_score
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from models import get_model, list_models
+from models import get_model, list_models, is_sklearn_model
 from src.dataset_loader import get_dataloader, get_dataset_info, load_config
 
 
@@ -302,102 +302,178 @@ def train_single(
 #  Main — loops over datasets and pad_variants
 # =============================================================================
 
+def train_svm(model_name: str, cfg: dict, logger: logging.Logger) -> dict:
+    """
+    Train SVM on PANGAEA AAFT surrogates.
+    Called by main() when is_sklearn_model(model_name) is True.
+    Uses sklearn GridSearchCV — no epochs, no DataLoader.
+    Saves checkpoints/svm_{core}_best.pkl per core.
+    """
+    from sklearn.model_selection import GridSearchCV, StratifiedKFold
+    from sklearn.metrics import roc_auc_score
+    from scipy.stats import kendalltau
+    from models.svm_ews import SVMClassifier
+
+    svm_cfg  = cfg["training"]["svm"]
+    ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
+    met_dir  = REPO_ROOT / cfg["paths"]["metrics"]
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    met_dir.mkdir(parents=True, exist_ok=True)
+    all_metrics = {}
+
+    for core_name in cfg["slurm"]["test_cores"]:
+        clean_dir = REPO_ROOT / cfg["paths"]["pangaea_clean"] / core_name
+        X_rows, y_rows = [], []
+
+        for cls_name, label in [("neutral", 0), ("pre_transition", 1)]:
+            cls_dir = clean_dir / cls_name
+            if not cls_dir.exists():
+                logger.warning(f"  Missing surrogate dir: {cls_dir}")
+                continue
+            files = sorted(cls_dir.glob("surrogate_*.csv"))
+            logger.info(f"  {core_name}/{cls_name}: {len(files)} surrogates")
+            for fpath in files:
+                try:
+                    import pandas as pd
+                    series = pd.read_csv(fpath, header=None).values.flatten()
+                    if len(series) < 20:
+                        continue
+                    n, win = len(series), max(5, len(series) // 2)
+                    variances, ac1s = [], []
+                    for pos in range(win, n):
+                        seg = series[pos-win:pos]
+                        variances.append(float(np.var(seg, ddof=1)))
+                        if np.std(seg[:-1]) > 1e-10:
+                            ac1s.append(float(np.corrcoef(seg[:-1], seg[1:])[0,1]))
+                        else:
+                            ac1s.append(0.0)
+                    if not variances:
+                        continue
+                    step_idx = np.arange(len(variances))
+                    ktau_v, _ = kendalltau(step_idx, variances)
+                    ktau_a, _ = kendalltau(step_idx, ac1s)
+                    feat = SVMClassifier.extract_features(
+                        np.array(variances), np.array(ac1s),
+                        float(ktau_v), float(ktau_a)
+                    )
+                    X_rows.append(feat)
+                    y_rows.append(label)
+                except Exception as e:
+                    logger.debug(f"  Skipping {fpath.name}: {e}")
+
+        if not X_rows:
+            logger.warning(f"  No features for {core_name} — run pangea_cleaner.py")
+            continue
+
+        X = np.array(X_rows, dtype=np.float32)
+        y = np.array(y_rows, dtype=np.int64)
+        logger.info(f"  {core_name}: {len(X)} samples "
+                    f"(neutral={int((y==0).sum())}, pre_tran={int((y==1).sum())})")
+
+        param_grid = {"svc__C": svm_cfg["C_values"],
+                      "svc__gamma": svm_cfg["gamma_values"]}
+        cv     = StratifiedKFold(n_splits=svm_cfg["cv_folds"],
+                                  shuffle=True, random_state=42)
+        base   = SVMClassifier(num_classes=2, kernel=svm_cfg["kernel"])
+        search = GridSearchCV(base._build_sklearn(), param_grid,
+                               cv=cv, scoring=svm_cfg["scoring"],
+                               n_jobs=-1, verbose=0)
+        t0 = time.time()
+        search.fit(X, y)
+        logger.info(f"  Best params: {search.best_params_}  "
+                    f"CV AUC={search.best_score_:.4f}  "
+                    f"({time.time()-t0:.1f}s)")
+
+        best_C     = search.best_params_["svc__C"]
+        best_gamma = search.best_params_["svc__gamma"]
+        final      = SVMClassifier(num_classes=2, kernel=svm_cfg["kernel"],
+                                    C=best_C, gamma=best_gamma)
+        final.fit(X, y)
+        probs   = final.predict_proba_numpy(X)
+        auc     = float(roc_auc_score(y, probs[:, 1]))
+        ckpt_path = ckpt_dir / f"svm_{core_name}_best.pkl"
+        final.save(ckpt_path)
+        logger.info(f"  Saved: {ckpt_path.name}  train AUC={auc:.4f}")
+
+        metrics = {"model": "svm", "core": core_name,
+                   "cv_auc": round(search.best_score_, 4),
+                   "train_auc": round(auc, 4),
+                   "best_C": best_C, "best_gamma": str(best_gamma)}
+        met_path = met_dir / f"svm_{core_name}_train_metrics.json"
+        with open(met_path, "w") as f:
+            json.dump(metrics, f, indent=2)
+        all_metrics[core_name] = metrics
+
+    return all_metrics
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Train one model on ts_500 and ts_1500."
+        description="Universal training script — PyTorch and SVM models."
     )
-    parser.add_argument(
-        "--model", type=str, required=True,
-        choices=list_models(),
-        help="Model to train: cnn_lstm | lstm | cnn"
-    )
-    parser.add_argument(
-        "--mode", type=str, default="bury",
-        choices=["bury", "sdml"],
-        help="Training mode: bury (Zenodo) or sdml (PANGAEA surrogates)"
-    )
-    parser.add_argument(
-        "--dataset", type=str, default=None,
-        help="Override dataset (SDML mode only, e.g. sdml_MS21)"
-    )
-    parser.add_argument(
-        "--config", type=str, default="config.yaml"
-    )
+    parser.add_argument("--model",  type=str, required=True,
+                        choices=list_models())
+    parser.add_argument("--mode",   type=str, default="bury",
+                        choices=["bury", "sdml"])
+    parser.add_argument("--dataset",type=str, default=None)
+    parser.add_argument("--config", type=str, default="config.yaml")
     args = parser.parse_args()
 
-    cfg = load_config(args.config)
+    cfg     = load_config(args.config)
+    log_dir = REPO_ROOT / cfg["paths"]["logs"]
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logger  = setup_logging(log_dir / f"{args.model}_{args.mode}_train.log")
+    logger.info(f"Model  : {args.model}")
+    logger.info(f"Mode   : {args.mode}")
 
-    # ── Device ────────────────────────────────────────────────────────────────
+    # ── SVM: sklearn path — trains on PANGAEA surrogates, no GPU needed ───────
+    if is_sklearn_model(args.model):
+        logger.info("SVM detected — training on PANGAEA AAFT surrogates")
+        all_metrics = train_svm(args.model, cfg, logger)
+        logger.info(f"\nSVM training complete: {list(all_metrics.keys())}")
+        return
+
+    # ── PyTorch path ──────────────────────────────────────────────────────────
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}")
-
-    # ── Decide which datasets and pad_variants to train ───────────────────────
-    mode_key = args.mode
+    logger.info(f"Device : {device}")
 
     if args.mode == "bury":
-        datasets     = cfg["slurm"]["train_datasets"]              # [ts_500, ts_1500]
-        pad_variants = cfg["training"][args.model]["pad_variants"] # per-model
+        datasets     = cfg["slurm"]["train_datasets"]
+        pad_variants = cfg["training"][args.model]["pad_variants"]
     else:
-        # SDML mode: single dataset specified by --dataset
         if args.dataset is None:
             parser.error("--dataset required for --mode sdml")
         datasets     = [args.dataset]
-        pad_variants = cfg["training"]["sdml"]["pad_variants"]     # [1]
+        pad_variants = cfg["training"]["sdml"]["pad_variants"]
 
-    # ── Setup root log (covers all datasets in this job) ──────────────────────
-    log_dir = REPO_ROOT / cfg["paths"]["logs"]
-    log_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Datasets : {datasets}")
+    logger.info(f"Variants : {pad_variants}")
 
-    root_log_path = log_dir / f"{args.model}_{mode_key}_train.log"
-    logger = setup_logging(root_log_path)
-    logger.info(f"Model      : {args.model}")
-    logger.info(f"Mode       : {mode_key}")
-    logger.info(f"Datasets   : {datasets}")
-    logger.info(f"Variants   : {pad_variants}")
-    logger.info(f"Device     : {device}")
-
-    # ── Training loop ─────────────────────────────────────────────────────────
     all_metrics = []
-
     for dataset_name in datasets:
         for pad_variant in pad_variants:
-
-            # Per-run log file
-            run_tag      = f"{args.model}_{dataset_name}_v{pad_variant}"
-            run_log_path = log_dir / f"{run_tag}_train.log"
-            run_logger   = setup_logging(run_log_path)
-
+            run_tag    = f"{args.model}_{dataset_name}_v{pad_variant}"
+            run_logger = setup_logging(log_dir / f"{run_tag}_train.log")
             try:
                 metrics = train_single(
                     model_name   = args.model,
                     dataset_name = dataset_name,
                     pad_variant  = pad_variant,
                     cfg          = cfg,
-                    mode_key     = mode_key,
+                    mode_key     = args.mode,
                     device       = device,
                     logger       = run_logger,
                 )
                 all_metrics.append(metrics)
-                logger.info(
-                    f"  Completed {run_tag} | "
-                    f"test_f1={metrics['test_f1']:.4f}"
-                )
+                logger.info(f"  {run_tag} | test_f1={metrics['test_f1']:.4f}")
             except Exception as e:
                 logger.error(f"  FAILED {run_tag}: {e}", exc_info=True)
 
-    # ── Summary across all runs for this model ────────────────────────────────
-    logger.info(f"\n{'='*60}")
-    logger.info(f"  SUMMARY — {args.model}")
-    logger.info(f"{'='*60}")
+    logger.info(f"\n{'='*50}  SUMMARY  {'='*50}")
     for m in all_metrics:
-        logger.info(
-            f"  {m['dataset']} v{m['pad_variant']} | "
-            f"best_val_f1={m['best_val_f1']:.4f} | "
-            f"test_f1={m['test_f1']:.4f} | "
-            f"test_acc={m['test_acc']:.4f}"
-        )
-
-    logger.info(f"\nAll done. Logs in {log_dir}")
+        logger.info(f"  {m['dataset']} v{m['pad_variant']} | "
+                    f"val_f1={m['best_val_f1']:.4f} | "
+                    f"test_f1={m['test_f1']:.4f}")
 
 
 if __name__ == "__main__":

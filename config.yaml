@@ -337,6 +337,31 @@ training:
     scheduler:          "none"
     min_lr:             0.000001
 
+  # ── Multi-head CNN (Ma 2025) ──────────────────────────────────────────────
+  multihead_cnn:
+    epochs:             100
+    lr:                 0.001
+    batch_size:         64
+    patience:           5
+    pad_variants:       [1]
+    weight_decay:       0.0001       # slight L2 for multi-branch regularisation
+    grad_clip:          1.0
+    optimizer:          "adam"
+    scheduler:          "none"
+    min_lr:             0.000001
+    kernel_sizes:       [3, 5, 11, 21]
+    n_filters:          64
+
+  # ── SVM on EWS features (Ma 2025) ────────────────────────────────────────
+  # Trained by training/train_svm.py (sklearn, not PyTorch)
+  # Uses PANGAEA AAFT surrogates, NOT Zenodo ts_500
+  svm:
+    kernel:             "rbf"
+    C_values:           [0.1, 1.0, 10.0, 100.0]
+    gamma_values:       ["scale", "auto", 0.001, 0.01, 0.1]
+    cv_folds:           5
+    scoring:            "roc_auc"
+
   # ── Defaults used by get_dataloader() when no model name is available ────────
   # get_dataloader does not know the model — it uses these fallback values.
   # bury = Zenodo datasets (ts_500, ts_1500)
@@ -487,3 +512,26 @@ slurm:
 
   # ── PANGAEA cores for testing (all tested in sequence within one job) ─────────
   test_cores:       ["MS21", "MS66", "64PE406E1"]
+
+# =============================================================================
+#  PIPELINE
+#  Used by run_pipeline.py
+# =============================================================================
+pipeline:
+  # Models to run when --model all is passed
+  # Add new model names here after adding the .py file to models/
+  default_models:    ["cnn_lstm", "lstm", "cnn"]
+  default_dataset:   "ts_500"
+
+  # Skip training if checkpoint already exists
+  skip_if_done:      true
+
+  # Run models in parallel (requires joblib)
+  parallel:          true
+  n_jobs:            3          # one per model
+
+  # SLURM settings (used when sbatch is detected)
+  slurm:
+    train_script:    "training/train_array.sh"
+    test_script:     "testing/test_array.sh"
+    poll_interval:   30         # seconds between squeue checks

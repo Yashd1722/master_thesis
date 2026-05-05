@@ -30,6 +30,11 @@ Input  : (B, 1, T)
 Output : (B, num_classes) — raw logits
 """
 
+MODEL_NAME  = "cnn"
+MODEL_CLASS = "CNNClassifier"
+IS_SKLEARN  = False
+
+
 import torch
 import torch.nn as nn
 

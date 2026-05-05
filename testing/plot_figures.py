@@ -688,7 +688,7 @@ def plot_figure2(model_name: str, dataset_name: str, cfg: dict):
             with open(p) as f:
                 cm_base = np.array(json.load(f).get("confusion_matrix", []))
             break
-    for v in cfg["training"][model_name]["pad_variants"]:
+    for v in cfg["training"].get(model_name, {}).get("pad_variants", [1]):
         p = met_dir / f"{model_name}_{dataset_name}_v{v}_train_metrics.json"
         if p.exists():
             with open(p) as f:
@@ -700,7 +700,7 @@ def plot_figure2(model_name: str, dataset_name: str, cfg: dict):
     num_classes = ds_info["num_classes"]
 
     def load_first_ckpt(mname):
-        for v in cfg["training"][mname]["pad_variants"]:
+        for v in cfg["training"].get(mname, {}).get("pad_variants", [1]):
             p = ckpt_dir / f"{mname}_{dataset_name}_v{v}_best.ckpt"
             if p.exists():
                 m = get_model(mname, ts_len=ts_len, num_classes=num_classes)

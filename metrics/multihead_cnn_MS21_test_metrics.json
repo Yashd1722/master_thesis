@@ -1,0 +1,16 @@
+{
+  "model": "multihead_cnn",
+  "dataset": "ts_500",
+  "core": "MS21",
+  "sapropels": {
+    "S1": {
+      "elements": [
+        "Al",
+        "Ba",
+        "Mo",
+        "Ti",
+        "U"
+      ]
+    }
+  }
+}

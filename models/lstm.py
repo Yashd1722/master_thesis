@@ -21,6 +21,11 @@ Input  : (B, 1, T)        — batch, channel, time
 Output : (B, num_classes) — raw logits
 """
 
+MODEL_NAME  = "lstm"
+MODEL_CLASS = "LSTMClassifier"
+IS_SKLEARN  = False
+
+
 import torch
 import torch.nn as nn
 

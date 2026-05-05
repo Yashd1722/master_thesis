@@ -1,0 +1,8 @@
+{
+  "model": "svm",
+  "core": "MS66",
+  "cv_auc": 0.9753,
+  "train_auc": 0.9783,
+  "best_C": 100.0,
+  "best_gamma": "0.1"
+}

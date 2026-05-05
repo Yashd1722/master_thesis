@@ -1,62 +1,59 @@
 """
-models/__init__.py
-==================
-Model registry — the ONLY import any script needs.
+models/__init__.py — auto-discovering model registry.
 
-Usage:
-    from models import get_model, list_models
+To add a new model:
+  1. Create models/my_model.py
+  2. Add these two lines at the top (after the docstring):
+       MODEL_NAME  = "my_model"
+       MODEL_CLASS = "MyModelClass"
+       IS_SKLEARN  = False
+  3. Done. No other file needs changing.
 
-    model = get_model("cnn_lstm", ts_len=500, num_classes=4)
-    model = get_model("lstm",     ts_len=500, num_classes=2)
-    model = get_model("cnn",      ts_len=500, num_classes=4)
-
-Models available:
-    cnn_lstm  — Bury et al. (PNAS 2021) baseline — exact reproduction
-    lstm      — Standalone LSTM  (Ma et al. 2025)
-    cnn       — Standalone CNN   (Ma et al. 2025)
-
-All models share the same interface:
-    forward(x)       : x shape (B, 1, T) → logits (B, num_classes)
-    predict_proba(x) : x shape (B, 1, T) → softmax probs (B, num_classes)
-
-num_classes is set dynamically:
-    4 → Bury mode  (fold / hopf / transcritical / null)
-    2 → SDML mode  (neutral / pre_transition)
+Interface all PyTorch models must implement:
+  __init__(self, ts_len: int, num_classes: int)
+  forward(x)        : (B, 1, T) -> logits  (B, num_classes)
+  predict_proba(x)  : (B, 1, T) -> softmax (B, num_classes)
 """
 
-from .cnn_lstm import CNNLSTM
-from .lstm     import LSTMClassifier
-from .cnn      import CNNClassifier
+import importlib
+from pathlib import Path
 
-_REGISTRY = {
-    "cnn_lstm": CNNLSTM,
-    "lstm":     LSTMClassifier,
-    "cnn":      CNNClassifier,
-}
+_REGISTRY = {}
+_SKLEARN  = set()
+
+
+def _discover():
+    models_dir = Path(__file__).parent
+    for fpath in sorted(models_dir.glob("*.py")):
+        if fpath.stem.startswith("_"):
+            continue
+        try:
+            mod = importlib.import_module(f"models.{fpath.stem}")
+        except Exception:
+            continue
+        name       = getattr(mod, "MODEL_NAME",  None)
+        class_name = getattr(mod, "MODEL_CLASS", None)
+        is_sklearn = getattr(mod, "IS_SKLEARN",  False)
+        if name and class_name:
+            cls = getattr(mod, class_name, None)
+            if cls:
+                _REGISTRY[name] = cls
+                if is_sklearn:
+                    _SKLEARN.add(name)
+
+
+_discover()
 
 
 def get_model(name: str, ts_len: int, num_classes: int):
-    """
-    Instantiate a model by name.
-
-    Parameters
-    ----------
-    name        : "cnn_lstm" | "lstm" | "cnn"
-    ts_len      : input time series length (500 or 1500)
-    num_classes : number of output classes (4 for Bury, 2 for SDML)
-
-    Returns
-    -------
-    nn.Module with forward(x) and predict_proba(x) methods
-    """
     if name not in _REGISTRY:
-        raise ValueError(
-            f"Unknown model '{name}'.\n"
-            f"Available: {list(_REGISTRY.keys())}"
-        )
+        raise ValueError(f"Unknown model '{name}'. Available: {list_models()}")
     return _REGISTRY[name](ts_len=ts_len, num_classes=num_classes)
 
 
 def list_models():
-    """Return list of all available model names."""
-    return list(_REGISTRY.keys())
+    return sorted(_REGISTRY.keys())
+
+
+def is_sklearn_model(name: str) -> bool:
+    return name in _SKLEARN
