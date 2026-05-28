@@ -1,927 +1,363 @@
 """
 testing/plot_figures.py
 =======================
-Generates all figures matching Bury 2021 and Ma 2025 exactly.
+Per-experiment plots (called inline after evaluate.py saves result.json)
++ comparison plots across all models (called once all experiments done).
 
-Figure 3 — PANGAEA time series overview (Ma 2025 Fig 3)
-  Mo concentration per core, colour-coded by sapropel role:
-    GREEN = historical (used for SDML surrogates)
-    RED   = within-sapropel post-onset (not used)
-    BLUE  = future test segments
-  Vertical dashed lines at sapropel onsets.
-  X-axis: negative ka BP, oldest LEFT, youngest RIGHT.
-  Output: test_results/pangaea_overview_fig3.png
-
-Figure 4 — Per-element 4-panel indicator plots (Ma 2025 Fig 4)
-  One subplot per (element × test sapropel).
-  4 rows: trajectory+smoothing | variance | lag-1 AC | p_transition
-  Output: test_results/{model}_{core}_{element}_fig4.png
-
-Figure 5 — ROC curves (Bury 2021 Fig 2 / Ma 2025 Fig 5)
-  Per core, per element.
-  Overlays: model curve + variance + lag-1 AC + diagonal.
-  Inset: bar chart of mean p_transition for forced vs neutral.
-  N shown on each subplot.
-  Output: test_results/{model}_{core}_{element}_roc_fig5.png
-          test_results/all_models_{core}_{element}_roc_fig5.png
-
-Figure 2 — Theoretical model (fold bifurcation)
-  5 panels: trajectory | variance | lag-1 AC | CNN-LSTM prob | model prob
-  Confusion matrices on right.
-  Output: test_results/{model}_{dataset}_fold_fig2.png
-
-Usage:
-  python testing/plot_figures.py --fig3_only
-  python testing/plot_figures.py --model cnn_lstm --dataset ts_500
-  python testing/plot_figures.py --model all --dataset ts_500
+Per-experiment plots saved to: results/{model}_{dataset}_{metric}/
+Comparison plots saved to:     results/comparison/
 """
 
-import argparse
 import json
 import sys
-import numpy as np
-import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
-import yaml
+import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from src.dataset_loader import load_config, _build_zenodo_index, _split_index
-from src.rolling_window import ELEMENTS, PRIMARY_ELEMENT
-from models import list_models, get_model
-import torch
-
 
 # =============================================================================
-#  Style helpers
+#  Per-experiment plots  (called immediately after each experiment)
 # =============================================================================
 
-def setup_style(cfg: dict):
-    try:
-        plt.style.use(cfg["figures"]["style"])
-    except Exception:
-        plt.style.use("seaborn-v0_8-whitegrid")
-    matplotlib.rcParams.update({
-        "font.size":         9,
-        "axes.titlesize":    9,
-        "axes.labelsize":    8,
-        "xtick.labelsize":   7,
-        "ytick.labelsize":   7,
-        "legend.fontsize":   7,
-        "figure.dpi":        cfg["figures"]["dpi"],
-        "savefig.dpi":       cfg["figures"]["dpi"],
-        "savefig.bbox":      "tight",
-        "axes.spines.top":   False,
-        "axes.spines.right": False,
-    })
-
-
-def C(cfg, key):
-    """Shorthand for cfg["figures"]["colors"][key]."""
-    return cfg["figures"]["colors"][key]
-
-
-def savefig(fig, path: Path, cfg: dict):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=cfg["figures"]["dpi"],
-                bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved → {path.name}")
-
-
-def get_test_sapropels(core: str, cfg: dict) -> List[dict]:
-    return [s for s in cfg["pangaea"]["cores"][core]["sapropels"]
-            if s["role"] == "test"]
-
-
-def get_all_sapropels(core: str, cfg: dict) -> List[dict]:
-    return cfg["pangaea"]["cores"][core]["sapropels"]
-
-
-# =============================================================================
-#  Data loaders
-# =============================================================================
-
-def load_xrf_full(core_name: str, cfg: dict) -> Optional[pd.DataFrame]:
-    """Load full calibratedXRF file for Figure 3."""
-    from src.pangea_cleaner import load_xrf, smooth_all_elements
-    try:
-        df = load_xrf(core_name, cfg)
-        return smooth_all_elements(df, cfg["pangaea"]["bandwidth_years"])
-    except FileNotFoundError as e:
-        print(f"  [warn] {e}")
-        return None
-
-
-def load_segment_csv(core_name: str, sap_id: str, seg_type: str,
-                     cfg: dict) -> Optional[pd.DataFrame]:
-    """Load a segment CSV saved by pangea_cleaner.py."""
-    clean_dir = REPO_ROOT / cfg["paths"]["pangaea_clean"] / core_name
-    fname     = f"{core_name}_{sap_id}_{seg_type}.csv"
-    fpath     = clean_dir / fname
-    return pd.read_csv(fpath) if fpath.exists() else None
-
-
-def load_pred(model: str, core: str, sapropel: str,
-              element: str, seg_type: str, cfg: dict) -> Optional[pd.DataFrame]:
-    results_dir = REPO_ROOT / cfg["paths"]["results"]
-    fname = f"{model}_{core}_{sapropel}_{element}_{seg_type}.csv"
-    fpath = results_dir / fname
-    return pd.read_csv(fpath) if fpath.exists() else None
-
-
-def load_roc(model: str, core: str, element: str,
-             cfg: dict) -> Optional[dict]:
-    met_dir = REPO_ROOT / cfg["paths"]["metrics"]
-    fname   = f"{model}_{core}_{element}_roc.json"
-    fpath   = met_dir / fname
-    if not fpath.exists():
-        return None
-    with open(fpath) as f:
-        return json.load(f)
-
-
-# =============================================================================
-#  FIGURE 3 — PANGAEA time series overview (Ma 2025 Fig 3)
-# =============================================================================
-
-def plot_figure3(cfg: dict):
-    """
-    Reproduces Ma 2025 Fig 3 exactly.
-    Shows Mo concentration for each core with colour-coded sapropel roles.
-    Green = historical (train surrogates)
-    Red   = within-sapropel post-onset (not used)
-    Blue  = test segments
-    """
-    fig_cfg = cfg["figures"]["fig3"]
-    fig_dir = REPO_ROOT / cfg["paths"]["figures"]
-    cores   = fig_cfg["cores"]
-
-    fig, axes = plt.subplots(1, len(cores),
-                              figsize=(fig_cfg["figsize"][0],
-                                       fig_cfg["figsize"][1]))
-    if len(cores) == 1:
-        axes = [axes]
-
-    panel_labels = ["A", "B", "C"]
-
-    for col_idx, (ax, core_name) in enumerate(zip(axes, cores)):
-        df = load_xrf_full(core_name, cfg)
-
-        if df is None:
-            ax.text(0.5, 0.5, f"Data missing\n{core_name}",
-                    ha="center", va="center", transform=ax.transAxes)
-            continue
-
-        age  = df["age_kyr_bp"].values
-        mo   = df["Mo"].values
-
-        # Plot full series in light gray background
-        ax.plot(-age, mo, color="#CCCCCC", lw=0.4, zorder=1)
-
-        # Colour-code each sapropel
-        # The Mo peaks (150-300 ppm) dwarf the pre-transition baseline (0-5 ppm).
-        # Fix: draw coloured segments with thick lines AND add shaded spans
-        # so they are visible even at low Mo values.
-        y_max = np.nanmax(mo)
-        y_min = np.nanmin(mo)
-
-        for sap in get_all_sapropels(core_name, cfg):
-            sap_id = sap["id"]
-            role   = sap["role"]
-
-            p_start = abs(sap["pretrans_start"])
-            p_end   = abs(sap["pretrans_end"])
-            n_start = abs(sap["neutral_start"])
-            n_end   = abs(sap["neutral_end"])
-
-            # Determine colours
-            if role == "train":
-                neutral_color  = C(cfg, "train_segment")   # green
-                sapropel_color = C(cfg, "post_segment")     # red
-            else:
-                neutral_color  = C(cfg, "test_segment")     # blue
-                sapropel_color = C(cfg, "test_segment")     # blue
-
-            # Neutral/historical segment — thick coloured line + shaded span
-            mask_n = (age <= n_start) & (age >= n_end)
-            seg_n  = df[mask_n]
-            if not seg_n.empty:
-                ax.plot(-seg_n["age_kyr_bp"], seg_n["Mo"],
-                        color=neutral_color, lw=2.5, zorder=4)
-                ax.axvspan(-n_start, -n_end,
-                           alpha=0.12, color=neutral_color, zorder=2)
-
-            # Pre-transition (forced) segment
-            mask_p = (age <= p_start) & (age >= p_end)
-            seg_p  = df[mask_p]
-            if not seg_p.empty:
-                ax.plot(-seg_p["age_kyr_bp"], seg_p["Mo"],
-                        color=sapropel_color, lw=2.5, zorder=5)
-                ax.axvspan(-p_start, -p_end,
-                           alpha=0.12, color=sapropel_color, zorder=2)
-
-            # Vertical dashed line at transition onset
-            trans = -abs(sap["transition_kyr"])
-            ax.axvline(trans, color="black", lw=0.8,
-                       ls="--", alpha=0.9, zorder=6)
-
-            # Sapropel label at top of panel
-            ax.text(trans, y_max * 1.01, sap_id,
-                    fontsize=6, ha="center", va="bottom", color="black")
-
-        ax.set_xlabel("Time (ka BP)", fontsize=8)
-        ax.set_ylabel("Mo [ppm]", fontsize=8)
-        ax.set_title(f"Core {core_name}", fontsize=9)
-
-        # Panel label
-        ax.text(-0.10, 1.05, panel_labels[col_idx],
-                transform=ax.transAxes,
-                fontsize=11, fontweight="bold", va="top")
-
-    # Legend
-    legend_elements = [
-        mpatches.Patch(color=C(cfg, "train_segment"),
-                       label="Historical (train surrogates)"),
-        mpatches.Patch(color=C(cfg, "post_segment"),
-                       label="Post-transition (not used)"),
-        mpatches.Patch(color=C(cfg, "test_segment"),
-                       label="Future test"),
-    ]
-    axes[-1].legend(handles=legend_elements, fontsize=7,
-                    loc="upper right", framealpha=0.9)
-
-    plt.tight_layout()
-    fname = cfg["naming"]["fig3"]
-    savefig(fig, fig_dir / fname, cfg)
-
-
-# =============================================================================
-#  FIGURE 4 — per-element 4-panel indicator plots (Ma 2025 Fig 4)
-# =============================================================================
-
-def plot_figure4(model_name: str, core_name: str, cfg: dict):
-    """
-    Reproduces Ma 2025 Fig 4 exactly — per-element, per-sapropel.
-
-    Layout for each element:
-      Row 1: Raw signal (grey) + Gaussian smoothing (dark grey)
-             Rolling window arrow showing window size
-             N shown in title
-      Row 2: Variance (orange) — should INCREASE toward transition
-      Row 3: Lag-1 AC (green) — trend depends on bifurcation type
-      Row 4: DL probability p_transition (purple) — rises toward transition
-
-    One figure per (model, core, element).
-    Columns = one per test sapropel.
-
-    CSD fix: rolling window now sweeps from start→end of segment,
-    not just the last 20%. This makes variance/AC trends visible.
-    """
-    fig_cfg   = cfg["figures"]["fig4"]
-    fig_dir   = REPO_ROOT / cfg["paths"]["figures"]
-    test_saps = get_test_sapropels(core_name, cfg)
-
-    if not test_saps:
-        print(f"  No test sapropels for {core_name}")
-        return
-
-    for element in ELEMENTS:
-        n_cols    = len(test_saps)
-        col_w, col_h = fig_cfg["figsize_per_col"]
-
-        fig, axes = plt.subplots(
-            4, n_cols,
-            figsize  = (col_w * n_cols, col_h),
-            squeeze  = False,
-        )
-
-        for col_idx, sap in enumerate(test_saps):
-            sap_id = sap["id"]
-
-            # Load forced segment CSV (raw + smoothed + residuals)
-            seg_df = load_segment_csv(core_name, sap_id, "forced", cfg)
-
-            # Load prediction CSV (variance, lag1_ac, p_transition over time)
-            pred_f = load_pred(model_name, core_name, sap_id,
-                               element, "forced", cfg)
-
-            N = len(seg_df) if seg_df is not None else 0
-
-            # ── Row 0: raw trajectory + smoothing ─────────────────────────────
-            ax = axes[0][col_idx]
-            if seg_df is not None and element in seg_df.columns:
-                age_full   = seg_df["age_kyr_bp"].values
-                raw_vals   = seg_df[element].values
-                trend_col  = f"{element}_trend"
-                trend_vals = seg_df[trend_col].values                              if trend_col in seg_df.columns                              else np.full_like(raw_vals, np.nan)
-
-                # Raw signal in light grey, smoothed trend in dark
-                ax.plot(age_full, raw_vals,
-                        color="#AAAAAA", lw=0.6, zorder=1, label="raw")
-                ax.plot(age_full, trend_vals,
-                        color=C(cfg,"smoothing"), lw=1.4,
-                        zorder=2, label="smoothed")
-                ax.invert_xaxis()
-
-                # Rolling window arrow
-                win_size = max(2, int(cfg["inference"]["rolling_window_frac"] * N))
-                y_arrow  = np.nanmax(raw_vals) * 0.97
-                ax.annotate("",
-                    xy     = (age_full[min(win_size, N-1)], y_arrow),
-                    xytext = (age_full[0], y_arrow),
-                    arrowprops=dict(arrowstyle="<->", color="k", lw=0.8))
-
-                ax.set_title(
-                    f"{core_name}\n{sap_id}\nN={N}", fontsize=7
-                )
-            else:
-                ax.text(0.5, 0.5, "No data",
-                        ha="center", va="center",
-                        transform=ax.transAxes, fontsize=7)
-                ax.set_title(f"{sap_id}", fontsize=7)
-
-            if col_idx == 0:
-                ax.set_ylabel(f"{element}\nTrajectory", fontsize=7)
-
-            # ── Row 1: variance ────────────────────────────────────────────────
-            ax = axes[1][col_idx]
-            if pred_f is not None and "variance" in pred_f.columns:
-                age_s = pred_f["age_kyr_bp"].values
-                var_s = pred_f["variance"].values
-                ax.plot(age_s, var_s, color=C(cfg,"variance"), lw=1.2)
-                ax.invert_xaxis()
-                # Show Kendall tau value
-                if "ktau_variance" in pred_f.columns:
-                    ktau = pred_f["ktau_variance"].iloc[0]
-                    ax.text(0.05, 0.88, f"τ={ktau:.2f}",
-                            transform=ax.transAxes, fontsize=6,
-                            color=C(cfg,"variance"))
-            if col_idx == 0:
-                ax.set_ylabel("Variance", fontsize=7)
-
-            # ── Row 2: lag-1 AC ────────────────────────────────────────────────
-            ax = axes[2][col_idx]
-            if pred_f is not None and "lag1_ac" in pred_f.columns:
-                age_s = pred_f["age_kyr_bp"].values
-                ac_s  = pred_f["lag1_ac"].values
-                ax.plot(age_s, ac_s, color=C(cfg,"lag1_ac"), lw=1.2)
-                ax.invert_xaxis()
-                if "ktau_lag1_ac" in pred_f.columns:
-                    ktau = pred_f["ktau_lag1_ac"].iloc[0]
-                    ax.text(0.05, 0.88, f"τ={ktau:.2f}",
-                            transform=ax.transAxes, fontsize=6,
-                            color=C(cfg,"lag1_ac"))
-            if col_idx == 0:
-                ax.set_ylabel("Lag-1 AC", fontsize=7)
-
-            # ── Row 3: DL probability p_transition ────────────────────────────
-            ax = axes[3][col_idx]
-            if pred_f is not None and "p_transition" in pred_f.columns:
-                age_s  = pred_f["age_kyr_bp"].values
-                prob_s = pred_f["p_transition"].values
-                ax.plot(age_s, prob_s, color=C(cfg,"dl_prob"), lw=1.4)
-                ax.set_ylim(-0.05, 1.05)
-                ax.axhline(0.5, color="gray", lw=0.5, ls=":")
-                ax.invert_xaxis()
-            if col_idx == 0:
-                ax.set_ylabel("DL probability", fontsize=7)
-            ax.set_xlabel("Age (ka BP)", fontsize=7)
-
-            # Formatting
-            for row in range(4):
-                axes[row][col_idx].tick_params(labelsize=6)
-            for row in range(3):
-                plt.setp(axes[row][col_idx].get_xticklabels(), visible=False)
-
-        plt.suptitle(f"{model_name} — {core_name} — {element}",
-                     fontsize=9, y=1.01)
-        plt.tight_layout()
-
-        fname = f"{model_name}_{core_name}_{element}_fig4.png"
-        savefig(fig, fig_dir / fname, cfg)
-
-
-
-# =============================================================================
-#  ROC inset helper
-# =============================================================================
-
-def _roc_inset(ax, mean_p_forced: float, mean_p_neutral: float):
-    """
-    Inset bar chart showing mean p_transition for pre-tran vs neutral.
-    Matches Ma 2025 Fig 5 inset style.
-    Uses numeric y positions to avoid matplotlib unit conflict.
-    """
-    inset  = ax.inset_axes([0.52, 0.05, 0.45, 0.32])
-    ypos   = [0.0, 1.0]
-    vals   = [mean_p_neutral, mean_p_forced]
-    colors = ["#888888", "#E07B1A"]
-    inset.barh(ypos, vals, color=colors, height=0.6)
-    inset.set_xlim(0, 1)
-    inset.set_ylim(-0.5, 1.5)
-    inset.set_yticks(ypos)
-    inset.set_yticklabels(["Neutral", "Pre-tran"], fontsize=5)
-    inset.set_xlabel("Prop.", fontsize=5)
-    inset.tick_params(labelsize=5)
-    for yp, val in zip(ypos, vals):
-        inset.text(min(val + 0.03, 0.95), yp,
-                   f"{val:.2f}", va="center", ha="left", fontsize=5)
-
-
-def plot_figure5_single(model_name: str, core_name: str, cfg: dict):
-    """
-    ROC curves for one model on one core.
-    Produces ONE FIGURE PER ELEMENT — individual, clean, matching paper style.
-    Output: {model}_{core}_{element}_roc_fig5.png
-    """
-    fig_dir = REPO_ROOT / cfg["paths"]["figures"]
-
-    for element in ELEMENTS:
-        roc_data = load_roc(model_name, core_name, element, cfg)
-
-        fig, ax = plt.subplots(figsize=(4.5, 4.5))
-
-        # Diagonal
-        ax.plot([0, 1], [0, 1], "--", color="#AAAAAA", lw=0.8, alpha=0.6)
-
-        if roc_data is None:
-            ax.text(0.5, 0.5, "Run compute_metrics.py first",
-                    ha="center", va="center", transform=ax.transAxes, fontsize=8)
-            ax.set_title(f"{model_name} — {core_name} — {element}", fontsize=9)
-            fname = f"{model_name}_{core_name}_{element}_roc_fig5.png"
-            savefig(fig, fig_dir / fname, cfg)
-            continue
-
-        n_label = roc_data.get("N", "?")
-        mc      = C(cfg, f"roc_{model_name}")
-
-        if model_name in roc_data:
-            d = roc_data[model_name]
-            ax.plot(d["fpr"], d["tpr"], color=mc, lw=2.0,
-                    label=f"$A_{{DL}}$={d['auc']:.2f}")
-
-        if "variance" in roc_data:
-            d = roc_data["variance"]
-            ax.plot(d["fpr"], d["tpr"],
-                    color=C(cfg, "roc_variance"), lw=1.2, ls="--",
-                    label=f"$A_{{Var}}$={d['auc']:.2f}")
-
-        if "lag1_ac" in roc_data:
-            d = roc_data["lag1_ac"]
-            ax.plot(d["fpr"], d["tpr"],
-                    color=C(cfg, "roc_lag1_ac"), lw=1.2, ls="--",
-                    label=f"$A_{{AC}}$={d['auc']:.2f}")
-
-        _roc_inset(ax,
-                   roc_data.get("mean_p_forced",  0.5),
-                   roc_data.get("mean_p_neutral", 0.5))
-
-        ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-        ax.set_xlabel("False positive rate", fontsize=9)
-        ax.set_ylabel("True positive rate", fontsize=9)
-        ax.set_title(f"{core_name} — {element}", fontsize=9)
-        ax.text(0.05, 0.05, f"N={n_label}", transform=ax.transAxes, fontsize=8)
-        ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
-        ax.tick_params(labelsize=8)
-
-        plt.suptitle(f"{model_name}", fontsize=9, y=1.01)
-        plt.tight_layout()
-
-        fname = f"{model_name}_{core_name}_{element}_roc_fig5.png"
-        savefig(fig, fig_dir / fname, cfg)
-
-
-def plot_figure5_comparison(core_name: str, element: str, cfg: dict):
-    """
-    ROC comparison across ALL models for one (core, element).
-    One plot — all model curves + baselines overlaid.
-    """
-    fig_dir    = REPO_ROOT / cfg["paths"]["figures"]
-    model_list = [m["name"] for m in cfg["models"]]
+def plot_roc(data: dict, out_dir: Path):
+    """ROC curve for one model/dataset/experiment."""
+    fpr = np.array(data["roc_fpr"])
+    tpr = np.array(data["roc_tpr"])
+    auc = data.get("auc", 0.0)
 
     fig, ax = plt.subplots(figsize=(5, 5))
-    ax.plot([0, 1], [0, 1], "--", color="#AAAAAA", lw=0.8, alpha=0.6)
+    ax.plot(fpr, tpr, lw=2, color="#1f77b4",
+            label=f"{data['model']} (AUC={auc:.3f})")
+    ax.plot([0, 1], [0, 1], "--", color="#AAAAAA", lw=1)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title(f"ROC — {data['model']} / {data['dataset']}")
+    ax.legend(loc="lower right")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    fig.tight_layout()
+    fig.savefig(out_dir / "roc_curve.png", dpi=150)
+    plt.close(fig)
 
-    baseline_done   = False
-    n_label         = 0
-    mean_p_forced   = 0.8
-    mean_p_neutral  = 0.1
-    roc_found       = False
 
-    for model_name in model_list:
-        roc_data = load_roc(model_name, core_name, element, cfg)
-        if roc_data is None:
+def plot_confusion_matrix(data: dict, out_dir: Path, class_names: list):
+    cm = np.array(data["confusion_matrix"])
+    fig, ax = plt.subplots(figsize=(5, 4))
+    im = ax.imshow(cm, cmap="Blues")
+    ax.set_xticks(range(len(class_names)))
+    ax.set_xticklabels(class_names, rotation=45)
+    ax.set_yticks(range(len(class_names)))
+    ax.set_yticklabels(class_names)
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, str(cm[i, j]), ha="center", va="center",
+                    color="white" if cm[i, j] > cm.max() / 2 else "black")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.set_title(f"Confusion Matrix — {data['model']} / {data['dataset']}")
+    fig.colorbar(im)
+    fig.tight_layout()
+    fig.savefig(out_dir / "confusion_matrix.png", dpi=150)
+    plt.close(fig)
+
+
+def plot_pangaea_series(data: dict, result, out_dir: Path):
+    """p_transition + variance + lag1-AC over time for one PANGAEA segment."""
+    p_trans  = np.array(data["p_transition"])
+    variance = np.array(data.get("variance", []))
+    lag1_ac  = np.array(data.get("lag1_ac", []))
+    steps    = np.arange(len(p_trans))
+
+    n_panels = 1 + (1 if len(variance) else 0) + (1 if len(lag1_ac) else 0)
+    fig, axes = plt.subplots(n_panels, 1, figsize=(8, 2.5 * n_panels), sharex=True)
+    if n_panels == 1:
+        axes = [axes]
+
+    ax_idx = 0
+    if len(variance):
+        axes[ax_idx].plot(steps, variance, color="#E07B1A")
+        axes[ax_idx].set_ylabel("Variance")
+        ax_idx += 1
+    if len(lag1_ac):
+        axes[ax_idx].plot(steps, lag1_ac, color="#2D8A4E")
+        axes[ax_idx].set_ylabel("Lag-1 AC")
+        ax_idx += 1
+
+    axes[ax_idx].plot(steps, p_trans, color="#7165D0")
+    axes[ax_idx].axhline(0.5, color="#AAAAAA", lw=1, ls="--")
+    axes[ax_idx].set_ylabel("p(transition)")
+    axes[ax_idx].set_ylim(0, 1)
+    axes[ax_idx].set_xlabel("Rolling window step")
+
+    tag = f"{data['core']} / {data['sapropel']} / {data['element']} / {data['segment']}"
+    axes[0].set_title(f"{data['model']} — {tag}")
+    fig.tight_layout()
+    fig.savefig(out_dir / "pangaea_series.png", dpi=150)
+    plt.close(fig)
+
+
+# =============================================================================
+#  Comparison plots  (called once all experiments are done)
+#  Reads all result.json files from results/
+# =============================================================================
+
+def load_all_results(results_dir: Path, metric: str) -> list:
+    """Load all result.json files matching a given metric."""
+    records = []
+    for exp_dir in sorted(results_dir.iterdir()):
+        if not exp_dir.is_dir() or not exp_dir.name.endswith(f"_{metric}"):
             continue
-        roc_found = True
-
-        mc = C(cfg, f"roc_{model_name}")
-        if model_name in roc_data:
-            d = roc_data[model_name]
-            ax.plot(d["fpr"], d["tpr"], color=mc, lw=2.0,
-                    label=f"{model_name} (A={d['auc']:.2f})")
-
-        n_label        = roc_data.get("N", n_label)
-        mean_p_forced  = roc_data.get("mean_p_forced",  mean_p_forced)
-        mean_p_neutral = roc_data.get("mean_p_neutral", mean_p_neutral)
-
-        if not baseline_done:
-            if "variance" in roc_data:
-                d = roc_data["variance"]
-                ax.plot(d["fpr"], d["tpr"],
-                        color=C(cfg,"roc_variance"), lw=1.2, ls="--",
-                        label=f"Var (A={d['auc']:.2f})")
-            if "lag1_ac" in roc_data:
-                d = roc_data["lag1_ac"]
-                ax.plot(d["fpr"], d["tpr"],
-                        color=C(cfg,"roc_lag1_ac"), lw=1.2, ls="--",
-                        label=f"AC (A={d['auc']:.2f})")
-            baseline_done = True
-
-    if not roc_found:
-        ax.text(0.5, 0.5, f"No ROC data for {element}\nRun compute_metrics.py",
-                ha="center", va="center", transform=ax.transAxes, fontsize=8)
-    else:
-        _roc_inset(ax, mean_p_forced, mean_p_neutral)
-
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_xlabel("False positive rate", fontsize=9)
-    ax.set_ylabel("True positive rate", fontsize=9)
-    ax.set_title(f"{core_name} — {element}", fontsize=9)
-    ax.text(0.05, 0.05, f"N={n_label}", transform=ax.transAxes, fontsize=8)
-    ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
-
-    plt.tight_layout()
-    fname = f"all_models_{core_name}_{element}_roc_fig5.png"
-    savefig(fig, fig_dir / fname, cfg)
+        rfile = exp_dir / "result.json"
+        if rfile.exists():
+            with open(rfile) as f:
+                records.append(json.load(f))
+    return records
 
 
-# =============================================================================
-#  FIGURE 2 — Theoretical model (fold bifurcation)
-# =============================================================================
-#  Load one test sample per class from ts_500/ts_1500 cache
-# =============================================================================
-
-def load_test_sample_per_class(dataset_name: str, cfg: dict,
-                                class_idx: int) -> Optional[np.ndarray]:
-    """
-    Load one residual sample of a given class from the numpy cache.
-    Uses the test split so these are genuinely held-out samples.
-    The ts_500 test set contains real simulated fold/hopf/transcritical/null
-    trajectories — this is the correct "theoretical test" data from Zenodo.
-
-    Returns normalised residuals array of shape (ts_len,) or None.
-    """
-    from src.dataset_loader import load_config as _lc, _build_zenodo_index, _split_index
-    ds_cfg   = cfg["datasets"][dataset_name]
-    ts_len   = ds_cfg["ts_length"]
-    base_dir = REPO_ROOT / cfg["paths"][ds_cfg["path_key"]] / "combined"
-    cache_X  = base_dir / "cache_residuals.npy"
-    cache_y  = base_dir / "cache_labels.npy"
-
-    if not cache_X.exists():
-        print(f"  Cache not found: {cache_X}. Run build_cache.py first.")
-        return None
-
-    X = np.load(cache_X, mmap_mode="r")
-    y = np.load(cache_y, mmap_mode="r")
-
-    # Get test indices (reproducible split)
-    index_df = _build_zenodo_index(base_dir)
-    splits   = _split_index(index_df,
-                             ds_cfg["train_frac"],
-                             ds_cfg["val_frac"],
-                             seed=cfg["project"]["seed"])
-    test_df  = splits["test"]
-
-    # Find first sample of the requested class in the test split
-    cls_rows = test_df[test_df["class_label"] == class_idx]
-    if cls_rows.empty:
-        print(f"  No test sample found for class {class_idx}")
-        return None
-
-    cache_pos = int(cls_rows.iloc[0]["cache_pos"])
-    return X[cache_pos].copy()   # shape (ts_len,)
-
-
-@torch.no_grad()
-def run_rolling_on_sample(residuals: np.ndarray, model,
-                           device: torch.device,
-                           ts_len: int, n_steps: int = 100) -> dict:
-    """
-    Run rolling window on one residual series and get model predictions.
-    Returns dict with keys: variance, lag1_ac, probs (n_steps, n_classes)
-    """
-    from src.rolling_window import _variance, _lag1_ac, prepare_dl_input
-    import torch
-
-    n       = len(residuals)
-    win     = n // 2
-    # Start from 10% so we see the probability rise from near-zero
-    # Matches paper Fig 2D where probability starts low and rises
-    start   = max(win, int(0.10 * n))
-
-    positions = np.linspace(start, n, n_steps, dtype=int)
-    positions = np.clip(positions, win, n)
-
-    variances, ac1s, dl_inputs = [], [], []
-    for pos in positions:
-        seg = residuals[pos - win: pos]
-        variances.append(_variance(seg))
-        ac1s.append(_lag1_ac(seg))
-        dl_inputs.append(prepare_dl_input(residuals, pos, ts_len))
-
-    # Run model
-    X   = np.stack(dl_inputs)
-    X_t = torch.tensor(X, dtype=torch.float32).unsqueeze(1).to(device)
-
-    all_probs = []
-    for i in range(0, len(X_t), 64):
-        batch = X_t[i:i+64]
-        all_probs.append(
-            torch.softmax(model(batch), dim=-1).cpu().numpy()
-        )
-    probs = np.concatenate(all_probs, axis=0)
-
-    return {
-        "positions": positions,
-        "variance":  np.array(variances),
-        "lag1_ac":   np.array(ac1s),
-        "probs":     probs,
-    }
-
-
-def plot_figure2(model_name: str, dataset_name: str, cfg: dict):
-    """
-    Reproduces Fig 2 from Bury 2021 / Fig 2 from Ma 2025.
-
-    Uses REAL ts_500 test samples (Zenodo data) — one per bifurcation class.
-    Runs actual trained model on each sample.
-    No simulation needed — the Zenodo ts_500 IS the theoretical test data.
-
-    Layout matching Ma 2025 Fig 2:
-      Left: trajectory | variance | AC(1) | CNN-LSTM prob | this model prob
-      Right: confusion matrix F (CNN-LSTM) and G (this model)
-    """
-    import torch
-    fig_dir     = REPO_ROOT / cfg["paths"]["figures"]
-    colors      = cfg["figures"]["colors"]
-    device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ds_info     = cfg["datasets"][dataset_name]
-    ts_len      = ds_info["ts_length"]
-    class_names = ds_info["class_names"]
-    met_dir     = REPO_ROOT / cfg["paths"]["metrics"]
-
-    # ── Load confusion matrices from saved metrics ────────────────────────────
-    cm_base, cm_model = None, None
-    for v in [1, 2]:
-        p = met_dir / f"cnn_lstm_{dataset_name}_v{v}_train_metrics.json"
-        if p.exists():
-            with open(p) as f:
-                cm_base = np.array(json.load(f).get("confusion_matrix", []))
-            break
-    for v in cfg["training"].get(model_name, {}).get("pad_variants", [1]):
-        p = met_dir / f"{model_name}_{dataset_name}_v{v}_train_metrics.json"
-        if p.exists():
-            with open(p) as f:
-                cm_model = np.array(json.load(f).get("confusion_matrix", []))
-            break
-
-    # ── Load checkpoints ──────────────────────────────────────────────────────
-    ckpt_dir    = REPO_ROOT / cfg["paths"]["checkpoints"]
-    num_classes = ds_info["num_classes"]
-
-    def load_first_ckpt(mname):
-        for v in cfg["training"].get(mname, {}).get("pad_variants", [1]):
-            p = ckpt_dir / f"{mname}_{dataset_name}_v{v}_best.ckpt"
-            if p.exists():
-                m = get_model(mname, ts_len=ts_len, num_classes=num_classes)
-                m.load_state_dict(torch.load(p, map_location=device,
-                                             weights_only=True))
-                return m.to(device).eval()
-        return None
-
-    model_base  = load_first_ckpt("cnn_lstm")
-    model_this  = load_first_ckpt(model_name)
-
-    # ── Load one fold test sample from Zenodo ts_500 ──────────────────────────
-    # class 0 = fold (matches paper Fig 2 which shows a fold bifurcation)
-    fold_idx = class_names.index("fold") if "fold" in class_names else 0
-    residuals = load_test_sample_per_class(dataset_name, cfg, fold_idx)
-
-    if residuals is None:
-        print(f"  Cannot load test sample — skipping Figure 2")
+def plot_roc_all_models(results_dir: Path, out_dir: Path, dataset: str,
+                        model_colors: dict):
+    """Fig 1: ROC curves for all models on one dataset (Bury Fig. 2 analog)."""
+    records = [r for r in load_all_results(results_dir, "auc")
+               if r.get("dataset") == dataset and "core" not in r]
+    if not records:
         return
 
-    # ── Run rolling window + model inference ──────────────────────────────────
-    ews_base = (run_rolling_on_sample(residuals, model_base, device, ts_len)
-                if model_base else None)
-    ews_this = (run_rolling_on_sample(residuals, model_this, device, ts_len)
-                if model_this else None)
+    fig, ax = plt.subplots(figsize=(7, 6))
+    for r in records:
+        fpr = np.array(r["roc_fpr"])
+        tpr = np.array(r["roc_tpr"])
+        col = model_colors.get(r["model"], "#888888")
+        ax.plot(fpr, tpr, lw=1.5, color=col,
+                label=f"{r['model']} ({r['auc']:.3f})")
 
-    if ews_this is None:
-        print(f"  No checkpoint for {model_name} — skipping Figure 2")
+    ax.plot([0, 1], [0, 1], "--", color="#AAAAAA", lw=1, label="Random")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title(f"ROC curves — all models / {dataset}")
+    ax.legend(loc="lower right", fontsize=7, ncol=2)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / f"fig1_roc_all_models_{dataset}.png", dpi=150)
+    plt.close(fig)
+
+
+def plot_auc_heatmap(results_dir: Path, out_dir: Path):
+    """Fig 2: AUC heatmap — models x datasets (Bury Fig. 3 analog)."""
+    records = [r for r in load_all_results(results_dir, "auc")
+               if "core" not in r]
+    if not records:
         return
 
-    pos       = ews_this["positions"]
-    variance  = ews_this["variance"]
-    ac1       = ews_this["lag1_ac"]
-    probs_this= ews_this["probs"]   # (n_steps, n_classes)
-    probs_base= ews_base["probs"] if ews_base else probs_this
+    models   = sorted(set(r["model"]   for r in records))
+    datasets = sorted(set(r["dataset"] for r in records))
 
-    # p_transition = 1 - p_null
-    null_idx     = class_names.index("null") if "null" in class_names else -1
-    p_trans_this = 1.0 - probs_this[:, null_idx]
-    p_trans_base = 1.0 - probs_base[:, null_idx]
+    matrix = np.full((len(models), len(datasets)), np.nan)
+    for r in records:
+        i = models.index(r["model"])
+        j = datasets.index(r["dataset"])
+        matrix[i, j] = r["auc"]
 
-    # Bifurcation index = where p_transition starts rising sharply
-    bif_pos = pos[np.argmax(p_trans_this > 0.5)] if np.any(p_trans_this > 0.5)               else pos[-1]
+    fig, ax = plt.subplots(figsize=(max(4, len(datasets) * 2),
+                                     max(5, len(models) * 0.4)))
+    im = ax.imshow(matrix, vmin=0.5, vmax=1.0, cmap="RdYlGn", aspect="auto")
+    ax.set_xticks(range(len(datasets)))
+    ax.set_xticklabels(datasets)
+    ax.set_yticks(range(len(models)))
+    ax.set_yticklabels(models, fontsize=8)
+    for i in range(len(models)):
+        for j in range(len(datasets)):
+            if not np.isnan(matrix[i, j]):
+                ax.text(j, i, f"{matrix[i,j]:.2f}", ha="center", va="center",
+                        fontsize=7, color="black")
+    fig.colorbar(im, label="AUC")
+    ax.set_title("AUC Heatmap — all models x datasets")
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "fig2_auc_heatmap.png", dpi=150)
+    plt.close(fig)
 
-    # ── Layout: 5 panels left + 2 confusion matrices right ───────────────────
-    fig = plt.figure(figsize=(10, 8))
-    gs  = gridspec.GridSpec(5, 2, figure=fig,
-                             width_ratios=[2.5, 1.5],
-                             hspace=0.06, wspace=0.35)
 
-    ax_A = fig.add_subplot(gs[0, 0])
-    ax_B = fig.add_subplot(gs[1, 0], sharex=ax_A)
-    ax_C = fig.add_subplot(gs[2, 0], sharex=ax_A)
-    ax_D = fig.add_subplot(gs[3, 0], sharex=ax_A)
-    ax_E = fig.add_subplot(gs[4, 0], sharex=ax_A)
-    ax_F = fig.add_subplot(gs[1:3, 1])
-    ax_G = fig.add_subplot(gs[3:5, 1])
+def plot_model_ranking(results_dir: Path, out_dir: Path):
+    """Fig 4: Mean AUC bar chart (Ma 2025 Fig. 3 analog)."""
+    records = [r for r in load_all_results(results_dir, "auc")
+               if "core" not in r]
+    if not records:
+        return
 
-    def shade(ax):
-        ax.axvspan(bif_pos, pos[-1], alpha=0.10, color="gray", zorder=0)
-    def vline(ax):
-        ax.axvline(bif_pos, color="gray", lw=0.8, ls="--", alpha=0.7)
+    from collections import defaultdict
+    model_aucs = defaultdict(list)
+    for r in records:
+        model_aucs[r["model"]].append(r["auc"])
 
-    # Panel A: trajectory + rolling window arrow
-    win = len(residuals) // 2
-    ax_A.plot(np.arange(len(residuals)), residuals,
-              color=colors["trajectory"], lw=0.7)
-    vline(ax_A); shade(ax_A)
-    ax_A.set_ylabel("State", fontsize=8)
-    ax_A.set_title(f"Fold bifurcation — {dataset_name} test sample", fontsize=9)
-    ax_A.annotate("", xy=(win, residuals.max()*0.85),
-                  xytext=(0, residuals.max()*0.85),
-                  arrowprops=dict(arrowstyle="<->", color="k", lw=0.7))
+    models = sorted(model_aucs, key=lambda m: -np.mean(model_aucs[m]))
+    means  = [np.mean(model_aucs[m]) for m in models]
+    stds   = [np.std(model_aucs[m])  for m in models]
 
-    # Panel B: variance (1e-4 scale matching paper)
-    ax_B.plot(pos, variance, color=colors["variance"], lw=1.0)
-    vline(ax_B); shade(ax_B)
-    ax_B.set_ylabel("Variance", fontsize=8)
+    tsc_names = {"rocket", "minirocket", "multirocket", "arsenal", "knn_dtw",
+                 "boss", "weasel", "shapelet", "proximity_forest", "ts_chief",
+                 "drcif", "tde", "hivecote"}
+    colors = ["#E07B1A" if m in tsc_names else "#1f77b4" for m in models]
 
-    # Panel C: lag-1 AC
-    ax_C.plot(pos, ac1, color=colors["lag1_ac"], lw=1.0)
-    vline(ax_C); shade(ax_C)
-    ax_C.set_ylabel("AC(1)", fontsize=8)
+    fig, ax = plt.subplots(figsize=(max(8, len(models) * 0.6), 5))
+    ax.bar(models, means, yerr=stds, color=colors,
+           capsize=4, edgecolor="white", linewidth=0.5)
+    ax.axhline(0.5, color="#AAAAAA", lw=1, ls="--", label="Chance")
+    ax.set_ylim(0.4, 1.0)
+    ax.set_ylabel("Mean AUC (across datasets)")
+    ax.set_title("Model Ranking — Mean AUC")
+    ax.set_xticks(range(len(models)))
+    ax.set_xticklabels(models, rotation=45, ha="right", fontsize=8)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color="#1f77b4", label="DL"),
+                        Patch(color="#E07B1A", label="TSC")])
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "fig4_model_ranking.png", dpi=150)
+    plt.close(fig)
 
-    # Paper style: show ALL 4 class probabilities per panel
-    # fold=purple, hopf=orange, transcritical=cyan, null=gray
-    # This matches Bury 2021 Fig 1J-L exactly
-    prob_colors = {
-        "fold":         "#7165D0",
-        "hopf":         "#E07B1A",
-        "transcritical":"#17BECF",
-        "null":         "#AAAAAA",
-    }
 
-    # Panel D: CNN-LSTM — all 4 class probs
-    for i, cls in enumerate(class_names):
-        col = prob_colors.get(cls, "#888888")
-        lw  = 1.8 if cls == "fold" else 1.0
-        ax_D.plot(pos, probs_base[:, i], color=col, lw=lw, label=cls)
-    vline(ax_D); shade(ax_D)
-    ax_D.set_ylabel("DL prob.", fontsize=8)
-    ax_D.set_ylim(-0.05, 1.05)
-    ax_D.legend(fontsize=5, loc="upper left", ncol=2)
+def plot_pangaea_all_models(results_dir: Path, out_dir: Path, core: str):
+    """Fig 3: p_transition for all models on PANGAEA cores (Bury Fig. 4 analog)."""
+    records = [r for r in load_all_results(results_dir, "kendall_tau")
+               if r.get("core") == core]
+    if not records:
+        return
 
-    # Panel E: this model — all 4 class probs
-    for i, cls in enumerate(class_names):
-        col = prob_colors.get(cls, "#888888")
-        lw  = 1.8 if cls == "fold" else 1.0
-        ax_E.plot(pos, probs_this[:, i], color=col, lw=lw, label=cls)
-    vline(ax_E); shade(ax_E)
-    ax_E.set_ylabel(f"{model_name} prob.", fontsize=8)
-    ax_E.set_ylim(-0.05, 1.05)
-    ax_E.set_xlabel("Time", fontsize=8)
-    ax_E.legend(fontsize=5, loc="upper left", ncol=2)
+    sapropels = sorted(set(r["sapropel"] for r in records))
 
-    for ax, lbl in zip([ax_A, ax_B, ax_C, ax_D, ax_E],
-                        ["A", "B", "C", "D", "E"]):
-        ax.text(-0.08, 1.0, lbl, transform=ax.transAxes,
-                fontsize=10, fontweight="bold", va="top")
-    for ax in [ax_A, ax_B, ax_C, ax_D]:
-        plt.setp(ax.get_xticklabels(), visible=False)
+    fig, axes = plt.subplots(len(sapropels), 1,
+                              figsize=(10, 3 * len(sapropels)), sharex=False)
+    if len(sapropels) == 1:
+        axes = [axes]
 
-    # Confusion matrices F and G
-    def plot_cm(ax, cm, title, label):
-        ax.text(-0.15, 1.0, label, transform=ax.transAxes,
-                fontsize=10, fontweight="bold", va="top")
-        ax.set_title(title, fontsize=8)
-        if cm is None or len(cm) == 0:
-            ax.text(0.5, 0.5, "Train model first",
-                    ha="center", va="center",
-                    transform=ax.transAxes, fontsize=8)
-            return
-        cm_n = cm.astype(float)
-        for i in range(len(cm)):
-            s = cm[i].sum()
-            if s > 0:
-                cm_n[i] = cm[i] / s
-        ax.imshow(cm_n, cmap="Blues", vmin=0, vmax=1)
-        ticks = range(len(class_names))
-        ax.set_xticks(ticks); ax.set_yticks(ticks)
-        ax.set_xticklabels([c[:4] for c in class_names], fontsize=6, rotation=45)
-        ax.set_yticklabels([c[:4] for c in class_names], fontsize=6)
-        ax.set_xlabel("Predicted label", fontsize=7)
-        ax.set_ylabel("True label", fontsize=7)
-        for i in range(len(class_names)):
-            for j in range(len(class_names)):
-                ax.text(j, i, f"{cm_n[i,j]:.3f}",
-                        ha="center", va="center", fontsize=6,
-                        color="white" if cm_n[i,j] > 0.5 else "black")
+    for ax, sap in zip(axes, sapropels):
+        sap_recs = [r for r in records if r["sapropel"] == sap]
+        for r in sap_recs:
+            p = np.array(r["p_transition"])
+            ax.plot(np.linspace(0, 1, len(p)), p, lw=1, alpha=0.7,
+                    label=r["model"])
+        ax.axhline(0.5, color="#AAAAAA", lw=1, ls="--")
+        ax.set_ylim(0, 1)
+        ax.set_ylabel("p(transition)")
+        ax.set_title(f"{core} / {sap}")
+        ax.legend(fontsize=6, ncol=3)
 
-    plot_cm(ax_F, cm_base,  "DL classifier (CNN-LSTM)", "F")
-    plot_cm(ax_G, cm_model, f"SDML classifier ({model_name})", "G")
+    axes[-1].set_xlabel("Normalised time (0=start, 1=transition)")
+    fig.suptitle(f"PANGAEA predictions — {core}", fontsize=12)
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / f"fig3_pangaea_{core}.png", dpi=150)
+    plt.close(fig)
 
-    fname = cfg["naming"]["fig2"].format(model=model_name, dataset=dataset_name)
-    savefig(fig, fig_dir / fname, cfg)
+
+def plot_speed_vs_auc(results_dir: Path, out_dir: Path, train_log_dir: Path):
+    """Fig 5: Training time vs AUC scatter."""
+    records = [r for r in load_all_results(results_dir, "auc")
+               if "core" not in r]
+    if not records:
+        return
+
+    from collections import defaultdict
+    tsc_names = {"rocket", "minirocket", "multirocket", "arsenal", "knn_dtw",
+                 "boss", "weasel", "shapelet", "proximity_forest", "ts_chief",
+                 "drcif", "tde", "hivecote"}
+
+    model_auc  = defaultdict(list)
+    model_time = {}
+    for r in records:
+        model_auc[r["model"]].append(r.get("auc", float("nan")))
+
+    for log_f in train_log_dir.glob("*_train.log"):
+        model = log_f.stem.replace("_train", "").rsplit("_", 1)[0]
+        try:
+            text = log_f.read_text()
+            for line in text.splitlines():
+                if "time=" in line and "min" in line:
+                    t = float(line.split("time=")[-1].replace("min", "").strip())
+                    model_time[model] = t
+        except Exception:
+            pass
+
+    models = [m for m in model_auc if m in model_time]
+    if not models:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for m in models:
+        auc = np.nanmean(model_auc[m])
+        t   = model_time[m]
+        col = "#E07B1A" if m in tsc_names else "#1f77b4"
+        ax.scatter(t, auc, color=col, s=80, zorder=3)
+        ax.annotate(m, (t, auc), fontsize=7, xytext=(4, 4),
+                    textcoords="offset points")
+
+    ax.set_xlabel("Training time (min)")
+    ax.set_ylabel("Mean AUC")
+    ax.set_title("Speed vs AUC Trade-off")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color="#1f77b4", label="DL"),
+                        Patch(color="#E07B1A", label="TSC")])
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "fig5_speed_vs_auc.png", dpi=150)
+    plt.close(fig)
 
 
 # =============================================================================
-#  Main
+#  CLI — generate all comparison plots from saved results
 # =============================================================================
 
 def main():
+    import argparse
+    from src.dataset_loader import load_config
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",    default="cnn_lstm",
-                        help="Model name or 'all'")
-    parser.add_argument("--dataset",  default="ts_500",
-                        choices=["ts_500", "ts_1500"])
-    parser.add_argument("--fig2",     action="store_true")
-    parser.add_argument("--fig3_only",action="store_true")
-    parser.add_argument("--fig4",     action="store_true")
-    parser.add_argument("--fig5",     action="store_true")
-    parser.add_argument("--config",   default="config.yaml")
+    parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()
 
-    cfg = load_config(args.config)
-    setup_style(cfg)
+    cfg         = load_config(args.config)
+    results_dir = REPO_ROOT / cfg["paths"]["results"]
+    comp_dir    = results_dir / "comparison"
+    log_dir     = REPO_ROOT / cfg["paths"]["logs"]
 
-    fig_dir = REPO_ROOT / cfg["paths"]["figures"]
-    fig_dir.mkdir(parents=True, exist_ok=True)
+    dl_models  = cfg["models"]["dl"]
+    tsc_models = cfg["models"]["tsc"]
+    dl_cols  = ["#1f77b4", "#E07B1A", "#2D8A4E", "#7165D0"]
+    tsc_cols = ["#17BECF", "#BCBD22", "#8C564B", "#E377C2",
+                "#7F7F7F", "#AEC7E8", "#FFBB78", "#98DF8A",
+                "#FF9896", "#C5B0D5", "#C49C94", "#F7B6D2", "#C7C7C7"]
+    all_colors = {}
+    for m, c in zip(dl_models, dl_cols):
+        all_colors[m] = c
+    for m, c in zip(tsc_models, tsc_cols):
+        all_colors[m] = c
 
-    cores      = cfg["slurm"]["test_cores"]
-    model_list = (
-        [m["name"] for m in cfg["models"]]
-        if args.model == "all" else [args.model]
-    )
-    gen_all = not any([args.fig2, args.fig3_only, args.fig4, args.fig5])
+    for ds in cfg["slurm"]["train_datasets"]:
+        print(f"ROC all models — {ds}")
+        plot_roc_all_models(results_dir, comp_dir, ds, all_colors)
 
-    # ── Figure 3 ──────────────────────────────────────────────────────────────
-    if gen_all or args.fig3_only:
-        print("\n--- Figure 3: PANGAEA overview ---")
-        plot_figure3(cfg)
-        if args.fig3_only:
-            return
+    print("AUC heatmap")
+    plot_auc_heatmap(results_dir, comp_dir)
 
-    for model_name in model_list:
-        print(f"\n=== Model: {model_name} ===")
+    print("Model ranking")
+    plot_model_ranking(results_dir, comp_dir)
 
-        # ── Figure 2 ──────────────────────────────────────────────────────────
-        if gen_all or args.fig2:
-            print(f"\n--- Figure 2: theoretical model ---")
-            plot_figure2(model_name, args.dataset, cfg)
+    for core in cfg["slurm"]["test_cores"]:
+        print(f"PANGAEA — {core}")
+        plot_pangaea_all_models(results_dir, comp_dir, core)
 
-        for core_name in cores:
-            # ── Figure 4 ──────────────────────────────────────────────────────
-            if gen_all or args.fig4:
-                print(f"\n--- Figure 4: {core_name} (all elements) ---")
-                plot_figure4(model_name, core_name, cfg)
+    print("Speed vs AUC")
+    plot_speed_vs_auc(results_dir, comp_dir, log_dir)
 
-            # ── Figure 5 single model ─────────────────────────────────────────
-            if gen_all or args.fig5:
-                print(f"\n--- Figure 5 single: {core_name} ---")
-                plot_figure5_single(model_name, core_name, cfg)
-
-    # ── Figure 5 all-model comparison — one file per (core, element) ──────────
-    if gen_all or args.fig5:
-        for element in ELEMENTS:
-            for core_name in cores:
-                print(f"\n--- Figure 5 comparison: {core_name}/{element} ---")
-                plot_figure5_comparison(core_name, element, cfg)
-
-    print(f"\nAll figures saved to {fig_dir}")
+    print(f"\nComparison plots saved to: {comp_dir}")
 
 
 if __name__ == "__main__":
