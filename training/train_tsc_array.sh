@@ -53,4 +53,5 @@ echo "Node: $(hostname)  NUMBA_NUM_THREADS=$NUMBA_NUM_THREADS"
 cd /home/s466553/Master_thesis/master_thesis
 source /home/s466553/Master_thesis/myenv/bin/activate
 
+mkdir -p /home/s466553/Master_thesis/master_thesis/logs
 python training/train.py --model "$MODEL" --dataset "$DATASET"

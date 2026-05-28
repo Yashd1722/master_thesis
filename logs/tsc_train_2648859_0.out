@@ -1,0 +1,10 @@
+Task 0: rocket on ts_500
+Node: jn102  NUMBA_NUM_THREADS=32
+12:20:06 | INFO | Model  : rocket
+12:20:06 | INFO | Dataset: ts_500
+12:20:06 | INFO | IS_TSC : True
+12:20:20 | INFO |   Loading train data into memory...
+12:20:29 | INFO |   Dropping 665 flat train series
+12:20:29 | INFO |   Dropping 24 flat val series
+12:20:29 | INFO |   Train: (470375, 500)  Val: (19976, 500)
+12:20:30 | INFO |   Fitting rocket...

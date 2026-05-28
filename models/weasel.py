@@ -8,6 +8,7 @@ import joblib
 MODEL_NAME  = "weasel"
 MODEL_CLASS = "WEASELNet"
 IS_TSC      = True
+MAX_TRAIN_SAMPLES = 50000
 
 
 class WEASELNet:

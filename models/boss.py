@@ -4,6 +4,7 @@ import joblib
 MODEL_NAME  = "boss"
 MODEL_CLASS = "BOSSNet"
 IS_TSC      = True
+MAX_TRAIN_SAMPLES = 100000
 
 
 class BOSSNet:

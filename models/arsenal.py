@@ -4,6 +4,7 @@ import joblib
 MODEL_NAME  = "arsenal"
 MODEL_CLASS = "ArsenalNet"
 IS_TSC      = True
+MAX_TRAIN_SAMPLES = 100000
 
 
 class ArsenalNet:
@@ -18,7 +19,7 @@ class ArsenalNet:
 
     @classmethod
     def supported_hyperparameters(cls):
-        return [{"n_kernels": 2000, "n_jobs": 8}]
+        return [{"n_kernels": 2000, "n_jobs": 4}]
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         self._clf.fit(X, y)

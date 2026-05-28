@@ -8,6 +8,7 @@ import joblib
 MODEL_NAME  = "rocket"
 MODEL_CLASS = "RocketNet"
 IS_TSC      = True
+MAX_TRAIN_SAMPLES = 200000
 
 
 class RocketNet:

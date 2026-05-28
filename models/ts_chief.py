@@ -12,6 +12,7 @@ import joblib
 MODEL_NAME  = "ts_chief"
 MODEL_CLASS = "TSCHIEFNet"
 IS_TSC      = True
+MAX_TRAIN_SAMPLES = 50000
 
 
 class TSCHIEFNet:

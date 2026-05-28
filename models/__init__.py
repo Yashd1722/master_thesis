@@ -67,7 +67,14 @@ def is_tsc_model(name: str) -> bool:
 
 def get_max_train_samples(name: str):
     """Return MAX_TRAIN_SAMPLES for a model, or None if unlimited."""
+    import sys as _sys
     cls = _REGISTRY.get(name)
     if cls is None:
         return None
-    return getattr(cls, "MAX_TRAIN_SAMPLES", None)
+    # class-level attr takes priority; fall back to module-level variable
+    val = cls.__dict__.get("MAX_TRAIN_SAMPLES")
+    if val is None:
+        mod = _sys.modules.get(cls.__module__)
+        if mod is not None:
+            val = getattr(mod, "MAX_TRAIN_SAMPLES", None)
+    return val
