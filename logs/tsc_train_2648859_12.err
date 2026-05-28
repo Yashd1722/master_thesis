@@ -1,0 +1,2 @@
+/var/lib/slurm/slurmd/job2648881/slurm_script: line 57: 645934 Killed                  python training/train.py --model "$MODEL" --dataset "$DATASET"
+slurmstepd-jn120: error: Detected 1 oom_kill event in StepId=2648881.batch. Some of the step tasks have been OOM Killed.

@@ -1,0 +1,11 @@
+Task 4: multirocket on ts_500
+Node: jn117  NUMBA_NUM_THREADS=32
+12:40:02 | INFO | Model  : multirocket
+12:40:02 | INFO | Dataset: ts_500
+12:40:02 | INFO | IS_TSC : True
+12:40:35 | INFO |   Loading train data into memory...
+12:40:42 | INFO |   Dropping 667 flat train series
+12:40:42 | INFO |   Dropping 24 flat val series
+12:40:42 | INFO |   Train: (470373, 500)  Val: (19976, 500)
+12:40:42 | INFO |   Subsampled train to 80000 (MAX_TRAIN_SAMPLES=80000)
+12:40:45 | INFO |   Fitting multirocket...

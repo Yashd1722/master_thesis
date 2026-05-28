@@ -1,0 +1,11 @@
+Task 7: arsenal on ts_1500
+Node: jn117  NUMBA_NUM_THREADS=32
+12:45:49 | INFO | Model  : arsenal
+12:45:49 | INFO | Dataset: ts_1500
+12:45:49 | INFO | IS_TSC : True
+12:46:02 | INFO |   Loading train data into memory...
+12:46:08 | INFO |   Dropping 250 flat train series
+12:46:08 | INFO |   Dropping 13 flat val series
+12:46:08 | INFO |   Train: (188166, 1500)  Val: (7987, 1500)
+12:46:08 | INFO |   Subsampled train to 100000 (MAX_TRAIN_SAMPLES=100000)
+12:46:10 | INFO |   Fitting arsenal...

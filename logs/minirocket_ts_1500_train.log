@@ -6,3 +6,6 @@
 12:23:09 | INFO |   Dropping 13 flat val series
 12:23:09 | INFO |   Train: (188164, 1500)  Val: (7987, 1500)
 12:23:10 | INFO |   Fitting minirocket...
+12:46:23 | INFO |   Val acc=0.7721 f1=0.7690 time=23.2min
+12:46:23 | INFO |   Saved: minirocket_ts_1500_best.pkl
+12:46:24 | INFO | Done — val_f1=0.7690

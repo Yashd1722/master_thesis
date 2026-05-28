@@ -1,0 +1,11 @@
+Task 18: ts_chief on ts_500
+Node: jn108  NUMBA_NUM_THREADS=32
+12:54:13 | INFO | Model  : ts_chief
+12:54:13 | INFO | Dataset: ts_500
+12:54:13 | INFO | IS_TSC : True
+12:54:22 | INFO |   Loading train data into memory...
+12:54:27 | INFO |   Dropping 668 flat train series
+12:54:27 | INFO |   Dropping 24 flat val series
+12:54:27 | INFO |   Train: (470372, 500)  Val: (19976, 500)
+12:54:27 | INFO |   Subsampled train to 50000 (MAX_TRAIN_SAMPLES=50000)
+12:54:29 | INFO |   Fitting ts_chief...

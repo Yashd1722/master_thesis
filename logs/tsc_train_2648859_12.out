@@ -1,0 +1,11 @@
+Task 12: weasel on ts_500
+Node: jn120  NUMBA_NUM_THREADS=32
+12:49:13 | INFO | Model  : weasel
+12:49:13 | INFO | Dataset: ts_500
+12:49:13 | INFO | IS_TSC : True
+12:49:22 | INFO |   Loading train data into memory...
+12:49:27 | INFO |   Dropping 661 flat train series
+12:49:27 | INFO |   Dropping 24 flat val series
+12:49:27 | INFO |   Train: (470379, 500)  Val: (19976, 500)
+12:49:27 | INFO |   Subsampled train to 50000 (MAX_TRAIN_SAMPLES=50000)
+12:49:28 | INFO |   Fitting weasel...
