@@ -18,6 +18,14 @@ __pycache__/
 *.log
 
 # ----------------------------
+# CHECKPOINTS / BINARY MODEL FILES
+# ----------------------------
+*.pkl
+*.pt
+checkpoints/
+
+
+# ----------------------------
 # DATASET RULES
 # ----------------------------
 # Ignore everything in dataset/ ...
@@ -36,7 +44,5 @@ dataset/**
 # ----------------------------
 !results/
 !results/**/*
-!logs/
-!logs/**/*
 !test_results/
 !test_results/**/*
