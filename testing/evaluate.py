@@ -1,15 +1,16 @@
 """
 testing/evaluate.py
-Unified evaluation for Zenodo and PANGAEA. 
-Features:
-- Skips already evaluated models (Caching)
-- Checks for checkpoint existence before loading data
-- Filters flat series for TSC models to prevent aeon ValueError
+Unified evaluation for Zenodo and PANGAEA.
+Implements Bury 2021 Protocol:
+1. Saves full 4-class probabilities for every rolling window step.
+2. Computes ROC using the "late window" (last 20%) of Forced vs Null series.
+3. Caches results to avoid redundant computation.
 """
 import argparse, json, sys, time
 from pathlib import Path
 import numpy as np
 import torch, joblib
+from sklearn.metrics import roc_curve, auc as sk_auc
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -18,18 +19,12 @@ from models import get_model, list_models, is_tsc_model
 from src.dataset_loader import load_config, get_dataset_info, get_dataloader
 from src.rolling_window import run_all_sapropels
 
-from metric.accuracy import compute_accuracy
-from metric.auc import compute_auc
-from metric.roc import compute_roc
-from metric.kendall_tau import compute_kendall_tau
-
 def json_safe(obj):
     if isinstance(obj, np.ndarray): return obj.tolist()
     if isinstance(obj, np.generic): return obj.item()
     raise TypeError
 
 def get_ckpt_path(model_name, dataset_name, cfg):
-    """Constructs the checkpoint path without loading the model."""
     ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
     if is_tsc_model(model_name):
         return ckpt_dir / cfg["naming"]["checkpoint_tsc"].format(model=model_name, dataset=dataset_name)
@@ -37,11 +32,9 @@ def get_ckpt_path(model_name, dataset_name, cfg):
         return ckpt_dir / cfg["naming"]["checkpoint_dl"].format(model=model_name, dataset=dataset_name, variant=1)
 
 def load_model(model_name, dataset_name, cfg, device):
-    """Loads the model only after verifying the checkpoint exists."""
     ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
-        
     ds_info = get_dataset_info(dataset_name, cfg)
     if is_tsc_model(model_name):
         return joblib.load(ckpt_path), "tsc"
@@ -50,36 +43,69 @@ def load_model(model_name, dataset_name, cfg, device):
         model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
         return model.to(device).eval(), "dl"
 
-def predict_proba(model, X_np, m_type, device, null_idx):
-    if m_type == "tsc": 
+def predict_proba(model, X_np, m_type, device):
+    """Returns (N, 4) probability matrix."""
+    if m_type == "tsc":
         probs = model.predict_proba(X_np)
     else:
         X_t = torch.tensor(X_np, dtype=torch.float32).unsqueeze(1).to(device)
-        with torch.no_grad(): probs = model(X_t).softmax(dim=1).cpu().numpy()
-    return 1.0 - probs[:, null_idx] if null_idx >= 0 else probs[:, -1]
+        with torch.no_grad():
+            probs = model(X_t).softmax(dim=1).cpu().numpy()
+    return probs
+
+def compute_late_window_roc(forced_probs, null_probs, class_idx):
+    """
+    Bury Protocol: Compare late forced (positive) vs late null (negative).
+    class_idx: 0=Null, 1=Fold, 2=Hopf, 3=Transcritical
+    For 'Any Transition', we use 1 - p_null.
+    """
+    n_forced = forced_probs.shape[0]
+    n_null = null_probs.shape[0] if null_probs is not None else 0
+    
+    if n_forced == 0 or n_null == 0:
+        return [0, 1], [0, 1], 0.5
+        
+    # Late window = last 20% of steps
+    start_f = int(0.80 * n_forced)
+    start_n = int(0.80 * n_null)
+    
+    scores_forced = forced_probs[start_f:, class_idx]
+    scores_null = null_probs[start_n:, class_idx]
+    
+    # For "Any Transition" (Bury Fig 2), score is 1 - p_null
+    if class_idx == -1: 
+        scores_forced = 1.0 - forced_probs[start_f:, 0]
+        scores_null = 1.0 - null_probs[start_n:, 0]
+        
+    y_true = np.concatenate([np.ones(len(scores_forced)), np.zeros(len(scores_null))])
+    y_score = np.concatenate([scores_forced, scores_null])
+    
+    fpr, tpr, _ = roc_curve(y_true, y_score)
+    roc_auc = sk_auc(fpr, tpr)
+    return fpr.tolist(), tpr.tolist(), float(roc_auc)
 
 def evaluate_zenodo(model_name, dataset_name, cfg, device):
-    # 1. CACHING: Skip if already evaluated
+    # Caching
     out_dir = REPO_ROOT / cfg["paths"]["results"] / f"{model_name}_{dataset_name}_zenodo"
     out_file = out_dir / "result.json"
     if out_file.exists():
         print(f"⏭️  Skipping {model_name}/{dataset_name}/zenodo (Already evaluated)")
         return
 
-    # 2. CHECKPOINT CHECK: Fail fast if missing
     ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint missing: {ckpt_path.name}")
 
     ds_info = get_dataset_info(dataset_name, cfg)
     null_idx = ds_info["class_names"].index("null") if "null" in ds_info["class_names"] else -1
+    class_names = ds_info["class_names"]
     model, m_type = load_model(model_name, dataset_name, cfg, device)
-    
+
     test_dl = get_dataloader(dataset_name, "test", cfg, 1, 1024)
     X_all = np.concatenate([x.squeeze(1).numpy() for x, y in test_dl])
     y_all = np.concatenate([y.numpy() for x, y in test_dl])
-    
-    # 3. FLAT SERIES FILTER: Prevents aeon ValueError
+
+    # Flat series filter for TSC
     if m_type == "tsc":
         stds = X_all.std(axis=1)
         valid_mask = stds > 1e-7
@@ -88,86 +114,124 @@ def evaluate_zenodo(model_name, dataset_name, cfg, device):
             print(f"  ⚠️ Dropping {n_dropped} flat test series for TSC inference")
         X_all = X_all[valid_mask]
         y_all = y_all[valid_mask]
-        
+
     if len(X_all) == 0:
-        print("  ❌ No valid test samples remaining.")
+        print("   No valid test samples remaining.")
         return
-    
+
     t0 = time.time()
-    probs = predict_proba(model, X_all, m_type, device, null_idx)
+    probs = predict_proba(model, X_all, m_type, device)  # (N, 4)
     inf_time = time.time() - t0
-    
-    preds = (probs > 0.5).astype(int) if null_idx >= 0 else probs.argmax(axis=1)
-    labels_bin = (y_all != null_idx).astype(int) if null_idx >= 0 else (y_all > 0).astype(int)
-    
-    fpr, tpr, thresh = compute_roc(labels_bin, probs)
-    acc_dict = compute_accuracy(y_all, preds)
-    
+
+    # 4-class predictions for confusion matrix
+    preds_4class = probs.argmax(axis=1)
+    from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
+    acc = float(accuracy_score(y_all, preds_4class))
+    f1 = float(f1_score(y_all, preds_4class, average="macro", zero_division=0))
+    cm = confusion_matrix(y_all, preds_4class).tolist()
+
+    # Binary conversion ONLY for ROC/AUC (Bury protocol)
+    if null_idx >= 0:
+        p_transition = 1.0 - probs[:, null_idx]
+        labels_binary = (y_all != null_idx).astype(int)
+    else:
+        p_transition = probs[:, -1]
+        labels_binary = (y_all > 0).astype(int)
+
+    from sklearn.metrics import roc_auc_score, roc_curve
+    auc_val = float(roc_auc_score(labels_binary, p_transition))
+    fpr, tpr, thresh = roc_curve(labels_binary, p_transition)
+
     results = {
         "model": model_name, "dataset": dataset_name, "target": "zenodo",
-        "inference_time_sec": round(inf_time, 2), "auc": compute_auc(labels_bin, probs),
-        "roc": {"fpr": fpr, "tpr": tpr}, "accuracy": acc_dict["accuracy"],
-        "macro_f1": acc_dict["macro_f1"], "confusion_matrix": acc_dict["confusion_matrix"]
+        "class_names": class_names, "null_idx": null_idx,
+        "inference_time_sec": round(inf_time, 2),
+        "auc": auc_val,
+        "roc": {"fpr": fpr.tolist(), "tpr": tpr.tolist(), "thresholds": thresh.tolist()},
+        "accuracy": acc, "macro_f1": f1, "confusion_matrix": cm,
     }
-    
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    with open(out_file, "w") as f: json.dump(results, f, indent=4, default=json_safe)
+    with open(out_file, "w") as f:
+        json.dump(results, f, indent=4, default=json_safe)
     print(f"✅ Saved Zenodo metrics to {out_dir}")
 
 def evaluate_pangaea(model_name, dataset_name, cfg, device):
-    # 1. CACHING: Skip if already evaluated
     out_dir = REPO_ROOT / cfg["paths"]["results"] / f"{model_name}_{dataset_name}_pangaea"
     out_file = out_dir / "result.json"
     if out_file.exists():
         print(f"⏭️  Skipping {model_name}/{dataset_name}/pangaea (Already evaluated)")
         return
 
-    # 2. CHECKPOINT CHECK: Fail fast if missing
     ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint missing: {ckpt_path.name}")
 
     ds_info = get_dataset_info(dataset_name, cfg)
-    null_idx = ds_info["class_names"].index("null") if "null" in ds_info["class_names"] else -1
+    class_names = ds_info["class_names"]
+    null_idx = class_names.index("null")
     model, m_type = load_model(model_name, dataset_name, cfg, device)
-    
     core_data = {}
+
     for core_name in cfg["pangaea"]["cores"]:
         sap_results = run_all_sapropels(core_name, cfg, ds_info["ts_length"])
         core_data[core_name] = {}
+        
         for sap_id, elements in sap_results.items():
             core_data[core_name][sap_id] = {}
+            
             for element, segs in elements.items():
-                if "forced" not in segs: continue
-                forced_res = segs["forced"]
-                X = np.stack(forced_res["dl_inputs"]) 
+                # FIXED: Use dictionary access instead of attribute access
+                forced_res = segs.get("forced")
+                neutral_res = segs.get("neutral")
                 
-                # 3. FLAT SERIES FILTER for PANGAEA TSC
-                if m_type == "tsc":
-                    stds = X.std(axis=1)
-                    valid_mask = stds > 1e-7
-                    X = X[valid_mask]
-                    if len(X) == 0: continue
+                if not forced_res or not forced_res.get("dl_inputs"):
+                    continue
                     
-                p_trans = predict_proba(model, X, m_type, device, null_idx)
+                # 1. Get Forced Probabilities (4-class)
+                X_forced = np.stack(forced_res["dl_inputs"])
+                probs_forced = predict_proba(model, X_forced, m_type, device)
                 
-                # Align EWS metrics if we filtered out flat series
-                if m_type == "tsc" and len(X) < len(forced_res["variance"]):
-                    var_filt = forced_res["variance"][valid_mask].tolist()
-                    ac_filt = forced_res["lag1_ac"][valid_mask].tolist()
-                else:
-                    var_filt = forced_res["variance"].tolist()
-                    ac_filt = forced_res["lag1_ac"].tolist()
+                # 2. Get Neutral Probabilities (4-class)
+                probs_neutral = np.array([])
+                if neutral_res and neutral_res.get("dl_inputs"):
+                    X_neutral = np.stack(neutral_res["dl_inputs"])
+                    probs_neutral = predict_proba(model, X_neutral, m_type, device)
+                
+                # 3. Compute ROC for "Any Transition" (1 - p_null)
+                fpr, tpr, auc_any = compute_late_window_roc(probs_forced, probs_neutral, class_idx=-1)
+                
+                # 4. Compute ROC for specific classes
+                roc_per_class = {}
+                for i, cls in enumerate(class_names):
+                    if cls == "null": continue
+                    _, _, auc_cls = compute_late_window_roc(probs_forced, probs_neutral, class_idx=i)
+                    roc_per_class[cls] = auc_cls
+                
+                # 5. Save Time Series Data
+                late_start = int(0.8 * len(probs_forced))
+                late_mean_probs = probs_forced[late_start:].mean(axis=0).tolist()
                 
                 core_data[core_name][sap_id][element] = {
-                    "p_transition": p_trans.tolist(), "variance": var_filt,
-                    "lag1_ac": ac_filt, "ktau_var": forced_res["ktau_var"],
-                    "ktau_ac": forced_res["ktau_ac"], "ktau_p_trans": compute_kendall_tau(p_trans)
+                    "p_transition": (1.0 - probs_forced[:, null_idx]).tolist(),
+                    "per_class_probs": probs_forced.tolist(),
+                    "variance": forced_res["variance"].tolist(),
+                    "lag1_ac": forced_res["lag1_ac"].tolist(),
+                    "ktau_var": forced_res["ktau_var"],
+                    "ktau_ac": forced_res["ktau_ac"],
+                    "roc_auc_any": auc_any,
+                    "roc_per_class": roc_per_class,
+                    "late_window_mean_probs": late_mean_probs
                 }
-                
-    results = {"model": model_name, "dataset": dataset_name, "target": "pangaea", "cores": core_data}
+
+    results = {
+        "model": model_name, "dataset": dataset_name, "target": "pangaea",
+        "class_names": class_names, "cores": core_data,
+    }
+    
     out_dir.mkdir(parents=True, exist_ok=True)
-    with open(out_file, "w") as f: json.dump(results, f, indent=4, default=json_safe)
+    with open(out_file, "w") as f:
+        json.dump(results, f, indent=4, default=json_safe)
     print(f"✅ Saved PANGAEA metrics to {out_dir}")
 
 def main():
@@ -179,8 +243,11 @@ def main():
     
     cfg = load_config()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if args.target == "zenodo": evaluate_zenodo(args.model, args.dataset, cfg, device)
-    else: evaluate_pangaea(args.model, args.dataset, cfg, device)
+    
+    if args.target == "zenodo":
+        evaluate_zenodo(args.model, args.dataset, cfg, device)
+    else:
+        evaluate_pangaea(args.model, args.dataset, cfg, device)
 
 if __name__ == "__main__":
     main()

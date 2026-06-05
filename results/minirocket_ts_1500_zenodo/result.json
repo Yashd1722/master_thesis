@@ -2,7 +2,14 @@
     "model": "minirocket",
     "dataset": "ts_1500",
     "target": "zenodo",
-    "inference_time_sec": 0.57,
+    "class_names": [
+        "fold",
+        "hopf",
+        "transcritical",
+        "null"
+    ],
+    "null_idx": 3,
+    "inference_time_sec": 0.53,
     "auc": 0.8943520938716409,
     "roc": {
         "fpr": [
@@ -14,34 +21,39 @@
             0.0,
             0.863150867823765,
             1.0
+        ],
+        "thresholds": [
+            Infinity,
+            1.0,
+            0.0
         ]
     },
-    "accuracy": 0.3037593984962406,
-    "macro_f1": 0.1838211496517273,
+    "accuracy": 0.7162907268170426,
+    "macro_f1": 0.7095327909073028,
     "confusion_matrix": [
         [
-            117,
-            383,
-            0,
-            0
+            263,
+            45,
+            75,
+            117
         ],
         [
-            11,
-            489,
-            0,
-            0
+            66,
+            392,
+            31,
+            11
         ],
         [
-            77,
-            421,
-            0,
-            0
+            63,
+            44,
+            314,
+            77
         ],
         [
-            460,
-            37,
-            0,
-            0
+            7,
+            3,
+            27,
+            460
         ]
     ]
 }
