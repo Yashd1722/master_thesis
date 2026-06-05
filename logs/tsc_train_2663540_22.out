@@ -1,0 +1,8 @@
+Task 22: tde on ts_500
+Node: jn101  NUMBA_NUM_THREADS=16
+12:21:15 | INFO | Model  : tde
+12:21:15 | INFO | Dataset: ts_500
+12:21:15 | INFO | IS_TSC : True
+12:21:23 | INFO |   Loading train/val data into memory for aeon...
+12:21:29 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+12:21:29 | INFO |   Fitting tde...

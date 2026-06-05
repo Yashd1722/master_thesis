@@ -1,0 +1,8 @@
+Task 0: rocket on ts_500
+Node: jn103  NUMBA_NUM_THREADS=32
+10:33:37 | INFO | Model  : rocket
+10:33:37 | INFO | Dataset: ts_500
+10:33:37 | INFO | IS_TSC : True
+10:33:44 | INFO |   Loading train/val data into memory for aeon...
+10:33:48 | INFO |   Subsampled train to 200000 (MAX_TRAIN_SAMPLES=200000)
+10:33:49 | INFO |   Fitting rocket...

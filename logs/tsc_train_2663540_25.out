@@ -1,0 +1,8 @@
+Task 25: hivecote on ts_1500
+Node: jn106  NUMBA_NUM_THREADS=16
+12:21:38 | INFO | Model  : hivecote
+12:21:38 | INFO | Dataset: ts_1500
+12:21:38 | INFO | IS_TSC : True
+12:21:44 | INFO |   Loading train/val data into memory for aeon...
+12:21:46 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+12:21:47 | INFO |   Fitting hivecote...

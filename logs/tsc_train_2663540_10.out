@@ -1,0 +1,8 @@
+Task 10: boss on ts_500
+Node: jn106  NUMBA_NUM_THREADS=16
+11:58:09 | INFO | Model  : boss
+11:58:09 | INFO | Dataset: ts_500
+11:58:09 | INFO | IS_TSC : True
+11:58:15 | INFO |   Loading train/val data into memory for aeon...
+11:58:19 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:58:20 | INFO |   Fitting boss...

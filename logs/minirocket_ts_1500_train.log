@@ -1,11 +1,9 @@
-12:22:59 | INFO | Model  : minirocket
-12:22:59 | INFO | Dataset: ts_1500
-12:22:59 | INFO | IS_TSC : True
-12:23:05 | INFO |   Loading train data into memory...
-12:23:09 | INFO |   Dropping 252 flat train series
-12:23:09 | INFO |   Dropping 13 flat val series
-12:23:09 | INFO |   Train: (188164, 1500)  Val: (7987, 1500)
-12:23:10 | INFO |   Fitting minirocket...
-12:46:23 | INFO |   Val acc=0.7721 f1=0.7690 time=23.2min
-12:46:23 | INFO |   Saved: minirocket_ts_1500_best.pkl
-12:46:24 | INFO | Done — val_f1=0.7690
+11:28:36 | INFO | Model  : minirocket
+11:28:36 | INFO | Dataset: ts_1500
+11:28:36 | INFO | IS_TSC : True
+11:28:42 | INFO |   Loading train/val data into memory for aeon...
+11:28:44 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:28:44 | INFO |   Fitting minirocket...
+11:44:35 | INFO |   Val acc=0.7254 f1=0.7203 | time=15.8min
+11:44:35 | INFO |   Saved: minirocket_ts_1500_best.pkl
+11:44:35 | INFO | Done — val_f1=0.7203

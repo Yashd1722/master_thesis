@@ -1,0 +1,8 @@
+Task 4: multirocket on ts_500
+Node: jn118  NUMBA_NUM_THREADS=32
+10:33:36 | INFO | Model  : multirocket
+10:33:36 | INFO | Dataset: ts_500
+10:33:36 | INFO | IS_TSC : True
+10:33:42 | INFO |   Loading train/val data into memory for aeon...
+10:33:45 | INFO |   Subsampled train to 80000 (MAX_TRAIN_SAMPLES=80000)
+10:33:46 | INFO |   Fitting multirocket...

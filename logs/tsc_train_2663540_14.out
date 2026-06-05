@@ -1,0 +1,11 @@
+Task 14: shapelet on ts_500
+Node: jn106  NUMBA_NUM_THREADS=16
+12:08:08 | INFO | Model  : shapelet
+12:08:08 | INFO | Dataset: ts_500
+12:08:08 | INFO | IS_TSC : True
+12:08:13 | INFO |   Loading train/val data into memory for aeon...
+12:08:17 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+12:08:18 | INFO |   Fitting shapelet...
+12:17:47 | INFO |   Val acc=0.6167 f1=0.6175 | time=5.4min
+12:17:48 | INFO |   Saved: shapelet_ts_500_best.pkl
+12:17:48 | INFO | Done — val_f1=0.6175

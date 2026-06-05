@@ -1,0 +1,8 @@
+Task 18: ts_chief on ts_500
+Node: jn111  NUMBA_NUM_THREADS=16
+12:13:08 | INFO | Model  : ts_chief
+12:13:08 | INFO | Dataset: ts_500
+12:13:08 | INFO | IS_TSC : True
+12:13:13 | INFO |   Loading train/val data into memory for aeon...
+12:13:16 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+12:13:17 | INFO |   Fitting ts_chief...

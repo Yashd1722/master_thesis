@@ -1,0 +1,7 @@
+Task 1: rocket on ts_1500
+Node: jn116  NUMBA_NUM_THREADS=32
+10:33:37 | INFO | Model  : rocket
+10:33:37 | INFO | Dataset: ts_1500
+10:33:37 | INFO | IS_TSC : True
+10:33:44 | INFO |   Loading train/val data into memory for aeon...
+10:33:47 | INFO |   Fitting rocket...

@@ -1,0 +1,86 @@
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/parallel.py:135: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 310, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 294, in main
+    metrics = train_tsc(args.model, args.dataset, cfg, logger)
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 246, in train_tsc
+    model.fit(X_train, y_train)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/master_thesis/models/boss.py", line 25, in fit
+    self._clf.fit(X, y)
+    ~~~~~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/utils/decorators/method_timer.py", line 42, in wrapper
+    return func(*args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/base.py", line 112, in fit
+    self._fit(X, y)
+    ~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/dictionary_based/_boss.py", line 221, in _fit
+    boss.fit(X, y)
+    ~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/utils/decorators/method_timer.py", line 42, in wrapper
+    return func(*args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/base.py", line 112, in fit
+    self._fit(X, y)
+    ~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/dictionary_based/_boss.py", line 596, in _fit
+    self._transformed_data = self._transformer.fit_transform(X, y)
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/_set_output.py", line 316, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/base.py", line 206, in fit_transform
+    Xt = self._fit_transform(X=X, y=y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/dictionary_based/_sfa_fast.py", line 318, in _fit_transform
+    return self.transform_to_bag(words, self.word_length_actual, y)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/dictionary_based/_sfa_fast.py", line 462, in transform_to_bag
+    bag_of_words, self.relevant_features = create_bag_feature_selection(
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.X_index,
+        ^^^^^^^^^^^^^
+    ...<4 lines>...
+        self.remove_repeat_words,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+MemoryError: Allocation failed (probably too large).

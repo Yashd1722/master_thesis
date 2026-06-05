@@ -1,0 +1,11 @@
+Task 1: rocket on ts_1500
+Node: jn107  NUMBA_NUM_THREADS=16
+11:28:13 | INFO | Model  : rocket
+11:28:13 | INFO | Dataset: ts_1500
+11:28:13 | INFO | IS_TSC : True
+11:28:25 | INFO |   Loading train/val data into memory for aeon...
+11:28:35 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:28:36 | INFO |   Fitting rocket...
+12:21:58 | INFO |   Val acc=0.7249 f1=0.7233 | time=51.1min
+12:21:58 | INFO |   Saved: rocket_ts_1500_best.pkl
+12:21:58 | INFO | Done — val_f1=0.7233

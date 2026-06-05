@@ -1,0 +1,39 @@
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 310, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 294, in main
+    metrics = train_tsc(args.model, args.dataset, cfg, logger)
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 246, in train_tsc
+    model.fit(X_train, y_train)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/master_thesis/models/hivecote.py", line 25, in fit
+    self._clf.fit(X.astype(np.float64), y)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/utils/decorators/method_timer.py", line 42, in wrapper
+    return func(*args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/base.py", line 112, in fit
+    self._fit(X, y)
+    ~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/hybrid/_hivecote_v2.py", line 212, in _fit
+    train_preds = self._stc.fit_predict(X, y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/base.py", line 251, in fit_predict
+    y_pred = self._fit_predict(X, y, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/shapelet_based/_stc.py", line 264, in _fit_predict
+    for prob in self._fit_predict_proba(X, y)
+                ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/shapelet_based/_stc.py", line 269, in _fit_predict_proba
+    X_t = self._fit_stc_shared(X, y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/shapelet_based/_stc.py", line 367, in _fit_stc_shared
+    X_t = self._transformer.fit_transform(X, y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/_set_output.py", line 316, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/base.py", line 206, in fit_transform
+    Xt = self._fit_transform(X=X, y=y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_shapelet_transform.py", line 206, in _fit_transform
+    return self._fit_shapelets(X, y, save_distances=True)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_shapelet_transform.py", line 408, in _fit_shapelets
+    Xt = np.array([distances[s[7]] for s in self.shapelets]).transpose()
+                   ~~~~~~~~~^^^^^^
+IndexError: list index out of range

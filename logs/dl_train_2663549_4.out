@@ -1,0 +1,12 @@
+Task 4: cnn on ts_500
+Node: jnultra01  GPU: 0
+10:58:41 | INFO | Model  : cnn
+10:58:41 | INFO | Dataset: ts_500
+10:58:41 | INFO | IS_TSC : False
+10:58:42 | INFO | Device : cuda
+10:58:48 | INFO |   Parameters: 2,061,252 | ckpt: cnn_ts_500_v1_best.ckpt
+10:59:21 | INFO |   Ep     1 | tr_f1=0.6713 | vl_f1=0.7088 | best=0.7088 | 0.5min
+11:04:00 | INFO |   Early stop at epoch 10
+11:04:00 | INFO |   Test acc=0.7596 f1=0.7567 | time=5.2min
+11:04:00 | INFO |   v1 done — test_f1=0.7567
+✅ Saved results to /home/s466553/Master_thesis/master_thesis/results/cnn_ts_500/result.json

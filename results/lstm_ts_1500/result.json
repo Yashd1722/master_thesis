@@ -1,0 +1,36 @@
+{
+    "model": "lstm",
+    "dataset": "ts_1500",
+    "pad_variant": 1,
+    "n_params": 190852,
+    "best_val_f1": 0.875559,
+    "test_acc": 0.864,
+    "test_f1": 0.863551,
+    "confusion_matrix": [
+        [
+            403,
+            19,
+            51,
+            27
+        ],
+        [
+            46,
+            434,
+            18,
+            2
+        ],
+        [
+            37,
+            15,
+            413,
+            35
+        ],
+        [
+            1,
+            1,
+            20,
+            478
+        ]
+    ],
+    "training_time_min": 25.06
+}

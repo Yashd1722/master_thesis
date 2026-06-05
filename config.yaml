@@ -1,381 +1,77 @@
-# =============================================================================
-#  config.yaml
-#  Master thesis — Early Warning Signals for Mediterranean Sapropel Transitions
-#  Single source of truth. Every script reads ONLY from here.
-# =============================================================================
-
 project:
-  name:   "early_warning_signals_thesis"
+  name: "early_warning_signals_thesis"
   author: "Yash Dhameliya"
-  seed:   42
+  seed: 42
 
-# =============================================================================
-#  PATHS
-# =============================================================================
 paths:
-  ts_500:         "dataset/ts_500/"
-  ts_1500:        "dataset/ts_1500/"
-  pangaea_raw:    "dataset/pangaea_923197/"
-  pangaea_clean:  "dataset/pangaea_923197/datasets/clean_dataset/"
-  checkpoints:    "checkpoints/"
-  results:        "results/"          # {model}_{dataset}_{metric}/ folders live here
-  logs:           "logs/"
+  ts_500: "dataset/ts_500/"
+  ts_1500: "dataset/ts_1500/"
+  processed_dir: "dataset/processed/"
+  pangaea_raw: "dataset/pangaea_923197/"
+  pangaea_clean: "dataset/pangaea_923197/datasets/clean_dataset/"
+  checkpoints: "checkpoints/"
+  results: "results/"
+  logs: "logs/"
 
-# =============================================================================
-#  RESULTS FOLDER NAMING
-#  Each experiment saves to: results/{model}_{dataset}_{metric}/
-#  Contains: result.json  +  *.png plots
-# =============================================================================
 naming:
-  experiment_dir:   "{model}_{dataset}_{metric}"
-  result_file:      "result.json"
-  checkpoint_dl:    "{model}_{dataset}_v{variant}_best.ckpt"
-  checkpoint_tsc:   "{model}_{dataset}_best.pkl"
-  slurm_out:        "logs/slurm_{model}_{dataset}_%j.out"
-  slurm_err:        "logs/slurm_{model}_{dataset}_%j.err"
+  experiment_dir: "{model}_{dataset}_{metric}"
+  result_file: "result.json"
+  checkpoint_dl: "{model}_{dataset}_v{variant}_best.ckpt"
+  checkpoint_tsc: "{model}_{dataset}_best.pkl"
 
-# =============================================================================
-#  DATASETS
-# =============================================================================
 datasets:
+  ts_500: {path_key: "ts_500", ts_length: 500, num_classes: 4, class_names: ["fold", "hopf", "transcritical", "null"], train_frac: 0.95, val_frac: 0.04, test_frac: 0.01}
+  ts_1500: {path_key: "ts_1500", ts_length: 1500, num_classes: 4, class_names: ["fold", "hopf", "transcritical", "null"], train_frac: 0.95, val_frac: 0.04, test_frac: 0.01}
 
-  ts_500:
-    path_key:    "ts_500"
-    ts_length:   500
-    num_classes: 4
-    class_names: ["fold", "hopf", "transcritical", "null"]
-    train_frac:  0.95
-    val_frac:    0.04
-    test_frac:   0.01
-
-  ts_1500:
-    path_key:    "ts_1500"
-    ts_length:   1500
-    num_classes: 4
-    class_names: ["fold", "hopf", "transcritical", "null"]
-    train_frac:  0.95
-    val_frac:    0.04
-    test_frac:   0.01
-
-# =============================================================================
-#  PANGAEA EMPIRICAL DATA
-# =============================================================================
 pangaea:
-  variable:            "Mo"
-  bandwidth_years:     400
+  variable: "Mo"
+  bandwidth_years: 400
   rolling_window_frac: 0.50
-
   cores:
     MS21:
       n_events: 2
       sapropels:
-        - id: "S3"
-          role: "train"
-          neutral_start: -27.0
-          neutral_end: -25.0
-          pretrans_start: -25.0
-          pretrans_end: -22.5
-          transition_kyr: -22.5
-        - id: "S1"
-          role: "test"
-          neutral_start: -17.0
-          neutral_end: -15.0
-          pretrans_start: -15.0
-          pretrans_end: -11.5
-          transition_kyr: -11.5
-
+        - {id: "S3", role: "train", neutral_start: -27.0, neutral_end: -25.0, pretrans_start: -25.0, pretrans_end: -22.5, transition_kyr: -22.5}
+        - {id: "S1", role: "test", neutral_start: -17.0, neutral_end: -15.0, pretrans_start: -15.0, pretrans_end: -11.5, transition_kyr: -11.5}
     MS66:
       n_events: 4
       sapropels:
-        - id: "S5"
-          role: "train"
-          neutral_start: -60.0
-          neutral_end: -57.0
-          pretrans_start: -57.0
-          pretrans_end: -54.0
-          transition_kyr: -54.0
-        - id: "S4"
-          role: "train"
-          neutral_start: -45.0
-          neutral_end: -42.0
-          pretrans_start: -42.0
-          pretrans_end: -39.0
-          transition_kyr: -39.0
-        - id: "S3"
-          role: "test"
-          neutral_start: -27.0
-          neutral_end: -25.0
-          pretrans_start: -25.0
-          pretrans_end: -22.5
-          transition_kyr: -22.5
-        - id: "S1"
-          role: "test"
-          neutral_start: -17.0
-          neutral_end: -15.0
-          pretrans_start: -15.0
-          pretrans_end: -11.5
-          transition_kyr: -11.5
-
+        - {id: "S5", role: "train", neutral_start: -60.0, neutral_end: -57.0, pretrans_start: -57.0, pretrans_end: -54.0, transition_kyr: -54.0}
+        - {id: "S4", role: "train", neutral_start: -45.0, neutral_end: -42.0, pretrans_start: -42.0, pretrans_end: -39.0, transition_kyr: -39.0}
+        - {id: "S3", role: "test", neutral_start: -27.0, neutral_end: -25.0, pretrans_start: -25.0, pretrans_end: -22.5, transition_kyr: -22.5}
+        - {id: "S1", role: "test", neutral_start: -17.0, neutral_end: -15.0, pretrans_start: -15.0, pretrans_end: -11.5, transition_kyr: -11.5}
     64PE406E1:
       n_events: 7
       sapropels:
-        - id: "S9"
-          role: "train"
-          neutral_start: -110.0
-          neutral_end: -107.0
-          pretrans_start: -107.0
-          pretrans_end: -104.0
-          transition_kyr: -104.0
-        - id: "S8"
-          role: "train"
-          neutral_start: -95.0
-          neutral_end: -92.0
-          pretrans_start: -92.0
-          pretrans_end: -89.0
-          transition_kyr: -89.0
-        - id: "S7"
-          role: "train"
-          neutral_start: -80.0
-          neutral_end: -77.0
-          pretrans_start: -77.0
-          pretrans_end: -74.0
-          transition_kyr: -74.0
-        - id: "S6"
-          role: "test"
-          neutral_start: -65.0
-          neutral_end: -62.0
-          pretrans_start: -62.0
-          pretrans_end: -59.0
-          transition_kyr: -59.0
-        - id: "S5"
-          role: "test"
-          neutral_start: -60.0
-          neutral_end: -57.0
-          pretrans_start: -57.0
-          pretrans_end: -54.0
-          transition_kyr: -54.0
-        - id: "S4"
-          role: "test"
-          neutral_start: -45.0
-          neutral_end: -42.0
-          pretrans_start: -42.0
-          pretrans_end: -39.0
-          transition_kyr: -39.0
-        - id: "S3"
-          role: "test"
-          neutral_start: -27.0
-          neutral_end: -25.0
-          pretrans_start: -25.0
-          pretrans_end: -22.5
-          transition_kyr: -22.5
+        - {id: "S9", role: "train", neutral_start: -110.0, neutral_end: -107.0, pretrans_start: -107.0, pretrans_end: -104.0, transition_kyr: -104.0}
+        - {id: "S8", role: "train", neutral_start: -95.0, neutral_end: -92.0, pretrans_start: -92.0, pretrans_end: -89.0, transition_kyr: -89.0}
+        - {id: "S7", role: "train", neutral_start: -80.0, neutral_end: -77.0, pretrans_start: -77.0, pretrans_end: -74.0, transition_kyr: -74.0}
+        - {id: "S6", role: "test", neutral_start: -65.0, neutral_end: -62.0, pretrans_start: -62.0, pretrans_end: -59.0, transition_kyr: -59.0}
+        - {id: "S5", role: "test", neutral_start: -60.0, neutral_end: -57.0, pretrans_start: -57.0, pretrans_end: -54.0, transition_kyr: -54.0}
+        - {id: "S4", role: "test", neutral_start: -45.0, neutral_end: -42.0, pretrans_start: -42.0, pretrans_end: -39.0, transition_kyr: -39.0}
+        - {id: "S3", role: "test", neutral_start: -27.0, neutral_end: -25.0, pretrans_start: -25.0, pretrans_end: -22.5, transition_kyr: -22.5}
 
-# =============================================================================
-#  MODELS LIST
-# =============================================================================
 models:
-  dl:
-    - cnn_lstm
-    - lstm
-    - cnn
-    - multihead_cnn
-  tsc:
-    - rocket
-    - minirocket
-    - multirocket
-    - arsenal
-    - knn_dtw
-    - boss
-    - weasel
-    - shapelet
-    - proximity_forest
-    - ts_chief
-    - drcif
-    - tde
-    - hivecote
+  dl: [cnn_lstm, lstm, cnn, multihead_cnn]
+  tsc: [rocket, minirocket, multirocket, arsenal, knn_dtw, boss, weasel, shapelet, proximity_forest, ts_chief, drcif, tde, hivecote]
 
-# =============================================================================
-#  TRAINING HYPERPARAMETERS
-# =============================================================================
 training:
+  cnn_lstm: {epochs: 1500, lr: 0.0005, batch_size: 256, patience: 50, pad_variants: [1, 2], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "reduce_on_plateau", scheduler_patience: 20, scheduler_factor: 0.5, min_lr: 0.000001}
+  lstm: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001}
+  cnn: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001}
+  multihead_cnn: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0001, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001, kernel_sizes: [3, 5, 11, 21], n_filters: 64}
+  rocket: {n_kernels: 10000, n_jobs: 16}
+  minirocket: {n_kernels: 10000, n_jobs: 16}
+  multirocket: {n_kernels: 6250, n_jobs: 16}
+  arsenal: {n_kernels: 2000, n_jobs: 4}
+  knn_dtw: {n_neighbors: 1, n_jobs: 8}
+  boss: {max_ensemble_size: 50, n_jobs: 4}
+  weasel: {window_inc: 4, n_jobs: 8}
+  shapelet: {n_shapelet_samples: 100, n_jobs: 8}
+  proximity_forest: {n_trees: 50, n_jobs: 4}
+  ts_chief: {n_jobs: 8}
+  drcif: {n_estimators: 100, n_jobs: 4}
+  tde: {n_parameter_samples: 250, n_jobs: 8}
+  hivecote: {time_limit_in_minutes: 60, n_jobs: 4}
 
-  # ── Deep Learning (PyTorch) ─────────────────────────────────────────────────
-  cnn_lstm:
-    epochs: 1500
-    lr: 0.0005
-    batch_size: 256
-    patience: 50
-    pad_variants: [1, 2]
-    weight_decay: 0.0
-    grad_clip: 1.0
-    optimizer: "adam"
-    scheduler: "reduce_on_plateau"
-    scheduler_patience: 20
-    scheduler_factor: 0.5
-    min_lr: 0.000001
-
-  lstm:
-    epochs: 100
-    lr: 0.001
-    batch_size: 64
-    patience: 5
-    pad_variants: [1]
-    weight_decay: 0.0
-    grad_clip: 1.0
-    optimizer: "adam"
-    scheduler: "none"
-    min_lr: 0.000001
-
-  cnn:
-    epochs: 100
-    lr: 0.001
-    batch_size: 64
-    patience: 5
-    pad_variants: [1]
-    weight_decay: 0.0
-    grad_clip: 1.0
-    optimizer: "adam"
-    scheduler: "none"
-    min_lr: 0.000001
-
-  multihead_cnn:
-    epochs: 100
-    lr: 0.001
-    batch_size: 64
-    patience: 5
-    pad_variants: [1]
-    weight_decay: 0.0001
-    grad_clip: 1.0
-    optimizer: "adam"
-    scheduler: "none"
-    min_lr: 0.000001
-    kernel_sizes: [3, 5, 11, 21]
-    n_filters: 64
-
-  # ── TSC (aeon) — keys must match aeon classifier parameter names ─────────────
-  rocket:
-    n_kernels: 10000
-    n_jobs: 16
-
-  minirocket:
-    n_kernels: 10000
-    n_jobs: 16
-
-  multirocket:
-    n_kernels: 6250
-    n_jobs: 16
-
-  arsenal:
-    n_kernels: 2000
-    n_jobs: 4
-
-  knn_dtw:
-    n_neighbors: 1
-    n_jobs: 8
-
-  boss:
-    max_ensemble_size: 50
-    n_jobs: 4
-
-  weasel:
-    window_inc: 4
-    n_jobs: 8
-
-  shapelet:
-    n_shapelet_samples: 100
-    n_jobs: 8
-
-  proximity_forest:
-    n_trees: 50
-    n_jobs: 4
-
-  ts_chief:
-    n_jobs: 8
-
-  drcif:
-    n_estimators: 100
-    n_jobs: 4
-
-  tde:
-    n_parameter_samples: 250
-    n_jobs: 8
-
-  hivecote:
-    time_limit_in_minutes: 60
-    n_jobs: 4
-
-# =============================================================================
-#  INFERENCE / ROLLING WINDOW
-# =============================================================================
-inference:
-  rolling_window_frac: 0.50
-  prediction_steps:    40
-  roc_start_frac:
-    default:    0.60
-    MS21:       0.60
-    MS66:       0.60
-    64PE406E1:  0.60
-  end_frac:            1.00
-  n_null_series:       20
-  null_method:         "AAFT"
-
-# =============================================================================
-#  FIGURE SETTINGS
-# =============================================================================
-figures:
-  dpi:    150
-  format: "png"
-  style:  "seaborn-v0_8-whitegrid"
-  colors:
-    dl_group:  ["#1f77b4", "#E07B1A", "#2D8A4E", "#7165D0"]
-    tsc_group: ["#17BECF", "#BCBD22", "#8C564B", "#E377C2",
-                "#7F7F7F", "#AEC7E8", "#FFBB78", "#98DF8A",
-                "#FF9896", "#C5B0D5", "#C49C94", "#F7B6D2", "#C7C7C7"]
-    random:    "#AAAAAA"
-
-# =============================================================================
-#  SLURM
-# =============================================================================
-slurm:
-  train_datasets: ["ts_500", "ts_1500"]
-  test_cores:     ["MS21", "MS66", "64PE406E1"]
-
-  dl_array:
-    partition:     "h100"
-    gres:          "gpu:1"
-    cpus_per_task: 4
-    mem:           "32G"
-    time:          "24:00:00"
-    job_name:      "ews_dl"
-    models:        ["cnn_lstm", "lstm", "cnn", "multihead_cnn"]
-
-  tsc_fast_array:
-    partition:     "batch"
-    cpus_per_task: 32
-    mem:           "64G"
-    time:          "08:00:00"
-    job_name:      "ews_tsc_fast"
-    models:        ["rocket", "minirocket", "multirocket", "arsenal"]
-
-  tsc_medium_array:
-    partition:     "batch"
-    cpus_per_task: 16
-    mem:           "32G"
-    time:          "12:00:00"
-    job_name:      "ews_tsc_med"
-    models:        ["knn_dtw", "boss", "weasel"]
-
-  tsc_slow_array:
-    partition:     "batch"
-    cpus_per_task: 8
-    mem:           "32G"
-    time:          "24:00:00"
-    job_name:      "ews_tsc_slow"
-    models:        ["shapelet", "proximity_forest", "ts_chief", "drcif", "tde"]
-
-  hivecote_array:
-    partition:     "batch"
-    cpus_per_task: 4
-    mem:           "64G"
-    time:          "72:00:00"
-    job_name:      "ews_hivecote"
-    models:        ["hivecote"]
+inference: {rolling_window_frac: 0.50, prediction_steps: 40, roc_start_frac: {default: 0.60, MS21: 0.60, MS66: 0.60, 64PE406E1: 0.60}, end_frac: 1.00, n_null_series: 20, null_method: "AAFT"}

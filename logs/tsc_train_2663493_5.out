@@ -1,0 +1,8 @@
+Task 5: multirocket on ts_1500
+Node: jn103  NUMBA_NUM_THREADS=32
+10:34:05 | INFO | Model  : multirocket
+10:34:05 | INFO | Dataset: ts_1500
+10:34:05 | INFO | IS_TSC : True
+10:34:13 | INFO |   Loading train/val data into memory for aeon...
+10:34:15 | INFO |   Subsampled train to 80000 (MAX_TRAIN_SAMPLES=80000)
+10:34:15 | INFO |   Fitting multirocket...

@@ -1,0 +1,8 @@
+Task 2: minirocket on ts_500
+Node: jn117  NUMBA_NUM_THREADS=32
+10:33:36 | INFO | Model  : minirocket
+10:33:36 | INFO | Dataset: ts_500
+10:33:36 | INFO | IS_TSC : True
+10:33:44 | INFO |   Loading train/val data into memory for aeon...
+10:33:50 | INFO |   Subsampled train to 100000 (MAX_TRAIN_SAMPLES=100000)
+10:33:51 | INFO |   Fitting minirocket...

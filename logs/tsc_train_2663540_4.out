@@ -1,0 +1,11 @@
+Task 4: multirocket on ts_500
+Node: jn106  NUMBA_NUM_THREADS=16
+11:40:23 | INFO | Model  : multirocket
+11:40:23 | INFO | Dataset: ts_500
+11:40:23 | INFO | IS_TSC : True
+11:40:31 | INFO |   Loading train/val data into memory for aeon...
+11:40:35 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:40:38 | INFO |   Fitting multirocket...
+12:03:12 | INFO |   Val acc=0.6161 f1=0.6172 | time=21.8min
+12:03:12 | INFO |   Saved: multirocket_ts_500_best.pkl
+12:03:12 | INFO | Done — val_f1=0.6172

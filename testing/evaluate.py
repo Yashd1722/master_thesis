@@ -1,310 +1,186 @@
 """
 testing/evaluate.py
-===================
-Unified evaluation for all DL and TSC models.
-After each experiment saves:
-    results/{model}_{dataset}_auc/result.json  + roc_curve.png
-    results/{model}_{dataset}_accuracy/result.json  + confusion_matrix.png
-    results/{model}_{dataset}_kendall_tau/result.json  + kendall_tau.png  (PANGAEA)
-
-Usage:
-    python testing/evaluate.py --model cnn_lstm --dataset ts_500
-    python testing/evaluate.py --model rocket   --dataset ts_500
-    python testing/evaluate.py --model rocket   --dataset ts_500 --target pangaea
+Unified evaluation for Zenodo and PANGAEA. 
+Features:
+- Skips already evaluated models (Caching)
+- Checks for checkpoint existence before loading data
+- Filters flat series for TSC models to prevent aeon ValueError
 """
-
-import argparse
-import json
-import logging
-import sys
-import time
+import argparse, json, sys, time
 from pathlib import Path
-
 import numpy as np
-import torch
+import torch, joblib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from models import get_model, list_models, is_tsc_model
 from src.dataset_loader import load_config, get_dataset_info, get_dataloader
-from src.rolling_window import run_all_sapropels, ELEMENTS
+from src.rolling_window import run_all_sapropels
+
+from metric.accuracy import compute_accuracy
 from metric.auc import compute_auc
 from metric.roc import compute_roc
-from metric.accuracy import compute_accuracy
 from metric.kendall_tau import compute_kendall_tau
 
+def json_safe(obj):
+    if isinstance(obj, np.ndarray): return obj.tolist()
+    if isinstance(obj, np.generic): return obj.item()
+    raise TypeError
 
-# =============================================================================
-#  Logging
-# =============================================================================
-
-def setup_log(log_path: Path) -> logging.Logger:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger(log_path.stem)
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter("%(asctime)s | %(message)s", "%H:%M:%S")
-    for h in [logging.FileHandler(log_path, mode="w"),
-               logging.StreamHandler(sys.stdout)]:
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-    return logger
-
-
-# =============================================================================
-#  Experiment result folder
-#  results/{model}_{dataset}_{metric}/
-# =============================================================================
-
-def experiment_dir(model, dataset, metric, cfg) -> Path:
-    name = cfg["naming"]["experiment_dir"].format(
-        model=model, dataset=dataset, metric=metric)
-    d = REPO_ROOT / cfg["paths"]["results"] / name
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def save_result(data: dict, out_dir: Path):
-    path = out_dir / "result.json"
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    return path
-
-
-# =============================================================================
-#  Load checkpoint
-# =============================================================================
-
-def load_dl_models(model_name, dataset_name, ts_len, num_classes, cfg, device, logger):
-    ckpt_dir     = REPO_ROOT / cfg["paths"]["checkpoints"]
-    pad_variants = cfg["training"][model_name]["pad_variants"]
-    models = []
-    for v in pad_variants:
-        name  = cfg["naming"]["checkpoint_dl"].format(
-            model=model_name, dataset=dataset_name, variant=v)
-        fpath = ckpt_dir / name
-        if not fpath.exists():
-            logger.warning(f"  Not found: {name}")
-            continue
-        m = get_model(model_name, ts_len=ts_len, num_classes=num_classes)
-        m.load_state_dict(torch.load(fpath, map_location=device, weights_only=True))
-        m.to(device).eval()
-        models.append(m)
-        logger.info(f"  Loaded: {name}")
-    if not models:
-        raise RuntimeError(f"No checkpoints for {model_name}/{dataset_name}")
-    return models
-
-
-def load_tsc_model(model_name, dataset_name, cfg, logger):
-    import joblib
+def get_ckpt_path(model_name, dataset_name, cfg):
+    """Constructs the checkpoint path without loading the model."""
     ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
-    name     = cfg["naming"]["checkpoint_tsc"].format(
-        model=model_name, dataset=dataset_name)
-    fpath = ckpt_dir / name
-    if not fpath.exists():
-        raise RuntimeError(f"TSC checkpoint not found: {name}")
-    model = joblib.load(fpath)
-    logger.info(f"  Loaded: {name}")
-    return model
-
-
-# =============================================================================
-#  Inference
-# =============================================================================
-
-@torch.no_grad()
-def dl_predict_proba(models, X_np, device, batch_size=256):
-    """X_np: (N, T) -> returns (N, n_classes) mean ensemble probs."""
-    X_t = torch.tensor(X_np, dtype=torch.float32).unsqueeze(1)
-    all_probs = []
-    for m in models:
-        probs = []
-        for i in range(0, len(X_t), batch_size):
-            probs.append(m.predict_proba(X_t[i:i+batch_size].to(device)).cpu().numpy())
-        all_probs.append(np.concatenate(probs))
-    return np.mean(all_probs, axis=0)
-
-
-# =============================================================================
-#  Evaluate on Zenodo test split -> saves auc + accuracy experiments
-# =============================================================================
-
-def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
-    ds_info     = get_dataset_info(dataset_name, cfg)
-    ts_len      = ds_info["ts_length"]
-    num_classes = ds_info["num_classes"]
-    class_names = ds_info["class_names"]
-    null_idx    = class_names.index("null") if "null" in class_names else -1
-
     if is_tsc_model(model_name):
-        model = load_tsc_model(model_name, dataset_name, cfg, logger)
+        return ckpt_dir / cfg["naming"]["checkpoint_tsc"].format(model=model_name, dataset=dataset_name)
     else:
-        models = load_dl_models(model_name, dataset_name, ts_len,
-                                 num_classes, cfg, device, logger)
+        return ckpt_dir / cfg["naming"]["checkpoint_dl"].format(model=model_name, dataset=dataset_name, variant=1)
 
-    test_dl = get_dataloader(dataset_name, "test", cfg, pad_variant=1,
-                              batch_size=1024, num_workers=0)
+def load_model(model_name, dataset_name, cfg, device):
+    """Loads the model only after verifying the checkpoint exists."""
+    ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+        
+    ds_info = get_dataset_info(dataset_name, cfg)
+    if is_tsc_model(model_name):
+        return joblib.load(ckpt_path), "tsc"
+    else:
+        model = get_model(model_name, ts_len=ds_info["ts_length"], num_classes=ds_info["num_classes"])
+        model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
+        return model.to(device).eval(), "dl"
 
-    X_all, y_all = [], []
-    for x, y in test_dl:
-        X_all.append(x.squeeze(1).numpy())
-        y_all.append(y.numpy())
-    X_all = np.concatenate(X_all)
-    y_all = np.concatenate(y_all)
+def predict_proba(model, X_np, m_type, device, null_idx):
+    if m_type == "tsc": 
+        probs = model.predict_proba(X_np)
+    else:
+        X_t = torch.tensor(X_np, dtype=torch.float32).unsqueeze(1).to(device)
+        with torch.no_grad(): probs = model(X_t).softmax(dim=1).cpu().numpy()
+    return 1.0 - probs[:, null_idx] if null_idx >= 0 else probs[:, -1]
 
+def evaluate_zenodo(model_name, dataset_name, cfg, device):
+    # 1. CACHING: Skip if already evaluated
+    out_dir = REPO_ROOT / cfg["paths"]["results"] / f"{model_name}_{dataset_name}_zenodo"
+    out_file = out_dir / "result.json"
+    if out_file.exists():
+        print(f"⏭️  Skipping {model_name}/{dataset_name}/zenodo (Already evaluated)")
+        return
+
+    # 2. CHECKPOINT CHECK: Fail fast if missing
+    ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint missing: {ckpt_path.name}")
+
+    ds_info = get_dataset_info(dataset_name, cfg)
+    null_idx = ds_info["class_names"].index("null") if "null" in ds_info["class_names"] else -1
+    model, m_type = load_model(model_name, dataset_name, cfg, device)
+    
+    test_dl = get_dataloader(dataset_name, "test", cfg, 1, 1024)
+    X_all = np.concatenate([x.squeeze(1).numpy() for x, y in test_dl])
+    y_all = np.concatenate([y.numpy() for x, y in test_dl])
+    
+    # 3. FLAT SERIES FILTER: Prevents aeon ValueError
+    if m_type == "tsc":
+        stds = X_all.std(axis=1)
+        valid_mask = stds > 1e-7
+        n_dropped = len(X_all) - valid_mask.sum()
+        if n_dropped > 0:
+            print(f"  ⚠️ Dropping {n_dropped} flat test series for TSC inference")
+        X_all = X_all[valid_mask]
+        y_all = y_all[valid_mask]
+        
+    if len(X_all) == 0:
+        print("  ❌ No valid test samples remaining.")
+        return
+    
     t0 = time.time()
-    if is_tsc_model(model_name):
-        probs = model.predict_proba(X_all)
-    else:
-        probs = dl_predict_proba(models, X_all, device)
+    probs = predict_proba(model, X_all, m_type, device, null_idx)
     inf_time = time.time() - t0
+    
+    preds = (probs > 0.5).astype(int) if null_idx >= 0 else probs.argmax(axis=1)
+    labels_bin = (y_all != null_idx).astype(int) if null_idx >= 0 else (y_all > 0).astype(int)
+    
+    fpr, tpr, thresh = compute_roc(labels_bin, probs)
+    acc_dict = compute_accuracy(y_all, preds)
+    
+    results = {
+        "model": model_name, "dataset": dataset_name, "target": "zenodo",
+        "inference_time_sec": round(inf_time, 2), "auc": compute_auc(labels_bin, probs),
+        "roc": {"fpr": fpr, "tpr": tpr}, "accuracy": acc_dict["accuracy"],
+        "macro_f1": acc_dict["macro_f1"], "confusion_matrix": acc_dict["confusion_matrix"]
+    }
+    
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with open(out_file, "w") as f: json.dump(results, f, indent=4, default=json_safe)
+    print(f"✅ Saved Zenodo metrics to {out_dir}")
 
-    p_transition = (1.0 - probs[:, null_idx] if null_idx >= 0
-                    else probs[:, -1])
-    labels_binary = (y_all != null_idx).astype(int) if null_idx >= 0 \
-                    else (y_all > 0).astype(int)
+def evaluate_pangaea(model_name, dataset_name, cfg, device):
+    # 1. CACHING: Skip if already evaluated
+    out_dir = REPO_ROOT / cfg["paths"]["results"] / f"{model_name}_{dataset_name}_pangaea"
+    out_file = out_dir / "result.json"
+    if out_file.exists():
+        print(f"⏭️  Skipping {model_name}/{dataset_name}/pangaea (Already evaluated)")
+        return
 
-    auc  = compute_auc(labels_binary, p_transition)
-    fpr, tpr, thresh = compute_roc(labels_binary, p_transition)
-    preds = probs.argmax(axis=1)
-    acc_metrics = compute_accuracy(y_all, preds)
+    # 2. CHECKPOINT CHECK: Fail fast if missing
+    ckpt_path = get_ckpt_path(model_name, dataset_name, cfg)
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint missing: {ckpt_path.name}")
 
-    base = {"model": model_name, "dataset": dataset_name,
-            "num_classes": num_classes, "class_names": class_names,
-            "inference_time_sec": round(inf_time, 2),
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
-
-    # ── AUC experiment ────────────────────────────────────────────────────────
-    auc_dir  = experiment_dir(model_name, dataset_name, "auc", cfg)
-    auc_data = {**base, "metric": "auc", "auc": round(auc, 6),
-                "roc_fpr": fpr, "roc_tpr": tpr, "roc_thresh": thresh}
-    save_result(auc_data, auc_dir)
-    logger.info(f"  AUC={auc:.4f}  -> {auc_dir.name}/result.json")
-
-    # ── Accuracy experiment ───────────────────────────────────────────────────
-    acc_dir  = experiment_dir(model_name, dataset_name, "accuracy", cfg)
-    acc_data = {**base, "metric": "accuracy", **acc_metrics}
-    save_result(acc_data, acc_dir)
-    logger.info(f"  Acc={acc_metrics['accuracy']:.4f}  -> {acc_dir.name}/result.json")
-
-    # ── Plot immediately after saving ─────────────────────────────────────────
-    from testing.plot_figures import plot_roc, plot_confusion_matrix
-    plot_roc(auc_data, auc_dir)
-    plot_confusion_matrix(acc_data, acc_dir, class_names)
-
-    return {"auc": auc_data, "accuracy": acc_data}
-
-
-# =============================================================================
-#  Evaluate on PANGAEA -> saves auc + kendall_tau experiments per core
-# =============================================================================
-
-def evaluate_pangaea(model_name, dataset_name, cfg, device, logger):
-    ds_info     = get_dataset_info(dataset_name, cfg)
-    ts_len      = ds_info["ts_length"]
-    num_classes = ds_info["num_classes"]
-    class_names = ds_info["class_names"]
-    null_idx    = class_names.index("null") if "null" in class_names else -1
-
-    if is_tsc_model(model_name):
-        model = load_tsc_model(model_name, dataset_name, cfg, logger)
-        predict_fn = model.predict_proba
-    else:
-        models = load_dl_models(model_name, dataset_name, ts_len,
-                                 num_classes, cfg, device, logger)
-        predict_fn = lambda X: dl_predict_proba(models, X, device)
-
-    cores = list(cfg["pangaea"]["cores"].keys())
-    all_results = {}
-
-    for core_name in cores:
-        logger.info(f"\n  Core: {core_name}")
-        sap_results = run_all_sapropels(core_name, cfg, ts_len)
-        if not sap_results:
-            logger.warning(f"  No data for {core_name}")
-            continue
-
-        for sap_id, sap_res in sap_results.items():
-            for element, elem_res in sap_res.items():
-                for seg_type, result in elem_res.items():
-                    if not result.dl_inputs:
-                        continue
-                    X = np.stack(result.dl_inputs)
-                    probs = predict_fn(X)
-
-                    p_trans = (1.0 - probs[:, null_idx] if null_idx >= 0
-                               else probs[:, -1])
-                    labels  = np.ones(len(p_trans), dtype=int)
-                    if seg_type == "neutral":
-                        labels = np.zeros(len(p_trans), dtype=int)
-
-                    auc = compute_auc(labels, p_trans)
-                    fpr, tpr, _ = compute_roc(labels, p_trans)
-                    ktau = compute_kendall_tau(p_trans)
-
-                    tag = f"{core_name}_{sap_id}_{element}_{seg_type}"
-                    base = {"model": model_name, "dataset": dataset_name,
-                            "core": core_name, "sapropel": sap_id,
-                            "element": element, "segment": seg_type,
-                            "n_steps": len(p_trans),
-                            "p_transition": p_trans.tolist(),
-                            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
-
-                    auc_dir  = experiment_dir(model_name, f"pangaea_{tag}", "auc", cfg)
-                    auc_data = {**base, "metric": "auc",
-                                "auc": round(auc, 6),
-                                "roc_fpr": fpr, "roc_tpr": tpr}
-                    save_result(auc_data, auc_dir)
-
-                    ktau_dir  = experiment_dir(model_name, f"pangaea_{tag}", "kendall_tau", cfg)
-                    ktau_data = {**base, "metric": "kendall_tau",
-                                 "kendall_tau": round(ktau, 6),
-                                 "variance": result.variance.tolist(),
-                                 "lag1_ac": result.lag1_ac.tolist()}
-                    save_result(ktau_data, ktau_dir)
-
-                    from testing.plot_figures import plot_roc, plot_pangaea_series
-                    plot_roc(auc_data, auc_dir)
-                    plot_pangaea_series(ktau_data, result, ktau_dir)
-
-                    logger.info(f"    {tag}: AUC={auc:.3f} tau={ktau:.3f}")
-                    all_results[tag] = {"auc": auc, "kendall_tau": ktau}
-
-    return all_results
-
-
-# =============================================================================
-#  Main
-# =============================================================================
+    ds_info = get_dataset_info(dataset_name, cfg)
+    null_idx = ds_info["class_names"].index("null") if "null" in ds_info["class_names"] else -1
+    model, m_type = load_model(model_name, dataset_name, cfg, device)
+    
+    core_data = {}
+    for core_name in cfg["pangaea"]["cores"]:
+        sap_results = run_all_sapropels(core_name, cfg, ds_info["ts_length"])
+        core_data[core_name] = {}
+        for sap_id, elements in sap_results.items():
+            core_data[core_name][sap_id] = {}
+            for element, segs in elements.items():
+                if "forced" not in segs: continue
+                forced_res = segs["forced"]
+                X = np.stack(forced_res["dl_inputs"]) 
+                
+                # 3. FLAT SERIES FILTER for PANGAEA TSC
+                if m_type == "tsc":
+                    stds = X.std(axis=1)
+                    valid_mask = stds > 1e-7
+                    X = X[valid_mask]
+                    if len(X) == 0: continue
+                    
+                p_trans = predict_proba(model, X, m_type, device, null_idx)
+                
+                # Align EWS metrics if we filtered out flat series
+                if m_type == "tsc" and len(X) < len(forced_res["variance"]):
+                    var_filt = forced_res["variance"][valid_mask].tolist()
+                    ac_filt = forced_res["lag1_ac"][valid_mask].tolist()
+                else:
+                    var_filt = forced_res["variance"].tolist()
+                    ac_filt = forced_res["lag1_ac"].tolist()
+                
+                core_data[core_name][sap_id][element] = {
+                    "p_transition": p_trans.tolist(), "variance": var_filt,
+                    "lag1_ac": ac_filt, "ktau_var": forced_res["ktau_var"],
+                    "ktau_ac": forced_res["ktau_ac"], "ktau_p_trans": compute_kendall_tau(p_trans)
+                }
+                
+    results = {"model": model_name, "dataset": dataset_name, "target": "pangaea", "cores": core_data}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with open(out_file, "w") as f: json.dump(results, f, indent=4, default=json_safe)
+    print(f"✅ Saved PANGAEA metrics to {out_dir}")
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",   required=True, choices=list_models())
+    parser.add_argument("--model", required=True, choices=list_models())
     parser.add_argument("--dataset", required=True, choices=["ts_500", "ts_1500"])
-    parser.add_argument("--target",  default="zenodo",
-                        choices=["zenodo", "pangaea"])
-    parser.add_argument("--config",  default="config.yaml")
+    parser.add_argument("--target", default="zenodo", choices=["zenodo", "pangaea"])
     args = parser.parse_args()
-
-    cfg    = load_config(args.config)
+    
+    cfg = load_config()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    log_dir = REPO_ROOT / cfg["paths"]["logs"]
-    log_dir.mkdir(parents=True, exist_ok=True)
-    logger  = setup_log(
-        log_dir / f"{args.model}_{args.dataset}_{args.target}_eval.log")
-
-    logger.info(f"Model  : {args.model}  IS_TSC={is_tsc_model(args.model)}")
-    logger.info(f"Dataset: {args.dataset}  Target: {args.target}")
-    logger.info(f"Device : {device}")
-
-    if args.target == "zenodo":
-        evaluate_zenodo(args.model, args.dataset, cfg, device, logger)
-    else:
-        evaluate_pangaea(args.model, args.dataset, cfg, device, logger)
-
-    logger.info("\nDone.")
-
+    if args.target == "zenodo": evaluate_zenodo(args.model, args.dataset, cfg, device)
+    else: evaluate_pangaea(args.model, args.dataset, cfg, device)
 
 if __name__ == "__main__":
     main()

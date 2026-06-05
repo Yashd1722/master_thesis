@@ -1,0 +1,8 @@
+Task 17: proximity_forest on ts_1500
+Node: jn111  NUMBA_NUM_THREADS=16
+12:12:38 | INFO | Model  : proximity_forest
+12:12:38 | INFO | Dataset: ts_1500
+12:12:38 | INFO | IS_TSC : True
+12:12:44 | INFO |   Loading train/val data into memory for aeon...
+12:12:46 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+12:12:46 | INFO |   Fitting proximity_forest...

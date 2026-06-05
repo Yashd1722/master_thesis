@@ -1,0 +1,12 @@
+Task 7: multihead_cnn on ts_1500
+Node: jnultra01  GPU: 0
+10:52:56 | INFO | Model  : multihead_cnn
+10:52:56 | INFO | Dataset: ts_1500
+10:52:56 | INFO | IS_TSC : False
+10:52:58 | INFO | Device : cuda
+10:53:06 | INFO |   Parameters: 36,740 | ckpt: multihead_cnn_ts_1500_v1_best.ckpt
+10:53:23 | INFO |   Ep     1 | tr_f1=0.5062 | vl_f1=0.6228 | best=0.6228 | 0.3min
+10:54:52 | INFO |   Early stop at epoch 6
+10:54:52 | INFO |   Test acc=0.6230 f1=0.6127 | time=1.8min
+10:54:52 | INFO |   v1 done — test_f1=0.6127
+✅ Saved results to /home/s466553/Master_thesis/master_thesis/results/multihead_cnn_ts_1500/result.json

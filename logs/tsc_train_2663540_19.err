@@ -1,0 +1,61 @@
+Traceback (most recent call last):
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 310, in <module>
+    main()
+    ~~~~^^
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 294, in main
+    metrics = train_tsc(args.model, args.dataset, cfg, logger)
+  File "/home/s466553/Master_thesis/master_thesis/training/train.py", line 246, in train_tsc
+    model.fit(X_train, y_train)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/master_thesis/models/ts_chief.py", line 37, in fit
+    self._clf.fit(X, y)
+    ~~~~~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/utils/decorators/method_timer.py", line 42, in wrapper
+    return func(*args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/classification/base.py", line 112, in fit
+    self._fit(X, y)
+    ~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/base/_estimators/hybrid/base_rist.py", line 221, in _fit
+    t = st.fit_transform(s, y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/sklearn/utils/_set_output.py", line 316, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/base.py", line 206, in fit_transform
+    Xt = self._fit_transform(X=X, y=y)
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/base.py", line 266, in _fit_transform
+    self._fit(X, y)
+    ~~~~~~~~~^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_dilated_shapelet_transform.py", line 236, in _fit
+    self.shapelets_ = random_dilated_shapelet_extraction(
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        X,
+        ^^
+    ...<4 lines>...
+        *init_params,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/numba/core/dispatcher.py", line 424, in _compile_for_args
+    error_rewrite(e, 'typing')
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/numba/core/dispatcher.py", line 365, in error_rewrite
+    raise e.with_traceback(None)
+numba.core.errors.TypingError: Failed in nopython mode pipeline (step: nopython frontend)
+Cannot unify array(float64, 3d, C) and array(float32, 3d, A) for 'X_subs.2', defined at /home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_dilated_shapelet_transform.py (824)
+
+File "../myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_dilated_shapelet_transform.py", line 824:
+def random_dilated_shapelet_extraction(
+    <source elided>
+                    X_subs = normalise_subsequences(X_subs, X_means, X_stds)
+                x_dist = compute_shapelet_dist_vector(X_subs, _val)
+                ^
+
+During: typing of assignment at /home/s466553/Master_thesis/myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_dilated_shapelet_transform.py (824)
+
+File "../myenv/lib/python3.13/site-packages/aeon/transformations/collection/shapelet_based/_dilated_shapelet_transform.py", line 824:
+def random_dilated_shapelet_extraction(
+    <source elided>
+                    X_subs = normalise_subsequences(X_subs, X_means, X_stds)
+                x_dist = compute_shapelet_dist_vector(X_subs, _val)
+                ^
+
+During: Pass nopython_type_inference

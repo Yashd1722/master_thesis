@@ -1,0 +1,8 @@
+Task 8: knn_dtw on ts_500
+Node: jn102  NUMBA_NUM_THREADS=32
+10:39:39 | INFO | Model  : knn_dtw
+10:39:39 | INFO | Dataset: ts_500
+10:39:39 | INFO | IS_TSC : True
+10:39:44 | INFO |   Loading train/val data into memory for aeon...
+10:39:47 | INFO |   Subsampled train to 10000 (MAX_TRAIN_SAMPLES=10000)
+10:39:48 | INFO |   Fitting knn_dtw...

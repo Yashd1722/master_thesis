@@ -1,0 +1,11 @@
+Task 5: multirocket on ts_1500
+Node: jn106  NUMBA_NUM_THREADS=16
+11:40:23 | INFO | Model  : multirocket
+11:40:23 | INFO | Dataset: ts_1500
+11:40:23 | INFO | IS_TSC : True
+11:40:33 | INFO |   Loading train/val data into memory for aeon...
+11:40:38 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:40:39 | INFO |   Fitting multirocket...
+11:57:46 | INFO |   Val acc=0.7316 f1=0.7316 | time=16.5min
+11:57:46 | INFO |   Saved: multirocket_ts_1500_best.pkl
+11:57:46 | INFO | Done — val_f1=0.7316

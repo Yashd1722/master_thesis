@@ -1,0 +1,12 @@
+Task 3: lstm on ts_1500
+Node: jnultra01  GPU: 0
+10:52:56 | INFO | Model  : lstm
+10:52:56 | INFO | Dataset: ts_1500
+10:52:56 | INFO | IS_TSC : False
+10:52:57 | INFO | Device : cuda
+10:53:05 | INFO |   Parameters: 190,852 | ckpt: lstm_ts_1500_v1_best.ckpt
+10:53:47 | INFO |   Ep     1 | tr_f1=0.6389 | vl_f1=0.7441 | best=0.7441 | 0.7min
+11:17:59 | INFO |   Early stop at epoch 37
+11:18:00 | INFO |   Test acc=0.8640 f1=0.8636 | time=24.9min
+11:18:00 | INFO |   v1 done — test_f1=0.8636
+✅ Saved results to /home/s466553/Master_thesis/master_thesis/results/lstm_ts_1500/result.json

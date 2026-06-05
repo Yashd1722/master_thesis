@@ -1,0 +1,27 @@
+Task 1: cnn_lstm on ts_1500
+Node: jnultra02  GPU: 0
+10:52:53 | INFO | Model  : cnn_lstm
+10:52:53 | INFO | Dataset: ts_1500
+10:52:53 | INFO | IS_TSC : False
+10:52:53 | INFO | Device : cuda
+10:53:01 | INFO |   Parameters: 23,574 | ckpt: cnn_lstm_ts_1500_v1_best.ckpt
+10:53:12 | INFO |   Ep     1 | tr_f1=0.4910 | vl_f1=0.5822 | best=0.5822 | 0.2min
+10:59:30 | INFO |   Ep    50 | tr_f1=0.8535 | vl_f1=0.8104 | best=0.8488 | 6.5min
+11:05:53 | INFO |   Ep   100 | tr_f1=0.8729 | vl_f1=0.8603 | best=0.8635 | 12.8min
+11:12:34 | INFO |   Ep   150 | tr_f1=0.8807 | vl_f1=0.8665 | best=0.8721 | 19.5min
+11:19:26 | INFO |   Ep   200 | tr_f1=0.8900 | vl_f1=0.8595 | best=0.8734 | 26.4min
+11:23:47 | INFO |   Early stop at epoch 232
+11:23:47 | INFO |   Test acc=0.8685 f1=0.8681 | time=30.7min
+11:23:47 | INFO |   v1 done — test_f1=0.8681
+✅ Saved results to /home/s466553/Master_thesis/master_thesis/results/cnn_lstm_ts_1500/result.json
+11:23:56 | INFO |   Parameters: 23,574 | ckpt: cnn_lstm_ts_1500_v2_best.ckpt
+11:24:04 | INFO |   Ep     1 | tr_f1=0.4027 | vl_f1=0.5267 | best=0.5267 | 0.1min
+11:30:39 | INFO |   Ep    50 | tr_f1=0.8497 | vl_f1=0.7946 | best=0.8498 | 6.7min
+11:37:10 | INFO |   Ep   100 | tr_f1=0.8675 | vl_f1=0.8639 | best=0.8639 | 13.2min
+11:43:48 | INFO |   Ep   150 | tr_f1=0.8806 | vl_f1=0.8717 | best=0.8749 | 19.9min
+11:50:06 | INFO |   Ep   200 | tr_f1=0.8860 | vl_f1=0.8736 | best=0.8758 | 26.2min
+11:56:39 | INFO |   Ep   250 | tr_f1=0.8891 | vl_f1=0.8574 | best=0.8774 | 32.7min
+11:56:47 | INFO |   Early stop at epoch 251
+11:56:48 | INFO |   Test acc=0.8650 f1=0.8644 | time=32.9min
+11:56:48 | INFO |   v2 done — test_f1=0.8644
+✅ Saved results to /home/s466553/Master_thesis/master_thesis/results/cnn_lstm_ts_1500/result.json

@@ -1,0 +1,11 @@
+Task 3: minirocket on ts_1500
+Node: jn107  NUMBA_NUM_THREADS=16
+11:28:36 | INFO | Model  : minirocket
+11:28:36 | INFO | Dataset: ts_1500
+11:28:36 | INFO | IS_TSC : True
+11:28:42 | INFO |   Loading train/val data into memory for aeon...
+11:28:44 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:28:44 | INFO |   Fitting minirocket...
+11:44:35 | INFO |   Val acc=0.7254 f1=0.7203 | time=15.8min
+11:44:35 | INFO |   Saved: minirocket_ts_1500_best.pkl
+11:44:35 | INFO | Done — val_f1=0.7203

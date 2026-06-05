@@ -1,0 +1,11 @@
+Task 6: arsenal on ts_500
+Node: jn106  NUMBA_NUM_THREADS=16
+11:40:23 | INFO | Model  : arsenal
+11:40:23 | INFO | Dataset: ts_500
+11:40:23 | INFO | IS_TSC : True
+11:40:31 | INFO |   Loading train/val data into memory for aeon...
+11:40:35 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
+11:40:38 | INFO |   Fitting arsenal...
+12:21:32 | INFO |   Val acc=0.6742 f1=0.6719 | time=30.5min
+12:21:32 | INFO |   Saved: arsenal_ts_500_best.pkl
+12:21:32 | INFO | Done — val_f1=0.6719
