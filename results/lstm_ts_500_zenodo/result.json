@@ -2,7 +2,7 @@
     "model": "lstm",
     "dataset": "ts_500",
     "target": "zenodo",
-    "inference_time_sec": 5.74,
+    "inference_time_sec": 5.77,
     "auc": 0.9721742933333334,
     "roc": {
         "fpr": [

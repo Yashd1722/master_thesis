@@ -2,7 +2,7 @@
     "model": "rocket",
     "dataset": "ts_1500",
     "target": "zenodo",
-    "inference_time_sec": 17.03,
+    "inference_time_sec": 15.11,
     "auc": 0.8772306737621994,
     "roc": {
         "fpr": [

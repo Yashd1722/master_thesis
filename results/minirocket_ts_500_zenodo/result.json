@@ -2,7 +2,7 @@
     "model": "minirocket",
     "dataset": "ts_500",
     "target": "zenodo",
-    "inference_time_sec": 0.84,
+    "inference_time_sec": 0.9,
     "auc": 0.8160785851870263,
     "roc": {
         "fpr": [

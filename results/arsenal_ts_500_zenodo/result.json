@@ -2,7 +2,7 @@
     "model": "arsenal",
     "dataset": "ts_500",
     "target": "zenodo",
-    "inference_time_sec": 132.42,
+    "inference_time_sec": 133.36,
     "auc": 0.8764798044129629,
     "roc": {
         "fpr": [

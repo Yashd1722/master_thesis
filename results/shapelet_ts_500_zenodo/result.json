@@ -2,7 +2,7 @@
     "model": "shapelet",
     "dataset": "ts_500",
     "target": "zenodo",
-    "inference_time_sec": 107.87,
+    "inference_time_sec": 93.52,
     "auc": 0.8639682404070531,
     "roc": {
         "fpr": [

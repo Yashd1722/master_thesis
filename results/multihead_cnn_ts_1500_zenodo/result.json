@@ -2,7 +2,7 @@
     "model": "multihead_cnn",
     "dataset": "ts_1500",
     "target": "zenodo",
-    "inference_time_sec": 0.65,
+    "inference_time_sec": 0.6,
     "auc": 0.9046826666666666,
     "roc": {
         "fpr": [

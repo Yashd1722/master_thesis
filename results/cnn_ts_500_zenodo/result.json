@@ -2,7 +2,7 @@
     "model": "cnn",
     "dataset": "ts_500",
     "target": "zenodo",
-    "inference_time_sec": 0.34,
+    "inference_time_sec": 0.25,
     "auc": 0.9575192533333334,
     "roc": {
         "fpr": [
