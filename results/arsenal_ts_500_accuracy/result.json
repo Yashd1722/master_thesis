@@ -1,0 +1,42 @@
+{
+  "model": "arsenal",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 135.61,
+  "timestamp": "2026-06-19T15:28:20",
+  "metric": "accuracy",
+  "accuracy": 0.6575672420714572,
+  "macro_f1": 0.6561943960100817,
+  "confusion_matrix": [
+    [
+      580,
+      58,
+      269,
+      343
+    ],
+    [
+      127,
+      952,
+      130,
+      41
+    ],
+    [
+      153,
+      80,
+      788,
+      223
+    ],
+    [
+      18,
+      11,
+      253,
+      956
+    ]
+  ]
+}

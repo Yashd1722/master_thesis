@@ -1,0 +1,30 @@
+{
+  "model": "minirocket",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 1.23,
+  "timestamp": "2026-06-19T15:24:06",
+  "metric": "auc",
+  "auc": 0.894352,
+  "roc_fpr": [
+    0.0,
+    0.0744466800804829,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.863150867823765,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ]
+}

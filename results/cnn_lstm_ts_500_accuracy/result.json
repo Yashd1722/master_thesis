@@ -1,0 +1,42 @@
+{
+  "model": "cnn_lstm",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 24.88,
+  "timestamp": "2026-06-19T14:44:25",
+  "metric": "accuracy",
+  "accuracy": 0.8192,
+  "macro_f1": 0.8200471526486728,
+  "confusion_matrix": [
+    [
+      992,
+      29,
+      139,
+      90
+    ],
+    [
+      140,
+      1039,
+      51,
+      20
+    ],
+    [
+      144,
+      32,
+      955,
+      119
+    ],
+    [
+      3,
+      5,
+      132,
+      1110
+    ]
+  ]
+}

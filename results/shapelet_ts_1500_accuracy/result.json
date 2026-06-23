@@ -1,0 +1,42 @@
+{
+  "model": "shapelet",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 105.21,
+  "timestamp": "2026-06-19T15:42:18",
+  "metric": "accuracy",
+  "accuracy": 0.7413533834586467,
+  "macro_f1": 0.7392718808584513,
+  "confusion_matrix": [
+    [
+      304,
+      39,
+      92,
+      65
+    ],
+    [
+      70,
+      362,
+      52,
+      16
+    ],
+    [
+      50,
+      20,
+      367,
+      61
+    ],
+    [
+      2,
+      8,
+      41,
+      446
+    ]
+  ]
+}

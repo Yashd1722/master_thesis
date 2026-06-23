@@ -1,0 +1,30 @@
+{
+  "model": "multirocket",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 25.57,
+  "timestamp": "2026-06-19T15:24:54",
+  "metric": "auc",
+  "auc": 0.773695,
+  "roc_fpr": [
+    0.0,
+    0.31906300484652667,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.8664529914529915,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ]
+}

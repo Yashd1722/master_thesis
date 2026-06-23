@@ -1,7 +1,7 @@
 """
 src/rolling_window.py
 Calculates Early Warning Signals (EWS) for PANGAEA core data.
-Simplified for beginners: Uses basic dictionaries and clear function names.
+FIX: Now also loads neutral (null) series so AUC can be computed!
 """
 import numpy as np
 import pandas as pd
@@ -73,19 +73,37 @@ def run_all_sapropels(core_name, cfg, ts_len):
         sap_results = {}
         for element in ELEMENTS:
             elem_results = {}
-            file_path = clean_dir / f"{core_name}_{sap_id}_forced.csv"
-            if not file_path.exists(): continue
+            
+            # 1. Load Forced Data
+            forced_path = clean_dir / f"{core_name}_{sap_id}_forced.csv"
+            if not forced_path.exists(): continue
                 
-            df = pd.read_csv(file_path)
+            df_f = pd.read_csv(forced_path)
             col_name = f"{element}_residuals"
-            if col_name not in df.columns: continue
+            if col_name not in df_f.columns: continue
                 
-            valid_data = ~np.isnan(df[col_name].values)
+            valid_data = ~np.isnan(df_f[col_name].values)
             if valid_data.sum() >= 10:
                 elem_results["forced"] = analyze_one_segment(
-                    residuals=df[col_name].values[valid_data], ages=df["age_kyr_bp"].values[valid_data],
+                    residuals=df_f[col_name].values[valid_data], ages=df_f["age_kyr_bp"].values[valid_data],
                     element=element, core=core_name, sapropel=sap_id, segment_type="forced", cfg=cfg, ts_len=ts_len
                 )
+            
+            # 2. Load Neutral (Null) Data -> THIS FIXES THE NAN AUC ISSUE!
+            null_path = clean_dir / f"{core_name}_{sap_id}_{element}_ar1_null.csv"
+            if null_path.exists():
+                df_n = pd.read_csv(null_path)
+                null_cols = [c for c in df_n.columns if c.startswith("null_")]
+                if null_cols:
+                    # Use the first null series for the rolling window analysis
+                    first_null_col = null_cols[0]
+                    valid_n = ~np.isnan(df_n[first_null_col].values)
+                    if valid_n.sum() >= 10:
+                        elem_results["neutral"] = analyze_one_segment(
+                            residuals=df_n[first_null_col].values[valid_n], ages=df_n["age_kyr_bp"].values[valid_n],
+                            element=element, core=core_name, sapropel=sap_id, segment_type="neutral", cfg=cfg, ts_len=ts_len
+                        )
+                        
             sap_results[element] = elem_results
         all_results[sap_id] = sap_results
     return all_results

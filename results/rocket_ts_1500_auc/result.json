@@ -1,0 +1,30 @@
+{
+  "model": "rocket",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 17.4,
+  "timestamp": "2026-06-19T15:22:50",
+  "metric": "auc",
+  "auc": 0.877231,
+  "roc_fpr": [
+    0.0,
+    0.11670020120724346,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.8711615487316422,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ]
+}

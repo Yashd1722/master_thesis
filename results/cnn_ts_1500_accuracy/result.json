@@ -1,0 +1,42 @@
+{
+  "model": "cnn",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "inference_time_sec": 2.17,
+  "timestamp": "2026-06-19T15:19:58",
+  "metric": "accuracy",
+  "accuracy": 0.8065,
+  "macro_f1": 0.8055794148267421,
+  "confusion_matrix": [
+    [
+      369,
+      10,
+      68,
+      53
+    ],
+    [
+      54,
+      394,
+      47,
+      5
+    ],
+    [
+      59,
+      19,
+      370,
+      52
+    ],
+    [
+      0,
+      0,
+      20,
+      480
+    ]
+  ]
+}
