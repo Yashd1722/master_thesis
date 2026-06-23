@@ -8,8 +8,8 @@
     "transcritical",
     "null"
   ],
-  "inference_time_sec": 1.71,
-  "timestamp": "2026-06-19T15:19:30",
+  "inference_time_sec": 1.78,
+  "timestamp": "2026-06-23T13:32:05",
   "metric": "accuracy",
   "accuracy": 0.7598,
   "macro_f1": 0.7569317011378953,

@@ -48,9 +48,8 @@
     0.961410641670227,
     0.977007269859314
   ],
-  "timestamp": "2026-06-19T15:19:13",
+  "timestamp": "2026-06-23T13:31:51",
   "metric": "kendall_tau",
-  "segment": "forced",
   "kendall_tau": -0.140375,
   "variance": [
     1500.3793139548304,

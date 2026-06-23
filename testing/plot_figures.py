@@ -88,7 +88,8 @@ def plot_pangaea_series(data: dict, result, out_dir: Path):
     axes[ax_idx].set_ylim(0, 1)
     axes[ax_idx].set_xlabel("Rolling window step")
 
-    tag = f"{data['core']} / {data['sapropel']} / {data['element']} / {data['segment']}"
+    segment = data.get('segment', 'forced')
+    tag = f"{data['core']} / {data['sapropel']} / {data['element']} / {segment}"
     axes[0].set_title(f"{data['model']} — {tag}")
     fig.tight_layout()
     fig.savefig(out_dir / "pangaea_series.png", dpi=150)

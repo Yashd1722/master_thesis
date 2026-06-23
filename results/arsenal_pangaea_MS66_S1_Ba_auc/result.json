@@ -48,9 +48,8 @@
     1.0,
     1.0
   ],
-  "timestamp": "2026-06-19T15:34:08",
+  "timestamp": "2026-06-23T13:46:33",
   "metric": "auc",
-  "segment": "combined",
   "auc": 0.651875,
   "roc_fpr": [
     0.0,
