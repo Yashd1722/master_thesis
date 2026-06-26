@@ -8,8 +8,8 @@
     "transcritical",
     "null"
   ],
-  "inference_time_sec": 17.47,
-  "timestamp": "2026-06-23T13:35:11",
+  "inference_time_sec": 26.26,
+  "timestamp": "2026-06-23T20:29:38",
   "metric": "auc",
   "auc": 0.877231,
   "roc_fpr": [
