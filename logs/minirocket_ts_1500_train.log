@@ -1,9 +1,17 @@
-11:28:36 | INFO | Model  : minirocket
-11:28:36 | INFO | Dataset: ts_1500
-11:28:36 | INFO | IS_TSC : True
-11:28:42 | INFO |   Loading train/val data into memory for aeon...
-11:28:44 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
-11:28:44 | INFO |   Fitting minirocket...
-11:44:35 | INFO |   Val acc=0.7254 f1=0.7203 | time=15.8min
-11:44:35 | INFO |   Saved: minirocket_ts_1500_best.pkl
-11:44:35 | INFO | Done — val_f1=0.7203
+14:30:55 | INFO | Model  : minirocket
+14:30:55 | INFO | Dataset: ts_1500
+14:30:55 | INFO | IS_TSC : True
+14:31:01 | INFO |   Loading train data into memory...
+14:31:03 | INFO |   Dropping 580 flat train series 
+14:31:03 | INFO |   Dropping 34 flat val series 
+14:31:03 | INFO |   Train shape before subsampling: (189420, 1500)
+14:31:03 | INFO |   Subsampled train to 100000 (MAX_TRAIN_SAMPLES=100000)
+14:31:03 | INFO |   Starting EWS Augmentation...
+14:32:03 | INFO |   Augmented data shape: (100000, 4, 1500) (4 channels)
+14:32:12 | INFO |   Applied safe jitter (1e-4 orig, 1e-2 derived) to prevent aeon crashes
+14:32:21 | INFO |   Applied nuclear jitter (1e-2) to prevent aeon variance crashes
+14:32:22 | INFO |   [MEM-SAFETY] Subsampling minirocket from 100000 to 50000 to prevent OOM
+14:32:23 | INFO |   Fitting minirocket...
+14:40:19 | INFO |   Val acc=0.7707 f1=0.7699  time=7.8min
+14:40:19 | INFO |   Saved: minirocket_ts_1500_best.pkl
+14:40:19 | INFO | Done — val_f1=0.7699

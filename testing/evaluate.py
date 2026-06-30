@@ -1,7 +1,15 @@
 """
 testing/evaluate.py
-FIX: AR(1) surrogate fallback + sort forced data oldest-first so rolling
-     window approaches the transition at the END (fixes inverted AUC/tau).
+
+Evaluates trained models on:
+  - Zenodo test set (Bury synthetic time series)
+  - PANGAEA empirical XRF cores (rolling-window EWS inference)
+
+AR(1) null surrogates follow Bury et al. (2021):
+  Fit AR(1) to the FIRST 20% of the forced residuals (the neutral reference
+  period before critical-slowing-down dominates). This prevents the CSD ramp
+  near the transition from being baked into the null model, which would
+  suppress the AUC signal.
 """
 import argparse
 import json
@@ -17,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from models import get_model, list_models, is_tsc_model
+from src.constants import CLASS_NAMES, NULL_IDX
 from src.dataset_loader import load_config, get_dataset_info, get_dataloader
 from src.rolling_window import run_all_sapropels, compute_rolling_ews, ELEMENTS
 from metric.auc import compute_auc
@@ -25,11 +34,13 @@ from metric.accuracy import compute_accuracy
 from metric.kendall_tau import compute_kendall_tau
 from testing.plot_figures import plot_roc, plot_confusion_matrix, plot_pangaea_series
 
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray): return obj.tolist()
         if isinstance(obj, np.generic):  return obj.item()
         return super().default(obj)
+
 
 def setup_log(log_path: Path) -> logging.Logger:
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,29 +53,60 @@ def setup_log(log_path: Path) -> logging.Logger:
         logger.addHandler(h)
     return logger
 
-N_SURROGATES = 10
 
-def _fit_ar1(x: np.ndarray):
-    x_dm = x - x.mean()
-    if len(x_dm) < 3 or np.std(x_dm) < 1e-10:
+N_SURROGATES = 10
+# Fraction of the forced series used to fit the AR(1) null model.
+# Bury fits to the first 20% (the neutral period) so the CSD ramp near the
+# transition does NOT inflate the AR(1) autocorrelation estimate.
+AR1_FIT_FRACTION = 0.20
+
+
+def _fit_ar1_neutral(forced_residuals: np.ndarray, fit_fraction: float = AR1_FIT_FRACTION):
+    """
+    Fit an AR(1) model to the first `fit_fraction` of the forced residuals.
+
+    Using only the neutral (pre-CSD) segment ensures the surrogate reflects
+    the background dynamics, not the slowing-down ramp near the transition.
+    Mirrors Bury's generate_nulls_ar1.py exactly.
+    """
+    n_fit  = max(3, int(len(forced_residuals) * fit_fraction))
+    x_ref  = forced_residuals[:n_fit]
+    x_dm   = x_ref - x_ref.mean()
+
+    if np.std(x_dm) < 1e-10:
         return 0.0, float(np.std(x_dm))
-    phi = float(np.corrcoef(x_dm[:-1], x_dm[1:])[0, 1])
-    phi = np.clip(phi, -0.99, 0.99)
-    sigma = float(np.std(x_dm[1:] - phi * x_dm[:-1]))
-    return phi, sigma
+
+    # Lag-1 autocorrelation on the reference window.
+    alpha = float(np.corrcoef(x_dm[:-1], x_dm[1:])[0, 1])
+    alpha = np.clip(alpha, -0.99, 0.99)
+
+    # Innovation standard deviation: sigma = sqrt(var * (1 - alpha^2))
+    var   = float(np.var(x_ref, ddof=1))
+    sigma = float(np.sqrt(max(var * (1.0 - alpha ** 2), 1e-12)))
+
+    return alpha, sigma
+
 
 def _generate_ar1_surrogates(forced_residuals: np.ndarray,
                               n: int = N_SURROGATES,
                               seed: int = 42) -> list:
-    rng = np.random.default_rng(seed)
-    phi, sigma = _fit_ar1(forced_residuals)
-    mu  = forced_residuals.mean()
+    """
+    Generate `n` AR(1) surrogate series the same length as forced_residuals.
+
+    The AR(1) parameters are estimated from the first AR1_FIT_FRACTION of the
+    series (neutral reference period). The first surrogate point starts from
+    the stationary distribution N(0, sigma/sqrt(1-alpha^2)).
+    """
+    rng   = np.random.default_rng(seed)
+    alpha, sigma = _fit_ar1_neutral(forced_residuals)
+    mu    = forced_residuals.mean()
+
     out = []
     for _ in range(n):
         s    = np.zeros(len(forced_residuals))
-        s[0] = rng.normal(0, sigma / max(np.sqrt(1 - phi**2), 1e-6))
+        s[0] = rng.normal(0, sigma / max(np.sqrt(1.0 - alpha ** 2), 1e-6))
         for t in range(1, len(s)):
-            s[t] = phi * s[t-1] + rng.normal(0, sigma)
+            s[t] = alpha * s[t - 1] + rng.normal(0, sigma)
         out.append(s + mu)
     return out
 
@@ -136,8 +178,8 @@ def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
     ds_info     = get_dataset_info(dataset_name, cfg)
     ts_len      = ds_info["ts_length"]
     num_classes = ds_info["num_classes"]
-    class_names = ds_info["class_names"]
-    null_idx    = class_names.index("null") if "null" in class_names else -1
+    class_names = CLASS_NAMES   # use canonical ordering from constants
+    null_idx    = NULL_IDX
 
     if is_tsc_model(model_name):
         model      = load_tsc_model(model_name, dataset_name, cfg, logger)
@@ -204,8 +246,8 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger):
     ds_info     = get_dataset_info(dataset_name, cfg)
     ts_len      = ds_info["ts_length"]
     num_classes = ds_info["num_classes"]
-    class_names = ds_info["class_names"]
-    null_idx    = class_names.index("null") if "null" in class_names else -1
+    class_names = CLASS_NAMES   # use canonical ordering from constants
+    null_idx    = NULL_IDX
 
     if is_tsc_model(model_name):
         model      = load_tsc_model(model_name, dataset_name, cfg, logger)

@@ -1,34 +1,35 @@
 """
-models/__init__.py — auto-discovering model registry.
+models/__init__.py — simple model registry.
 
 To add a new model:
   1. Create models/my_model.py
   2. Set at module level:
-       MODEL_NAME  = "my_model"
+       MODEL_NAME  = "my_model"    # key used in --model CLI arg and config.yaml
        MODEL_CLASS = "MyModelClass"
-       IS_TSC      = False   # True for aeon classifiers
-  3. Done.
+       IS_TSC      = True          # True for aeon classifiers, False for PyTorch
+  3. Done — it will be auto-discovered here.
 
-PyTorch models interface:
-  __init__(self, ts_len, num_classes)
-  forward(x)        : (B, 1, T) -> logits (B, num_classes)
-  predict_proba(x)  : (B, 1, T) -> softmax (B, num_classes)
+TSC (aeon) model interface:
+  __init__(ts_len, num_classes, **kwargs)
+  fit(X, y)              — X: (N, C, L) numpy array, y: (N,) int
+  predict_proba(X)       — returns (N, num_classes) numpy array
+  save(path) / load(path)
 
-TSC (aeon) models interface — Net class:
-  __init__(self, ts_len, num_classes, **kwargs)
-  fit(X, y)
-  predict_proba(X)  : (N, num_classes)
-  supported_hyperparameters() -> list[dict]
+DL (PyTorch) model interface:
+  __init__(ts_len, num_classes)
+  forward(x)             — (B, 1, T) -> logits (B, num_classes)
+  predict_proba(x)       — (B, 1, T) -> softmax (B, num_classes)
 """
 
 import importlib
 from pathlib import Path
 
-_REGISTRY = {}
-_TSC      = set()
+_REGISTRY = {}   # name -> class
+_TSC      = set()  # names of TSC (aeon) models
 
 
 def _discover():
+    """Scan models/*.py and register anything with MODEL_NAME + MODEL_CLASS."""
     models_dir = Path(__file__).parent
     for fpath in sorted(models_dir.glob("*.py")):
         if fpath.stem.startswith("_"):
@@ -71,7 +72,6 @@ def get_max_train_samples(name: str):
     cls = _REGISTRY.get(name)
     if cls is None:
         return None
-    # class-level attr takes priority; fall back to module-level variable
     val = cls.__dict__.get("MAX_TRAIN_SAMPLES")
     if val is None:
         mod = _sys.modules.get(cls.__module__)

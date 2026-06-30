@@ -25,7 +25,10 @@ datasets:
 
 pangaea:
   variable: "Mo"
-  bandwidth_years: 400
+  # Gaussian detrend bandwidth as a fraction of the record length.
+  # Bury compute_ews.py uses 0.2 (the value applied to the residuals fed to
+  # classifiers). This is applied identically to forced and AR(1) null series.
+  detrend_bandwidth_frac: 0.20
   rolling_window_frac: 0.50
   cores:
     MS21:
@@ -52,26 +55,70 @@ pangaea:
         - {id: "S3", role: "test", neutral_start: -27.0, neutral_end: -25.0, pretrans_start: -25.0, pretrans_end: -22.5, transition_kyr: -22.5}
 
 models:
-  dl: [cnn_lstm, lstm, cnn, multihead_cnn]
-  tsc: [rocket, minirocket, multirocket, arsenal, knn_dtw, boss, weasel, shapelet, proximity_forest, ts_chief, drcif, tde, hivecote]
+  # n_jobs is NOT hardcoded here — train.py reads SLURM_CPUS_PER_TASK at runtime
+  # and injects it into every model call. These entries only set model-specific
+  # hyperparameters that do NOT change with the HPC allocation.
+  tsc: [minirocket, multirocket, arsenal, hydra_multirocket, rdst, weasel2, drcif, rocket]
+  dl:  [cnn_lstm, lstm, inceptiontime]
 
 training:
-  cnn_lstm: {epochs: 1500, lr: 0.0005, batch_size: 256, patience: 50, pad_variants: [1, 2], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "reduce_on_plateau", scheduler_patience: 20, scheduler_factor: 0.5, min_lr: 0.000001}
-  lstm: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001}
-  cnn: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001}
-  multihead_cnn: {epochs: 100, lr: 0.001, batch_size: 64, patience: 5, pad_variants: [1], weight_decay: 0.0001, grad_clip: 1.0, optimizer: "adam", scheduler: "none", min_lr: 0.000001, kernel_sizes: [3, 5, 11, 21], n_filters: 64}
-  rocket: {n_kernels: 10000, n_jobs: 16}
-  minirocket: {n_kernels: 10000, n_jobs: 16}
-  multirocket: {n_kernels: 6250, n_jobs: 16}
-  arsenal: {n_kernels: 2000, n_jobs: 4}
-  knn_dtw: {n_neighbors: 1, n_jobs: 8}
-  boss: {max_ensemble_size: 50, n_jobs: 4}
-  weasel: {window_inc: 4, n_jobs: 8}
-  shapelet: {n_shapelet_samples: 100, n_jobs: 8}
-  proximity_forest: {n_trees: 50, n_jobs: 4}
-  ts_chief: {n_jobs: 8}
-  drcif: {n_estimators: 100, n_jobs: 4}
-  tde: {n_parameter_samples: 250, n_jobs: 8}
-  hivecote: {time_limit_in_minutes: 60, n_jobs: 4}
+  # DL models — PyTorch training loop in train.py
+  cnn_lstm:
+    epochs: 1500
+    lr: 0.0005
+    batch_size: 256
+    patience: 50
+    pad_variants: [1, 2]    # two input variants for ensembling at eval time
+    weight_decay: 0.0
+    grad_clip: 1.0
+    optimizer: "adam"
+    scheduler: "reduce_on_plateau"
+    scheduler_patience: 20
+    scheduler_factor: 0.5
+    min_lr: 0.000001
 
-inference: {rolling_window_frac: 0.50, prediction_steps: 40, roc_start_frac: {default: 0.60, MS21: 0.60, MS66: 0.60, 64PE406E1: 0.60}, end_frac: 1.00, n_null_series: 20, null_method: "AAFT"}
+  lstm:
+    epochs: 300
+    lr: 0.001
+    batch_size: 128
+    patience: 20
+    pad_variants: [1]
+    weight_decay: 0.0
+    grad_clip: 1.0
+    optimizer: "adam"
+    scheduler: "none"
+    min_lr: 0.000001
+
+  inceptiontime:
+    epochs: 500
+    lr: 0.001
+    batch_size: 256
+    patience: 30
+    pad_variants: [1]
+    weight_decay: 0.0001
+    grad_clip: 1.0
+    optimizer: "adam"
+    scheduler: "reduce_on_plateau"
+    scheduler_patience: 10
+    scheduler_factor: 0.5
+    min_lr: 0.000001
+
+  # TSC models — aeon classifiers; n_jobs is overridden at runtime by N_JOBS
+  rocket:           {n_kernels: 10000}
+  minirocket:       {n_kernels: 10000}
+  multirocket:      {n_kernels: 6250}
+  arsenal:          {num_kernels: 2000}
+  hydra_multirocket: {n_kernels: 6250, n_groups: 64}
+  rdst:             {max_shapelets: 10000}
+  weasel2:          {}
+  drcif:            {n_estimators: 100}
+
+inference:
+  rolling_window_frac: 0.50   # CSD rolling window as fraction of record length (Bury rw=0.5)
+  prediction_steps: 40         # Number of rolling-window positions to classify
+  roc_start_frac: {default: 0.60, MS21: 0.60, MS66: 0.60, 64PE406E1: 0.60}
+  end_frac: 1.00
+  n_null_series: 10            # AR(1) surrogates per forced series (Bury uses 10)
+  null_method: "AR1"           # Primary: AR1 (Bury parity). AAFT is optional/off.
+  ar1_fit_fraction: 0.20       # Fit AR(1) to first 20% of series (neutral reference period)
+  use_4channel: false          # EWS feature augmentation (default OFF; see Phase 3)

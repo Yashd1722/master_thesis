@@ -1,36 +1,35 @@
 """
-models/multirocket.py — MultiRocketClassifier wrapper (nn-dataset Net pattern).
-IS_TSC = True  -> loaded by models/__init__.py as an aeon classifier.
+models/multirocket.py
+
+MultiRocket — extends MiniRocket with additional feature types (mean, variance,
+positive-proportion), improving accuracy by ~2-3% on UCR benchmarks.
+Tan et al. (2022).
+
+Multivariate: accepts (N, C, L) where C >= 1.
+IS_TSC = True — managed by the aeon training loop in train.py.
 """
 import numpy as np
 import joblib
 
-MODEL_NAME  = "multirocket"
-MODEL_CLASS = "MultiRocketNet"
-IS_TSC      = True
-MAX_TRAIN_SAMPLES = 80000
+MODEL_NAME        = "multirocket"
+MODEL_CLASS       = "MultiRocketNet"
+IS_TSC            = True
+MAX_TRAIN_SAMPLES = 80000   # feature matrix is larger than ROCKET
 
 
 class MultiRocketNet:
-    """Net wrapper around aeon MultiRocketClassifier."""
+    """Thin wrapper around aeon MultiRocketClassifier."""
 
-    def __init__(self, ts_len: int, num_classes: int, **kwargs):
+    def __init__(self, ts_len: int, num_classes: int,
+                 n_kernels: int = 6250, n_jobs: int = 1, **kwargs):
         from aeon.classification.convolution_based import MultiRocketClassifier
         self.ts_len      = ts_len
         self.num_classes = num_classes
-        hp = self.supported_hyperparameters()[0].copy()
-        hp.update({k: v for k, v in kwargs.items() if k in hp})
-        self._clf = MultiRocketClassifier(**hp)
-        self._classes = None
-
-    @classmethod
-    def supported_hyperparameters(cls):
-        return [{"n_kernels": 6250, "n_jobs": 16}]
+        self._clf = MultiRocketClassifier(n_kernels=n_kernels, n_jobs=n_jobs)
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """X: (N, T) float32, y: (N,) int."""
+        """X: (N, C, L) or (N, L). y: (N,) int."""
         self._clf.fit(X, y)
-        self._classes = np.unique(y)
         return self
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
