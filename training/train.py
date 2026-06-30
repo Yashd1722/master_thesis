@@ -215,20 +215,32 @@ def train_tsc(model_name, dataset_name, cfg, logger):
     seed = cfg["project"]["seed"]
     logger.info(f"  n_jobs={N_JOBS}  (SLURM_CPUS_PER_TASK or default=4)")
 
-    # Load train and val splits into numpy arrays.
-    # Using a large batch size so each DataLoader loop is effectively one pass.
+    # Load train and val splits into numpy arrays in a SINGLE PASS each.
+    # IMPORTANT: the training DataLoader uses shuffle=True. Iterating it twice
+    # (once for X, once for y) would produce different permutations and completely
+    # mismatch labels. We must collect both X and y inside the same loop.
     logger.info("  Loading train and val data into memory...")
     train_dl = get_dataloader(dataset_name, "train", cfg,
                                pad_variant=1, batch_size=8192, seed=seed)
     val_dl   = get_dataloader(dataset_name, "val",   cfg,
                                pad_variant=1, batch_size=8192, seed=seed)
 
-    X_train = np.concatenate([x.squeeze(1).numpy() for x, _ in train_dl])
-    y_train = np.concatenate([y.numpy()             for _, y in train_dl])
-    X_val   = np.concatenate([x.squeeze(1).numpy() for x, _ in val_dl])
-    y_val   = np.concatenate([y.numpy()             for _, y in val_dl])
+    X_train_parts, y_train_parts = [], []
+    for x_batch, y_batch in train_dl:
+        X_train_parts.append(x_batch.squeeze(1).numpy())
+        y_train_parts.append(y_batch.numpy())
+    X_train = np.concatenate(X_train_parts)
+    y_train = np.concatenate(y_train_parts)
+
+    X_val_parts, y_val_parts = [], []
+    for x_batch, y_batch in val_dl:
+        X_val_parts.append(x_batch.squeeze(1).numpy())
+        y_val_parts.append(y_batch.numpy())
+    X_val = np.concatenate(X_val_parts)
+    y_val = np.concatenate(y_val_parts)
 
     # Drop flat series — aeon rejects constant input (std ≤ 1e-7).
+    # Check std over the time axis so each row (series) is evaluated independently.
     tr_mask = X_train.std(axis=1) > 1e-7
     vl_mask = X_val.std(axis=1)   > 1e-7
     if (~tr_mask).any():
@@ -246,13 +258,34 @@ def train_tsc(model_name, dataset_name, cfg, logger):
     # lag-1 AC, skewness] channels, each z-normalised independently.
     # When OFF (default): data stays as (N, 1, L) — univariate.
     # ------------------------------------------------------------------
-    use_4ch = cfg.get("inference", {}).get("use_4channel", False)
+    infer_cfg   = cfg.get("inference", {})
+    use_4ch     = infer_cfg.get("use_4channel", False)
+    window_frac = infer_cfg.get("rolling_window_frac_augment", 0.25)
+
+    ch_stats_path = ckpt_path.with_name(ckpt_path.stem + "_ch_stats.npz")
+
     if use_4ch:
         from src.ews_augmenter import augment_ews_channels
         logger.info("  EWS augmentation ON (use_4channel=true) — expanding to 4 channels")
-        X_train = augment_ews_channels(X_train)   # -> (N, 4, L)
-        X_val   = augment_ews_channels(X_val)
-        logger.info(f"  Augmented shape: {X_train.shape}")
+        # Training: compute rolling channels and fit normalization from train set.
+        X_train, ch_stats = augment_ews_channels(X_train, window_frac=window_frac)
+        # Val: reuse the train-set stats (never refit on held-out data).
+        X_val,   _        = augment_ews_channels(X_val,   window_frac=window_frac,
+                                                  channel_stats=ch_stats)
+        # Drop series where any channel has zero variance — aeon rejects them.
+        # (Rare but possible for very short or very uniform series.)
+        tr_mask4 = (X_train.std(axis=2) > 1e-7).all(axis=1)  # all channels OK
+        vl_mask4 = (X_val.std(axis=2)   > 1e-7).all(axis=1)
+        if (~tr_mask4).any():
+            logger.info(f"  Dropping {(~tr_mask4).sum()} degenerate-channel train series")
+            X_train, y_train = X_train[tr_mask4], y_train[tr_mask4]
+        if (~vl_mask4).any():
+            logger.info(f"  Dropping {(~vl_mask4).sum()} degenerate-channel val series")
+            X_val, y_val = X_val[vl_mask4], y_val[vl_mask4]
+        # Save stats alongside checkpoint so evaluate.py can reload them.
+        np.savez(ch_stats_path, mean=ch_stats["mean"], std=ch_stats["std"])
+        logger.info(f"  Augmented shape: {X_train.shape}  "
+                    f"ch_stats saved → {ch_stats_path.name}")
     else:
         # Keep univariate: (N, L) -> (N, 1, L) so all models get consistent shape.
         X_train = X_train[:, np.newaxis, :]
@@ -313,13 +346,100 @@ def train_tsc(model_name, dataset_name, cfg, logger):
 # =============================================================================
 # Main
 # =============================================================================
+def train_dl_binary(model_name, dataset_name, cfg, device, logger):
+    """
+    2-class (binary) DL training: forced (any bifurcation) vs null.
+
+    Replicates Bury et al. (2021) binary classification for like-for-like
+    comparison. Labels are remapped: null → 0, any bifurcation → 1.
+    The model is trained with num_classes=2 and a 2-class CrossEntropyLoss.
+    """
+    tr_cfg  = cfg["training"][model_name]
+    ds_info = get_dataset_info(dataset_name, cfg)
+    ts_len  = ds_info["ts_length"]
+    seed    = cfg["project"]["seed"]
+
+    ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt_path = ckpt_dir / f"{model_name}_{dataset_name}_binary_v1_best.ckpt"
+
+    train_dl = get_dataloader(dataset_name, "train", cfg,
+                               pad_variant=1, batch_size=tr_cfg["batch_size"], seed=seed)
+    val_dl   = get_dataloader(dataset_name, "val",   cfg,
+                               pad_variant=1, batch_size=tr_cfg["batch_size"], seed=seed)
+    test_dl  = get_dataloader(dataset_name, "test",  cfg,
+                               pad_variant=1, batch_size=tr_cfg["batch_size"], seed=seed)
+
+    # Remap: null (class 3) → 0, all bifurcation classes → 1
+    def remap(y):
+        return (y != NULL_IDX).long()
+
+    torch.manual_seed(seed)
+    model    = get_model(model_name, ts_len=ts_len, num_classes=2).to(device)
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"  [binary] Parameters: {n_params:,}  ckpt: {ckpt_path.name}")
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=tr_cfg["lr"],
+                            weight_decay=tr_cfg["weight_decay"])
+
+    best_val_acc, patience_ctr = -1.0, 0
+    total_epochs = tr_cfg["epochs"]
+    t0 = time.time()
+
+    epoch_bar = tqdm(range(1, total_epochs + 1), desc=f"{model_name} binary",
+                     unit="ep", dynamic_ncols=True)
+    for epoch in epoch_bar:
+        # Train
+        model.train()
+        for x, y in train_dl:
+            x, y = x.to(device), remap(y).to(device)
+            optimizer.zero_grad()
+            logits = model(x)
+            nn.utils.clip_grad_norm_(model.parameters(), tr_cfg["grad_clip"])
+            criterion(logits, y).backward()
+            optimizer.step()
+        # Val
+        model.eval()
+        preds_all, labels_all = [], []
+        with torch.no_grad():
+            for x, y in val_dl:
+                preds_all.extend(model(x.to(device)).argmax(1).cpu().numpy())
+                labels_all.extend(remap(y).numpy())
+        val_acc = accuracy_score(labels_all, preds_all)
+        if val_acc > best_val_acc:
+            best_val_acc, patience_ctr = val_acc, 0
+            torch.save(model.state_dict(), ckpt_path)
+        else:
+            patience_ctr += 1
+        epoch_bar.set_postfix(val_acc=f"{val_acc:.3f}", best=f"{best_val_acc:.3f}",
+                               pat=patience_ctr)
+        if patience_ctr >= tr_cfg["patience"]:
+            logger.info(f"  Early stop at epoch {epoch}")
+            break
+
+    model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
+    te_preds, te_labels = [], []
+    with torch.no_grad():
+        for x, y in test_dl:
+            te_preds.extend(model(x.to(device)).argmax(1).cpu().numpy())
+            te_labels.extend(remap(y).numpy())
+    te_acc = accuracy_score(te_labels, te_preds)
+    logger.info(f"  [binary] Test acc={te_acc:.4f}  time={(time.time()-t0)/60:.1f} min")
+    return {"model": model_name, "dataset": dataset_name, "mode": "binary",
+            "test_acc": round(te_acc, 6), "best_val_acc": round(best_val_acc, 6)}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model",   required=True, choices=list_models())
     parser.add_argument("--dataset", required=True, choices=["ts_500", "ts_1500"])
     parser.add_argument("--config",  default="config.yaml")
+    parser.add_argument("--binary",  action="store_true",
+                        help="2-class (forced vs null) training for Bury replication. "
+                             "DL models only.")
     args = parser.parse_args()
-    
+
     cfg     = load_config(args.config)
     log_dir = REPO_ROOT / cfg["paths"]["logs"]
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -327,9 +447,18 @@ def main():
 
     logger.info(f"Model  : {args.model}")
     logger.info(f"Dataset: {args.dataset}")
+    logger.info(f"Mode   : {'binary' if args.binary else '4-class'}")
     logger.info(f"IS_TSC : {is_tsc_model(args.model)}")
 
-    if is_tsc_model(args.model):
+    if args.binary:
+        if is_tsc_model(args.model):
+            logger.error("--binary is only supported for DL models (cnn_lstm, lstm, inceptiontime)")
+            sys.exit(1)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"Device : {device}")
+        m = train_dl_binary(args.model, args.dataset, cfg, device, logger)
+        logger.info(f"Done — binary test_acc={m['test_acc']:.4f}")
+    elif is_tsc_model(args.model):
         metrics = train_tsc(args.model, args.dataset, cfg, logger)
         logger.info(f"Done — val_f1={metrics['val_f1']:.4f}")
     else:

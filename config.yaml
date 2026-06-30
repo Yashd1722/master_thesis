@@ -114,11 +114,12 @@ training:
   drcif:            {n_estimators: 100}
 
 inference:
-  rolling_window_frac: 0.50   # CSD rolling window as fraction of record length (Bury rw=0.5)
-  prediction_steps: 40         # Number of rolling-window positions to classify
+  rolling_window_frac: 0.50         # CSD rolling window as fraction of record length (Bury rw=0.5)
+  rolling_window_frac_augment: 0.25 # Smaller window for EWS feature channels (training augmenter)
+  prediction_steps: 40              # Number of rolling-window positions to classify
   roc_start_frac: {default: 0.60, MS21: 0.60, MS66: 0.60, 64PE406E1: 0.60}
   end_frac: 1.00
-  n_null_series: 10            # AR(1) surrogates per forced series (Bury uses 10)
-  null_method: "AR1"           # Primary: AR1 (Bury parity). AAFT is optional/off.
-  ar1_fit_fraction: 0.20       # Fit AR(1) to first 20% of series (neutral reference period)
-  use_4channel: false          # EWS feature augmentation (default OFF; see Phase 3)
+  n_null_series: 10                 # AR(1) surrogates per forced series (Bury uses 10)
+  null_method: "AR1"                # Primary: AR1 (Bury parity). AAFT is optional/off.
+  ar1_fit_fraction: 0.20            # Fit AR(1) to first 20% of series (neutral reference period)
+  use_4channel: true               # EWS feature augmentation (default OFF; see Phase 3)
