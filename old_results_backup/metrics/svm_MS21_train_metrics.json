@@ -1,8 +1,0 @@
-{
-  "model": "svm",
-  "core": "MS21",
-  "cv_auc": 0.999,
-  "train_auc": 0.999,
-  "best_C": 1.0,
-  "best_gamma": "0.001"
-}
