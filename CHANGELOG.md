@@ -4,6 +4,61 @@ All changes are listed chronologically. One bullet per fix. Branch: `refactor-cl
 
 ---
 
+## Phase 6 — Documentation
+
+- **[6.1]** Rewrote `README.md`: accurate 11-model roster (8 TSC + 3 DL), current
+  SLURM task maps (16 TSC tasks, 6 DL tasks), corrected Bury DOI
+  (10.1073/pnas.2106140118), updated metric table (binary_auc/macro_f1/macro_auc_ovr/
+  kendall_tau), updated figure guide (FIG1–FIG5), AR(1) null protocol, 4-channel
+  augmentation section. Removed all deleted model references.
+- **[6.2]** Created `MIGRATION.md`: documents both root causes of invalid old checkpoints
+  (wrong label ordering + DataLoader label mismatch), deleted vs added models, result
+  directory naming changes (old `_auc`/`_kendall_tau` → new `_zenodo`/`_pangaea`),
+  metric field rename (`auc` → `binary_auc`), null method change (AAFT → AR(1)).
+- **[6.3]** Created `REPORT_NOTES.md`: Methods section notes (EWS signal formula, AR(1)
+  null rationale, ROC protocol, rolling window spec, 4-channel design), model selection
+  rationale for all 11 models, results caveats (distribution shift, negative controls,
+  small N, tau CI, MAX_TRAIN_SAMPLES), key numbers table, correct Bury DOI with full
+  citation.
+- **[6.4]** Created `README_HPC.md`: environment setup, partition summary (large_cpu /
+  h100), full task-to-model mapping for both SLURM arrays, monitoring commands, 4 common
+  failure modes with fixes, useful SLURM snippets, checkpoint backup guidance.
+- **[6.5]** Updated `testing/run_all_evaluations.sh`: replaced stale 9-model list
+  (included deleted cnn, multihead_cnn, shapelet, etc.) with correct 11-model roster.
+  Removed emoji (shell portability). Calls `plot_figures.py --config config.yaml`
+  after evaluation.
+
+## Phase 5 — Standardised Figures
+
+- **[5.1]** Rewrote `testing/plot_figures.py` with fixed style constants at module level:
+  `MODEL_ORDER` (11 models, TSC then DL), `MODEL_COLORS` (fixed palette per model),
+  `CLASS_COLORS` (fold/hopf/transcritical/null), `ELEMENT_ORDER` = ["Al","Ba","Mo","Ti","U"].
+- **[5.2]** Inline plots (called immediately from `evaluate.py`):
+  - `plot_roc`: ROC with `binary_auc` field (backwards-compatible with old `auc` key).
+  - `plot_confusion_matrix`: heatmap with white-on-dark text for readability.
+  - `plot_pangaea_series`: quick 3-panel preview (variance + lag-1 AC + p_transition).
+- **[5.3]** FIG1 (`plot_fig1_pangaea`): 4-panel stacked — raw proxy + trend (panel a),
+  residuals (panel b), variance + lag-1 AC dual-y (panel c), p_transition (panel d).
+  Panels a/b loaded from pangaea CSV if available; falls back to 2-panel if not.
+  x-axis: Age (kyr BP), oldest at left, transition at right edge. AUC and τ in title.
+- **[5.4]** FIG2 (`plot_fig2_roc`): ROC for each (model, core, sapropel, element) with
+  AUC in legend. Saved as `{model}_{core}_{sap}_{element}_fig2_roc.png`.
+- **[5.5]** FIG3 (`plot_fig3_auc_heatmap`): mean AUC matrix (rows=models, cols=elements),
+  averaged over all (core, sapropel) combinations. RdYlGn colormap, vmin=0.5/vmax=1.0.
+- **[5.6]** FIG4 (`plot_fig4_kendall_tau`): bar chart of mean Kendall τ ± 95% CI
+  (t-distribution) per model. TSC bars in orange, DL bars in blue. Null τ = 0 line shown.
+- **[5.7]** FIG5 (`plot_fig5_roc_overlay`): all models overlaid on one ROC axes for one
+  (core, element). TPR interpolated to common FPR grid then averaged over sapropels.
+  One file per core × element: `fig5_roc_overlay_{core}_{element}.png`.
+- **[5.8]** `load_pangaea_results` handles both new (`*_pangaea`) and old (`*_auc`/`*_kendall_tau`)
+  directory formats, merging old split dirs into unified records. No duplicates via `seen` set.
+- **[5.9]** Summary CLI: `python testing/plot_figures.py [--config config.yaml]` drives
+  FIG1+FIG2 per (model,core,sap,element), then FIG3/FIG4 globally, then FIG5 per (core,element).
+  All saved to `results/comparison/`.
+
+Smoke (Phase 5): all 8 figure functions pass with mock data; correct filename convention;
+  x-axis direction verified (oldest-left, transition-right) ✓
+
 ## Critical Bug Fix (discovered during Phase 3 smoke test)
 
 - **[BUG]** Fixed label mismatch in `train_tsc()`: the shuffled training DataLoader was
