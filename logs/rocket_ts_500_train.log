@@ -1,9 +1,17 @@
-11:28:13 | INFO | Model  : rocket
-11:28:13 | INFO | Dataset: ts_500
-11:28:13 | INFO | IS_TSC : True
-11:28:19 | INFO |   Loading train/val data into memory for aeon...
-11:28:23 | INFO |   Subsampled train to 20000 (MAX_TRAIN_SAMPLES=20000)
-11:28:25 | INFO |   Fitting rocket...
-11:43:41 | INFO |   Val acc=0.6143 f1=0.6145 | time=13.6min
-11:43:41 | INFO |   Saved: rocket_ts_500_best.pkl
-11:43:41 | INFO | Done — val_f1=0.6145
+14:30:55 | INFO | Model  : rocket
+14:30:55 | INFO | Dataset: ts_500
+14:30:55 | INFO | IS_TSC : True
+14:31:00 | INFO |   Loading train data into memory...
+14:31:04 | INFO |   Dropping 1435 flat train series 
+14:31:04 | INFO |   Dropping 100 flat val series 
+14:31:04 | INFO |   Train shape before subsampling: (473565, 500)
+14:31:04 | INFO |   Subsampled train to 200000 (MAX_TRAIN_SAMPLES=200000)
+14:31:04 | INFO |   Starting EWS Augmentation...
+14:32:22 | INFO |   Augmented data shape: (200000, 4, 500) (4 channels)
+14:32:29 | INFO |   Applied safe jitter (1e-4 orig, 1e-2 derived) to prevent aeon crashes
+14:32:36 | INFO |   Applied nuclear jitter (1e-2) to prevent aeon variance crashes
+14:32:38 | INFO |   [MEM-SAFETY] Subsampling rocket from 200000 to 50000 to prevent OOM
+14:32:38 | INFO |   Fitting rocket...
+16:11:10 | INFO |   Val acc=0.6292 f1=0.6297  time=95.0min
+16:11:10 | INFO |   Saved: rocket_ts_500_best.pkl
+16:11:10 | INFO | Done — val_f1=0.6297

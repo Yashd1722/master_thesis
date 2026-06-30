@@ -1,7 +1,8 @@
 # Early Warning Signals for Mediterranean Sapropel Transitions
 
 Master thesis — Yashkumar Dhameliya  
-Reproduces and extends **Bury et al. (2021)** and **Ma et al. (2025)** using both deep learning and classical time-series classification to detect critical transitions in Mediterranean sediment records.
+Reproduces and extends **Bury et al. (2021)** using both deep learning and classical
+time-series classification (TSC) to detect critical transitions in Mediterranean sediment records.
 
 ---
 
@@ -9,45 +10,40 @@ Reproduces and extends **Bury et al. (2021)** and **Ma et al. (2025)** using bot
 
 | Paper | DOI | What we reproduce |
 |---|---|---|
-| Bury et al. (2021) PNAS | [10.1073/pnas.2023610118](https://doi.org/10.1073/pnas.2023610118) | CNN-LSTM trained on Zenodo ts_500/ts_1500, applied to PANGAEA Mo records |
-| Ma et al. (2025) Comms Physics | [10.1038/s42005-025-02172-4](https://doi.org/10.1038/s42005-025-02172-4) | LSTM + CNN classifiers, SDML surrogate method, multi-element extension |
+| Bury et al. (2021) PNAS | [10.1073/pnas.2106140118](https://doi.org/10.1073/pnas.2106140118) | CNN-LSTM trained on Zenodo ts_500/ts_1500, AR(1) null, applied to PANGAEA Mo records |
+| Hennekam et al. (2020) PANGAEA | [10.1594/PANGAEA.923197](https://doi.pangaea.de/10.1594/PANGAEA.923197) | Empirical XRF data for 3 cores × 5 elements |
 
 ---
 
-## Models
+## Model Roster
 
-### Deep Learning (PyTorch) — 4 models
+### Deep Learning (PyTorch) — 3 models
 
 | Model | File | Description |
 |---|---|---|
-| `cnn_lstm` | `models/cnn_lstm.py` | Bury 2021 baseline: Conv1D → LSTM → LSTM |
-| `lstm` | `models/lstm.py` | Ma 2025 LSTM classifier |
-| `cnn` | `models/cnn.py` | Ma 2025 CNN classifier |
-| `multihead_cnn` | `models/multihead_cnn.py` | Multi-head CNN (Ma 2025 extension) |
+| `cnn_lstm` | `models/cnn_lstm.py` | Bury 2021 baseline: Conv1D → LSTM → LSTM → softmax |
+| `lstm` | `models/lstm.py` | Stacked LSTM classifier |
+| `inceptiontime` | `models/inceptiontime.py` | InceptionTime (3 Inception modules + GAP + residual) |
 
-Trained on GPU partition (`h100`). Checkpoints saved as `{model}_{dataset}_v{variant}_best.ckpt`.
+Trained on GPU partition (`h100`). Checkpoints: `checkpoints/{model}_{dataset}_v{variant}_best.ckpt`.
 
-### Classical TSC (aeon v1.4.0) — 13 models
+### Classical TSC (aeon v1.4.0) — 8 models
 
-| Model | File | MAX_TRAIN_SAMPLES | Key hyperparams |
-|---|---|---|---|
-| `rocket` | `models/rocket.py` | 200,000 | n_kernels=10000, n_jobs=16 |
-| `minirocket` | `models/minirocket.py` | 100,000 | n_kernels=10000, n_jobs=16 |
-| `multirocket` | `models/multirocket.py` | 80,000 | n_kernels=6250, n_jobs=16 |
-| `arsenal` | `models/arsenal.py` | 100,000 | n_kernels=2000, n_jobs=4 |
-| `knn_dtw` | `models/knn_dtw.py` | 10,000 | n_neighbors=1, n_jobs=8 |
-| `boss` | `models/boss.py` | 100,000 | max_ensemble_size=50, n_jobs=4 |
-| `weasel` | `models/weasel.py` | 50,000 | window_inc=4, n_jobs=8 |
-| `shapelet` | `models/shapelet.py` | 5,000 | n_shapelet_samples=100, n_jobs=8 |
-| `proximity_forest` | `models/proximity_forest.py` | 10,000 | n_trees=50, n_jobs=4 |
-| `ts_chief` | `models/ts_chief.py` | 50,000 | n_jobs=8 |
-| `drcif` | `models/drcif.py` | 50,000 | n_estimators=100, n_jobs=4 |
-| `tde` | `models/tde.py` | unlimited | n_parameter_samples=250, n_jobs=8 |
-| `hivecote` | `models/hivecote.py` | 10,000 | time_limit_in_minutes=60, n_jobs=4 |
+| Model | File | Key hyperparams |
+|---|---|---|
+| `minirocket` | `models/minirocket.py` | n_kernels=10000 |
+| `multirocket` | `models/multirocket.py` | n_kernels=6250 |
+| `arsenal` | `models/arsenal.py` | num_kernels=2000 |
+| `drcif` | `models/drcif.py` | n_estimators=100 |
+| `rocket` | `models/rocket.py` | n_kernels=10000 |
+| `hydra_multirocket` | `models/hydra_multirocket.py` | n_kernels=6250, n_groups=64 (multivariate) |
+| `rdst` | `models/rdst.py` | max_shapelets=10000 |
+| `weasel2` | `models/weasel2.py` | WEASEL v2 (univariate: channel 0) |
 
-> **`MAX_TRAIN_SAMPLES`** — each TSC model caps its training set via stratified subsampling. This prevents out-of-memory kills on the 64 GB HPC nodes when the full ts_500 dataset reaches 470,000 series. Set per-model in the model file; `None`/absent means no cap.
+Trained on CPU partition (`large_cpu`, 16 CPUs, 60 GB). Checkpoints: `checkpoints/{model}_{dataset}_best.pkl`.
 
-Trained on CPU partition (`large_cpu`, 32 CPUs, 64 GB). Checkpoints saved as `{model}_{dataset}_best.pkl`.
+`n_jobs` is NOT hardcoded in config — `train.py` reads `SLURM_CPUS_PER_TASK` at runtime.
+Training is capped at `MAX_TRAIN_SAMPLES` via stratified subsampling (defined per model in `models/__init__.py`).
 
 ---
 
@@ -56,275 +52,255 @@ Trained on CPU partition (`large_cpu`, 32 CPUs, 64 GB). Checkpoints saved as `{m
 ```
 master_thesis/
 │
-├── config.yaml                       ← single source of truth for all paths and hyperparameters
+├── config.yaml                         ← single source of truth (paths, hyperparams, cores)
 ├── requirements.txt
+├── CHANGELOG.md                        ← per-phase change log
+├── MIGRATION.md                        ← guide for adapting old checkpoints/results
+├── README_HPC.md                       ← HPC-specific guide (SLURM, julia2)
+├── REPORT_NOTES.md                     ← thesis-writing reference (deviations, caveats)
 │
 ├── src/
-│   ├── dataset_loader.py             ← DataLoader for ts_500/ts_1500 + SDML surrogates
-│   ├── build_cache.py                ← pre-builds numpy cache from CSVs (run once)
-│   ├── pangea_cleaner.py             ← loads PANGAEA XRF data, detrends, generates AAFT null
-│   └── rolling_window.py             ← rolling window EWS (variance, lag-1 AC, DL inference)
+│   ├── constants.py                    ← CLASS_NAMES, NULL_IDX (canonical Bury ordering)
+│   ├── dataset_loader.py               ← DataLoader for ts_500/ts_1500
+│   ├── preprocess_bury_data.py         ← NPZ cache builder from Zenodo CSVs
+│   ├── ews_augmenter.py                ← Optional 4-channel EWS feature augmenter
+│   ├── pangea_cleaner.py               ← PANGAEA XRF loader, Gaussian detrend, AR(1) null
+│   └── rolling_window.py               ← rolling window EWS engine (variance, AC, DL inference)
 │
 ├── models/
-│   ├── __init__.py                   ← auto-discovering registry: get_model(), get_max_train_samples()
-│   ├── cnn_lstm.py                   ← DL: Bury 2021 CNN-LSTM
-│   ├── lstm.py                       ← DL: Ma 2025 LSTM
-│   ├── cnn.py                        ← DL: Ma 2025 CNN
-│   ├── multihead_cnn.py              ← DL: Multi-head CNN
-│   ├── rocket.py                     ← TSC: ROCKET
-│   ├── minirocket.py                 ← TSC: MiniRocket
-│   ├── multirocket.py                ← TSC: MultiRocket
-│   ├── arsenal.py                    ← TSC: Arsenal (probabilistic ROCKET)
-│   ├── knn_dtw.py                    ← TSC: 1-NN DTW
-│   ├── boss.py                       ← TSC: BOSS ensemble
-│   ├── weasel.py                     ← TSC: WEASEL (word-based)
-│   ├── shapelet.py                   ← TSC: Random shapelet transform
-│   ├── proximity_forest.py           ← TSC: Proximity Forest
-│   ├── ts_chief.py                   ← TSC: TS-CHIEF / RIST
-│   ├── drcif.py                      ← TSC: DrCIF (diverse random channel forest)
-│   ├── tde.py                        ← TSC: TDE (temporal dictionary ensemble)
-│   └── hivecote.py                   ← TSC: HIVE-COTE v2 (meta-ensemble)
+│   ├── __init__.py                     ← auto-discovering registry: get_model()
+│   ├── cnn_lstm.py / lstm.py / inceptiontime.py  ← DL models
+│   ├── minirocket.py / multirocket.py / rocket.py / arsenal.py  ← TSC: kernel methods
+│   ├── hydra_multirocket.py            ← TSC: Hydra+MultiRocket (multivariate)
+│   ├── rdst.py                         ← TSC: random dilated shapelet transform
+│   ├── weasel2.py                      ← TSC: WEASEL v2 (word-based)
+│   └── drcif.py                        ← TSC: diverse random channel interval forest
 │
 ├── metric/
 │   ├── __init__.py
-│   ├── accuracy.py                   ← accuracy scoring
-│   ├── auc.py                        ← AUC computation
-│   ├── kendall_tau.py                ← Kendall τ trend test
-│   └── roc.py                        ← ROC curve using Bury 2021 protocol
+│   ├── accuracy.py                     ← per-class and overall accuracy
+│   ├── auc.py                          ← binary_auc (forced vs AR(1) null), ovr_macro_auc
+│   ├── roc.py                          ← ROC curve (Bury 2021 protocol)
+│   ├── kendall_tau.py                  ← Kendall τ trend test + CI
+│   └── multiclass.py                   ← macro_f1 (4-class)
 │
 ├── training/
-│   ├── train.py                      ← universal training script (DL + TSC)
-│   ├── train_tsc_array.sh            ← SLURM array: 13 TSC models × 2 datasets (26 tasks)
-│   ├── train_dl_array.sh             ← SLURM array: 4 DL models × 2 datasets (8 tasks)
-│   └── train_array.sh                ← legacy combined script
+│   ├── train.py                        ← universal training script (DL + TSC, --binary flag)
+│   ├── train_tsc_array.sh              ← SLURM array: 8 TSC × 2 datasets = 16 tasks
+│   └── train_dl_array.sh               ← SLURM array: 3 DL × 2 datasets = 6 tasks
 │
 ├── testing/
-│   ├── evaluate.py                   ← inference on Zenodo test set + PANGAEA cores
-│   ├── compute_metrics.py            ← ROC/AUC using Bury 2021 protocol
-│   ├── plot_figures.py               ← generates all thesis figures
-│   ├── test_tsc_array.sh             ← SLURM array: 13 TSC models × 2 datasets (26 tasks)
-│   ├── test_dl_array.sh              ← SLURM array: 4 DL models × 2 datasets (8 tasks)
-│   └── test_array.sh                 ← legacy combined script
+│   ├── evaluate.py                     ← Zenodo test set + PANGAEA empirical evaluation
+│   ├── plot_figures.py                 ← FIG1–FIG5 (inline + summary CLI)
+│   └── run_all_evaluations.sh          ← convenience: evaluate all models, then plot
 │
 ├── dataset/
-│   ├── ts_500/combined/              ← Zenodo 500-step series
-│   │   ├── labels.csv
-│   │   ├── output_resids/            ← 500,000 residual CSVs
-│   │   ├── cache_residuals.npy       ← pre-built cache (run build_cache.py once)
-│   │   └── cache_labels.npy
-│   ├── ts_1500/combined/             ← same structure, 1500-step series
-│   └── pangaea_923197/
-│       └── datasets/
-│           └── clean_dataset/        ← PANGAEA XRF files + processed segments
-│               ├── MS21PC_calibratedXRF.csv
-│               ├── MS66PC_calibratedXRF.csv
-│               └── 64PE406-E1_calibratedXRF.csv
+│   ├── ts_500/combined/                ← Zenodo 500-step series (labels.csv + cache_*.npy)
+│   ├── ts_1500/combined/               ← same, 1500-step series
+│   └── pangaea_923197/datasets/clean_dataset/  ← PANGAEA XRF CSV files
 │
-├── checkpoints/                      ← trained model files (excluded from git)
-├── metrics/                          ← JSON ROC metrics + AUC CSV tables
-├── results/                          ← prediction CSVs per (model, core, sapropel, element)
-├── logs/                             ← SLURM .out / .err + Python training logs
-└── test_results/                     ← all figure outputs (.png)
+├── checkpoints/                        ← trained model files (gitignored)
+├── results/                            ← result.json files per (model, dataset/core/sap/elem)
+│   └── comparison/                     ← FIG3–FIG5 summary plots
+└── logs/                               ← SLURM .out/.err + Python training logs (gitignored)
 ```
 
 ---
 
-## Quick Start — Reproduce All Results
+## Quick Start — Full Pipeline
 
-### Step 0 — Install dependencies
+### 0. Install dependencies
+
 ```bash
 pip install -r requirements.txt
-pip install aeon==1.4.0        # TSC models — install separately (large dependency)
+pip install aeon==1.4.0    # TSC models — install separately (large dependency tree)
 ```
 
-### Step 1 — Build numpy cache (run once, ~10 minutes)
+### 1. Build numpy cache (run once, ~10 minutes per dataset)
+
 ```bash
-python src/build_cache.py --dataset both
+python src/preprocess_bury_data.py --dataset ts_500
+python src/preprocess_bury_data.py --dataset ts_1500
 ```
 
-### Step 2 — Preprocess PANGAEA data
+Outputs `cache_residuals.npy` and `cache_labels.npy` in each dataset directory.
+
+### 2. Preprocess PANGAEA data (run once)
+
 ```bash
 python src/pangea_cleaner.py
 ```
-Outputs per sapropel per element: `{core}_{sap}_forced.csv` and `{core}_{sap}_{element}_ar1_null.csv` (20 AAFT null series).
 
-### Step 3 — Train all models
+Outputs per (core, sapropel, element): `{core}_{sap}_forced.csv` with columns
+`age_kyr_bp`, `{element}`, `{element}_trend`, `{element}_residuals`.
+AR(1) null series are generated on-the-fly during evaluation (not saved to disk).
 
-**On SLURM (HPC — recommended):**
+### 3. Train all models
+
+**On SLURM (recommended):**
+
 ```bash
-# Deep Learning models (GPU partition)
-sbatch training/train_dl_array.sh    # 8 tasks: 4 models × 2 datasets
-
-# Classical TSC models (CPU partition, 64 GB)
-sbatch training/train_tsc_array.sh   # 26 tasks: 13 models × 2 datasets
+sbatch training/train_tsc_array.sh   # 16 tasks: 8 TSC × 2 datasets
+sbatch training/train_dl_array.sh    # 6 tasks: 3 DL × 2 datasets
 ```
 
-**SLURM task mapping for TSC array (task 0–25):**
+SLURM task mapping for TSC array (`--array=0-15`):
 
 | Task | Model | Dataset |
 |---|---|---|
-| 0 | rocket | ts_500 |
-| 1 | rocket | ts_1500 |
-| 2 | minirocket | ts_500 |
-| 3 | minirocket | ts_1500 |
-| 4 | multirocket | ts_500 |
-| 5 | multirocket | ts_1500 |
-| 6 | arsenal | ts_500 |
-| 7 | arsenal | ts_1500 |
-| 8 | knn_dtw | ts_500 |
-| 9 | knn_dtw | ts_1500 |
-| 10 | boss | ts_500 |
-| 11 | boss | ts_1500 |
-| 12 | weasel | ts_500 |
-| 13 | weasel | ts_1500 |
-| 14 | shapelet | ts_500 |
-| 15 | shapelet | ts_1500 |
-| 16 | proximity_forest | ts_500 |
-| 17 | proximity_forest | ts_1500 |
-| 18 | ts_chief | ts_500 |
-| 19 | ts_chief | ts_1500 |
-| 20 | drcif | ts_500 |
-| 21 | drcif | ts_1500 |
-| 22 | tde | ts_500 |
-| 23 | tde | ts_1500 |
-| 24 | hivecote | ts_500 |
-| 25 | hivecote | ts_1500 |
+| 0–1 | minirocket | ts_500, ts_1500 |
+| 2–3 | multirocket | ts_500, ts_1500 |
+| 4–5 | arsenal | ts_500, ts_1500 |
+| 6–7 | drcif | ts_500, ts_1500 |
+| 8–9 | rocket | ts_500, ts_1500 |
+| 10–11 | hydra_multirocket | ts_500, ts_1500 |
+| 12–13 | rdst | ts_500, ts_1500 |
+| 14–15 | weasel2 | ts_500, ts_1500 |
+
+DL array (`--array=0-5`): tasks 0–1 = cnn_lstm, 2–3 = lstm, 4–5 = inceptiontime.
 
 **Locally (single model):**
+
 ```bash
-python training/train.py --model rocket    --dataset ts_500
-python training/train.py --model cnn_lstm  --dataset ts_1500
+python training/train.py --model minirocket --dataset ts_500
+python training/train.py --model cnn_lstm   --dataset ts_500
 ```
 
-### Step 4 — Run inference
-```bash
-# On SLURM:
-sbatch testing/test_dl_array.sh
-sbatch testing/test_tsc_array.sh
+Optional flags:
+- `--binary` — 2-class (forced vs null) mode for DL models only (Bury replication)
+- `--config config.yaml` — override default config path
 
-# Locally:
-python testing/evaluate.py --model cnn_lstm --dataset ts_500 --target zenodo
-python testing/evaluate.py --model cnn_lstm --dataset ts_500 --target pangaea
+### 4. Run inference (all models, all targets)
+
+```bash
+bash testing/run_all_evaluations.sh
 ```
 
-### Step 5 — Compute ROC/AUC metrics
-```bash
-python testing/compute_metrics.py --all --dataset ts_500
-```
-Outputs:
-- `metrics/auc_Mo_primary.csv` — Mo-only (Bury 2021 comparison)
-- `metrics/auc_extension_elements.csv` — Al, Ba, Ti, U (thesis extension)
-- `metrics/auc_comparison_all_models.csv` — full table across all 17 models
+Or run a single evaluation:
 
-### Step 6 — Generate all figures
 ```bash
-python testing/plot_figures.py --model all --dataset ts_500
+python testing/evaluate.py --model minirocket --dataset ts_500 --target zenodo
+python testing/evaluate.py --model minirocket --dataset ts_500 --target pangaea
 ```
+
+Results are saved to `results/{model}_{dataset}_zenodo/result.json` and
+`results/{model}_pangaea_{core}_{sap}_{element}_pangaea/result.json`.
+
+### 5. Generate all figures
+
+```bash
+python testing/plot_figures.py --config config.yaml
+```
+
+All comparison figures saved to `results/comparison/`.
+
+---
+
+## Metrics Reported
+
+### Zenodo (synthetic test set)
+| Metric | Key in result.json | Description |
+|---|---|---|
+| `binary_auc` | `binary_auc` | AUC (forced vs AR(1) null), Bury-comparable |
+| `macro_f1` | `macro_f1` | 4-class macro-averaged F1 |
+| `macro_auc_ovr` | `macro_auc_ovr` | OVR macro-averaged AUC (4-class) |
+| Accuracy | `accuracy_*` | Per-class and overall |
+
+### PANGAEA (empirical)
+| Metric | Key in result.json | Description |
+|---|---|---|
+| `binary_auc` | `binary_auc` | AUC using Bury ROC protocol (AR(1) null surrogates) |
+| `kendall_tau` | `kendall_tau` | Positive = rising p_transition toward transition |
+| `tau_null_mean` | `tau_null_mean` | Mean τ of AR(1) null surrogates (reference baseline) |
 
 ---
 
 ## Figure Guide
 
-| Figure | Filename pattern | Description |
-|---|---|---|
-| Fig 2 | `{model}_ts_500_fold_fig2.png` | Fold bifurcation test + confusion matrices |
-| Fig 3 | `pangaea_overview_fig3.png` | PANGAEA Mo time series, colour-coded by sapropel role |
-| Fig 4 | `{model}_{core}_{element}_fig4.png` | 4-panel EWS indicators per element per core |
-| Fig 5 | `{model}_{core}_{element}_roc_fig5.png` | ROC curves per model |
-| Fig 5 | `all_models_{core}_{element}_roc_fig5.png` | All-model ROC comparison |
-
----
-
-## ROC Protocol — Bury 2021 Exact Method
-
-1. **Positive class** — predictions from the last `(1 - roc_start_frac)` of the pre-transition window. Default `roc_start_frac=0.60` uses the 60–100% window.
-2. **Negative class** — predictions from the same relative window of 20 AAFT null series generated from the first 20% of the pre-transition residuals.
-3. **Combining events** — predictions from all test sapropels within a core are pooled before computing ROC.
-
-Configurable in `config.yaml` under `inference.roc_start_frac`.
-
-**Key deviation from Bury:** Bury combines 26 transitions (N≈800). We have 7 test transitions (N≈110–320). ROC curves are therefore coarser but directionally consistent.
-
----
-
-## Results Summary — Mo Element (Bury 2021 Comparison)
-
-| Core | Model | AUC | Bury 2021 AUC |
+| Figure | Function | Output path | Description |
 |---|---|---|---|
-| MS21 | CNN-LSTM | **0.98** | 0.99 |
-| MS21 | LSTM | **0.99** | n/a |
-| MS21 | CNN | 0.58 | n/a |
-| MS66 | CNN-LSTM | ~0.65–0.89 | ~0.97 |
-| 64PE406E1 | CNN-LSTM | ~0.52 | ~0.85 |
+| FIG1 | `plot_fig1_pangaea` | `results/comparison/{model}_{core}_{sap}_{elem}_fig1.png` | 4-panel: proxy, residuals, EWS indicators, p_transition |
+| FIG2 | `plot_fig2_roc` | `results/comparison/{model}_{core}_{sap}_{elem}_fig2_roc.png` | ROC curve per combination |
+| FIG3 | `plot_fig3_auc_heatmap` | `results/comparison/fig3_auc_heatmap.png` | AUC heatmap: models × elements |
+| FIG4 | `plot_fig4_kendall_tau` | `results/comparison/fig4_kendall_tau.png` | Kendall τ per model (mean ± 95% CI) |
+| FIG5 | `plot_fig5_roc_overlay` | `results/comparison/fig5_roc_overlay_{core}_{elem}.png` | All-model ROC overlay per core |
 
-DL models substantially outperform classical CSD indicators (variance, lag-1 AC) on MS21/Mo, consistent with Bury's main finding. TSC model results pending.
-
----
-
-## Extension Beyond Bury — Five Elements
-
-| Element | Role | EWS expected? |
-|---|---|---|
-| **Mo** | Primary anoxia proxy | Yes — main signal |
-| Ba | Productivity proxy | Partial |
-| U | Secondary redox proxy | Weak |
-| Al | Lithogenic input | No — negative control |
-| Ti | Lithogenic input | No — negative control |
-
-Al and Ti serve as negative controls — they should show no EWS, validating the method.
+Inline figures are also generated automatically after each `evaluate.py` call.
 
 ---
 
-## Training Data (Zenodo)
+## EWS Protocol
+
+### Training signal: p_transition
+
+```
+p_transition = 1 - P(null)   where NULL_IDX = 3  (from src/constants.py)
+```
+
+The model predicts probabilities for [fold, hopf, transcritical, null]. The
+EWS signal is the probability of belonging to ANY forced class (1 − P(null)).
+
+### AR(1) null surrogates
+
+AR(1) fitted to the **first 20%** of the forced residuals (neutral reference
+period, before CSD ramp begins). 10 surrogates generated per forced series.
+The ROC is computed with forced windows as positives, null windows as negatives,
+following exactly the Bury (2021) procedure.
+
+### Causal rolling windows
+
+All rolling-window EWS features (variance, lag-1 AC, skewness) use only past
+data — no `center=True`. This avoids look-ahead bias.
+
+---
+
+## Datasets
+
+### Zenodo (Bury 2021 synthetic data)
 
 Downloaded from [zenodo.org/record/5527154](https://zenodo.org/record/5527154)
 
 | Dataset | Series | Length | Classes |
 |---|---|---|---|
 | ts_500 | ~500,000 | 500 steps | fold, hopf, transcritical, null |
-| ts_1500 | ~200,000 | 1500 steps | fold, hopf, transcritical, null |
+| ts_1500 | ~500,000 | 1500 steps | fold, hopf, transcritical, null |
 
-Classes generated from randomly parameterised polynomial dynamical systems using AUTO-07P. Residuals are Lowess-detrended by Bury before release.
+Label ordering: `fold=0, hopf=1, transcritical=2, null=3` (Bury canonical).
 
----
+### PANGAEA (Hennekam et al. 2020)
 
-## PANGAEA Data
+Downloaded from [pangaea.de](https://doi.pangaea.de/10.1594/PANGAEA.923197)
 
-Downloaded from [pangaea.de](https://doi.pangaea.de/10.1594/PANGAEA.923197) (Hennekam et al. 2020)
-
-| Core | Rows | Age range | Test sapropels |
+| Core | Age range | Forced sapropels | Test sapropels |
 |---|---|---|---|
-| MS21PC | 7,460 | 0–95 ka BP | S1 |
-| MS66PC | 5,489 | 0–150 ka BP | S1, S3 |
-| 64PE406-E1 | 7,672 | 50–340 ka BP | S3, S4, S5, S6 |
+| MS21PC | 0–95 ka BP | S3 | S1 |
+| MS66PC | 0–150 ka BP | S5, S4, S3 | S1 |
+| 64PE406-E1 | 50–340 ka BP | S9, S8, S7 | S3, S4, S5, S6 |
 
-> Use the `calibratedXRF` files (7000+ rows), **not** `calibrationICP-MS` (37–295 rows — calibration standards only).
+Elements: Al, Ba, Mo, Ti, U (Mo = primary anoxia proxy; Al, Ti = lithogenic negative controls).
 
----
-
-## HPC Notes (University of Würzburg — julia2)
-
-- **TSC jobs**: `large_cpu` partition, 32 CPUs, 64 GB RAM, up to 2 days wall time
-- **DL jobs**: `h100` partition, 1 GPU, 4 CPUs, 32 GB RAM
-- `NUMBA_NUM_THREADS=32` is set explicitly in the TSC SLURM script to prevent numba from reading `os.cpu_count()` (256 on large nodes) and exceeding the thread limit
-- TSC models with large feature spaces (MultiRocket, WEASEL) use `MAX_TRAIN_SAMPLES` to keep the feature matrix within 64 GB
+Use `calibratedXRF` files (7000+ rows), **not** `calibrationICP-MS` (37–295 rows).
 
 ---
 
-## Deviations from Papers
+## Optional: 4-Channel EWS Augmentation
 
-| Deviation | Reason |
-|---|---|
-| N=110–320 vs Bury's N=800 | Fewer test cores/sapropels available |
-| AAFT null (20 series) vs AR(1) null | AAFT is more statistically rigorous |
-| 5 elements vs Mo only | Extended scope for thesis |
-| roc_start_frac=0.60 (configurable) | Matches Bury's "60–100%" protocol |
-| CNN-LSTM DL probability saturates at 1.0 on PANGAEA | Distribution shift from synthetic training data |
+Set `use_4channel: true` in `config.yaml` (under `inference:`) to expand each
+time series from 1 channel (raw residual) to 4 channels:
+
+```
+Channel 0: raw residual
+Channel 1: rolling variance    (window = 25% of series length)
+Channel 2: rolling lag-1 AC    (causal Pearson, via pandas rolling.corr)
+Channel 3: rolling skewness
+```
+
+Per-channel z-normalisation uses train-set statistics, saved alongside the
+checkpoint as `{model}_{dataset}_best_ch_stats.npz`. Off by default.
 
 ---
 
 ## References
 
-- Bury, T.M. et al. (2021). Deep learning for early warning signals of tipping points. *PNAS*, 118(39). [DOI: 10.1073/pnas.2023610118](https://doi.org/10.1073/pnas.2023610118)
-- Ma, H. et al. (2025). Self-supervised deep learning for early warning signals. *Communications Physics*, 8(1). [DOI: 10.1038/s42005-025-02172-4](https://doi.org/10.1038/s42005-025-02172-4)
+- Bury, T.M. et al. (2021). Deep learning for early warning signals of tipping points. *PNAS*, 118(39). [DOI: 10.1073/pnas.2106140118](https://doi.org/10.1073/pnas.2106140118)
 - Hennekam, R. et al. (2020). PANGAEA dataset 923197. [DOI: 10.1594/PANGAEA.923197](https://doi.pangaea.de/10.1594/PANGAEA.923197)

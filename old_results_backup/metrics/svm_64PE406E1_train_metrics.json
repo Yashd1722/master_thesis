@@ -1,8 +1,0 @@
-{
-  "model": "svm",
-  "core": "64PE406E1",
-  "cv_auc": 0.9506,
-  "train_auc": 0.954,
-  "best_C": 100.0,
-  "best_gamma": "0.1"
-}

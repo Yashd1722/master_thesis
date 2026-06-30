@@ -12,18 +12,22 @@ __pycache__/
 .vscode/
 
 # ----------------------------
-# Outputs (optional)
+# Model checkpoints & binaries
 # ----------------------------
 *.ckpt
-*.log
-
-# ----------------------------
-# CHECKPOINTS / BINARY MODEL FILES
-# ----------------------------
 *.pkl
 *.pt
+*.keras
 checkpoints/
 
+# ----------------------------
+# Logs, processed data, backups
+# ----------------------------
+logs/
+dataset/processed/
+data/**/*.npz
+__MACOSX/
+old_results_backup/
 
 # ----------------------------
 # DATASET RULES
@@ -38,9 +42,10 @@ dataset/**
 # Allow only the cleaned pangaea CSVs (required for the code)
 !dataset/pangaea_923197/datasets/clean_dataset/
 !dataset/pangaea_923197/datasets/clean_dataset/*.csv
+!dataset/pangaea_923197/datasets/clean_dataset/**/*.csv
 
 # ----------------------------
-# TRACK RESULTS, LOGS, AND TEST OUTPUTS
+# TRACK RESULTS AND TEST OUTPUTS
 # ----------------------------
 !results/
 !results/**/*
