@@ -20,11 +20,11 @@ class ArsenalNet:
     """Thin wrapper around aeon Arsenal."""
 
     def __init__(self, ts_len: int, num_classes: int,
-                 num_kernels: int = 2000, n_jobs: int = 1, **kwargs):
+                 n_kernels: int = 2000, n_jobs: int = 1, **kwargs):
         from aeon.classification.convolution_based import Arsenal
         self.ts_len      = ts_len
         self.num_classes = num_classes
-        self._clf = Arsenal(num_kernels=num_kernels, n_jobs=n_jobs)
+        self._clf = Arsenal(n_kernels=n_kernels, n_jobs=n_jobs)
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         """X: (N, C, L) or (N, L). y: (N,) int."""

@@ -104,17 +104,22 @@ def _eval_epoch(model, loader, criterion, device):
 # =============================================================================
 # Train DL model (one pad_variant)
 # =============================================================================
-def train_dl_variant(model_name, dataset_name, pad_variant, cfg, device, logger):
+def train_dl_variant(model_name, dataset_name, pad_variant, cfg, device, logger, force=False):
     tr_cfg  = cfg["training"][model_name]
     ds_info = get_dataset_info(dataset_name, cfg)
     ts_len  = ds_info["ts_length"]
     n_cls   = ds_info["num_classes"]
     seed    = cfg["project"]["seed"]
-    
+
     ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = ckpt_dir / cfg["naming"]["checkpoint_dl"].format(
         model=model_name, dataset=dataset_name, variant=pad_variant)
+
+    if ckpt_path.exists() and not force:
+        logger.info(f"  v{pad_variant}: checkpoint exists ({ckpt_path.name}) — skipping")
+        return {"model": model_name, "dataset": dataset_name,
+                "pad_variant": pad_variant, "skipped": True, "test_f1": float("nan")}
 
     train_dl = get_dataloader(dataset_name, "train", cfg,
                                pad_variant=pad_variant,
@@ -201,7 +206,7 @@ def train_dl_variant(model_name, dataset_name, pad_variant, cfg, device, logger)
 # =============================================================================
 # Train TSC model
 # =============================================================================
-def train_tsc(model_name, dataset_name, cfg, logger):
+def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     ds_info = get_dataset_info(dataset_name, cfg)
     ts_len  = ds_info["ts_length"]
     n_cls   = ds_info["num_classes"]
@@ -212,32 +217,30 @@ def train_tsc(model_name, dataset_name, cfg, logger):
     ckpt_path = ckpt_dir / cfg["naming"]["checkpoint_tsc"].format(
         model=model_name, dataset=dataset_name)
 
+    if ckpt_path.exists() and not force:
+        logger.info(f"  Checkpoint exists ({ckpt_path.name}) — skipping (use --force to retrain)")
+        return {"model": model_name, "dataset": dataset_name, "skipped": True, "val_f1": float("nan")}
+
     seed = cfg["project"]["seed"]
     logger.info(f"  n_jobs={N_JOBS}  (SLURM_CPUS_PER_TASK or default=4)")
 
-    # Load train and val splits into numpy arrays in a SINGLE PASS each.
-    # IMPORTANT: the training DataLoader uses shuffle=True. Iterating it twice
-    # (once for X, once for y) would produce different permutations and completely
-    # mismatch labels. We must collect both X and y inside the same loop.
+    # Load train and val splits directly from NPZ — no DataLoader overhead.
+    # TSC models need the full dataset as numpy arrays anyway; going through
+    # the PyTorch DataLoader (58 batches, tensor creation, squeeze, concat)
+    # wastes 1–2 min per job with no benefit.
+    processed_dir = REPO_ROOT / cfg["paths"]["processed_dir"]
     logger.info("  Loading train and val data into memory...")
-    train_dl = get_dataloader(dataset_name, "train", cfg,
-                               pad_variant=1, batch_size=8192, seed=seed)
-    val_dl   = get_dataloader(dataset_name, "val",   cfg,
-                               pad_variant=1, batch_size=8192, seed=seed)
 
-    X_train_parts, y_train_parts = [], []
-    for x_batch, y_batch in train_dl:
-        X_train_parts.append(x_batch.squeeze(1).numpy())
-        y_train_parts.append(y_batch.numpy())
-    X_train = np.concatenate(X_train_parts)
-    y_train = np.concatenate(y_train_parts)
+    def _load_split(split: str):
+        npz = processed_dir / f"{split}_{ts_len}.npz"
+        if not npz.exists():
+            raise FileNotFoundError(
+                f"Missing: {npz}\nRun: python src/preprocess_bury_data.py --dataset {dataset_name}")
+        d = np.load(npz)
+        return d["X"].squeeze(1), d["y"]   # (N, L), (N,)
 
-    X_val_parts, y_val_parts = [], []
-    for x_batch, y_batch in val_dl:
-        X_val_parts.append(x_batch.squeeze(1).numpy())
-        y_val_parts.append(y_batch.numpy())
-    X_val = np.concatenate(X_val_parts)
-    y_val = np.concatenate(y_val_parts)
+    X_train, y_train = _load_split("train")
+    X_val,   y_val   = _load_split("val")
 
     # Drop flat series — aeon rejects constant input internally at std <= 1e-7.
     # We use 1e-6 (10× higher) to absorb float32 precision at the boundary:
@@ -440,6 +443,8 @@ def main():
     parser.add_argument("--binary",  action="store_true",
                         help="2-class (forced vs null) training for Bury replication. "
                              "DL models only.")
+    parser.add_argument("--force", action="store_true",
+                        help="Re-train even if a checkpoint already exists.")
     args = parser.parse_args()
 
     cfg     = load_config(args.config)
@@ -461,15 +466,18 @@ def main():
         m = train_dl_binary(args.model, args.dataset, cfg, device, logger)
         logger.info(f"Done — binary test_acc={m['test_acc']:.4f}")
     elif is_tsc_model(args.model):
-        metrics = train_tsc(args.model, args.dataset, cfg, logger)
-        logger.info(f"Done — val_f1={metrics['val_f1']:.4f}")
+        metrics = train_tsc(args.model, args.dataset, cfg, logger, force=args.force)
+        if not metrics.get("skipped"):
+            logger.info(f"Done — val_f1={metrics['val_f1']:.4f}")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Device : {device}")
         pad_variants = cfg["training"][args.model]["pad_variants"]
         for v in pad_variants:
-            m = train_dl_variant(args.model, args.dataset, v, cfg, device, logger)
-            logger.info(f"  v{v} done — test_f1={m['test_f1']:.4f}")
+            m = train_dl_variant(args.model, args.dataset, v, cfg, device, logger,
+                                  force=args.force)
+            if not m.get("skipped"):
+                logger.info(f"  v{v} done — test_f1={m['test_f1']:.4f}")
 
 if __name__ == "__main__":
     main()

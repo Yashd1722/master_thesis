@@ -14,18 +14,21 @@ import joblib
 MODEL_NAME        = "hydra_multirocket"
 MODEL_CLASS       = "HydraMultiRocketNet"
 IS_TSC            = True
-MAX_TRAIN_SAMPLES = 100000   # feature transform is O(n); 100k fits in 60G
+MAX_TRAIN_SAMPLES = 50000    # aeon default n_kernels=8; safe at 50k on 60G nodes
 
 
 class HydraMultiRocketNet:
     """Thin wrapper around aeon MultiRocketHydraClassifier."""
 
     def __init__(self, ts_len: int, num_classes: int,
-                 n_kernels: int = 6250, n_groups: int = 64,
+                 n_kernels: int = 8, n_groups: int = 64,
                  n_jobs: int = 1, **kwargs):
         from aeon.classification.convolution_based import MultiRocketHydraClassifier
         self.ts_len      = ts_len
         self.num_classes = num_classes
+        # NOTE: n_kernels=8 is the aeon default for this classifier.
+        # Do NOT pass 6250 here — that is MultiRocketClassifier's default and
+        # causes 40+ TB intermediate allocations in MultiRocketHydraClassifier.
         self._clf = MultiRocketHydraClassifier(
             n_kernels=n_kernels,
             n_groups=n_groups,

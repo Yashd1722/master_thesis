@@ -15,7 +15,7 @@ import joblib
 MODEL_NAME        = "weasel2"
 MODEL_CLASS       = "WEASEL2Net"
 IS_TSC            = True
-MAX_TRAIN_SAMPLES = 50000
+MAX_TRAIN_SAMPLES = 20000   # vocabulary size × ts_1500 OOMs at 50k on 60G nodes
 
 
 class WEASEL2Net:
