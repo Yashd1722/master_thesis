@@ -457,6 +457,9 @@ def main():
     logger.info(f"Mode   : {'binary' if args.binary else '4-class'}")
     logger.info(f"IS_TSC : {is_tsc_model(args.model)}")
 
+    results_dir = REPO_ROOT / cfg["paths"]["results"]
+    results_dir.mkdir(parents=True, exist_ok=True)
+
     if args.binary:
         if is_tsc_model(args.model):
             logger.error("--binary is only supported for DL models (cnn_lstm, lstm, inceptiontime)")
@@ -465,19 +468,31 @@ def main():
         logger.info(f"Device : {device}")
         m = train_dl_binary(args.model, args.dataset, cfg, device, logger)
         logger.info(f"Done — binary test_acc={m['test_acc']:.4f}")
+        out = results_dir / f"{args.model}_{args.dataset}_binary_train_metrics.json"
+        out.write_text(json.dumps(m, indent=2))
+        logger.info(f"Metrics saved: {out.name}")
     elif is_tsc_model(args.model):
         metrics = train_tsc(args.model, args.dataset, cfg, logger, force=args.force)
         if not metrics.get("skipped"):
             logger.info(f"Done — val_f1={metrics['val_f1']:.4f}")
+            out = results_dir / f"{args.model}_{args.dataset}_train_metrics.json"
+            out.write_text(json.dumps(metrics, indent=2))
+            logger.info(f"Metrics saved: {out.name}")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Device : {device}")
         pad_variants = cfg["training"][args.model]["pad_variants"]
+        all_variants = []
         for v in pad_variants:
             m = train_dl_variant(args.model, args.dataset, v, cfg, device, logger,
                                   force=args.force)
             if not m.get("skipped"):
                 logger.info(f"  v{v} done — test_f1={m['test_f1']:.4f}")
+                all_variants.append(m)
+        if all_variants:
+            out = results_dir / f"{args.model}_{args.dataset}_train_metrics.json"
+            out.write_text(json.dumps(all_variants, indent=2))
+            logger.info(f"Metrics saved: {out.name}")
 
 if __name__ == "__main__":
     main()
