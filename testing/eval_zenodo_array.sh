@@ -24,6 +24,13 @@ source "$HOME/Master_thesis/myenv/bin/activate"
 
 mkdir -p logs test_result
 
+# Match numba/OMP thread counts to allocated CPUs.
+# Without this, MiniRocket's set_num_threads(n_jobs_from_training) can exceed
+# the numba pool limit and crash.
+export NUMBA_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
 # Already-done tasks are skipped automatically (no --force).
 # Add --force to re-evaluate from scratch.
 python -u testing/evaluate.py \

@@ -23,6 +23,10 @@ source "$HOME/Master_thesis/myenv/bin/activate"
 
 mkdir -p logs test_result
 
+export NUMBA_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
 python -u testing/evaluate.py \
     --model "$MODEL" \
     --dataset "$DATASET" \

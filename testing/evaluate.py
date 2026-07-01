@@ -155,14 +155,39 @@ def load_dl_models(model_name, dataset_name, ts_len, num_classes, cfg, device, l
     return models
 
 def load_tsc_model(model_name, dataset_name, cfg, logger):
-    import joblib
+    import joblib, os, multiprocessing
     ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
     name     = cfg["naming"]["checkpoint_tsc"].format(
         model=model_name, dataset=dataset_name)
     fpath = ckpt_dir / name
     if not fpath.exists():
         raise RuntimeError(f"TSC checkpoint not found: {name}")
-    return joblib.load(fpath)
+    obj = joblib.load(fpath)
+
+    # The saved object may be our thin wrapper (has ._clf) or a raw aeon classifier.
+    inner = getattr(obj, '_clf', obj)
+
+    # --- Detect stale 4-channel checkpoints ---
+    use_4ch = cfg.get("inference", {}).get("use_4channel", False)
+    n_ch = getattr(inner, 'n_channels_', None)
+    if n_ch is None and hasattr(inner, 'metadata_'):
+        n_ch = inner.metadata_.get('n_channels', None)
+    if n_ch == 4 and not use_4ch:
+        raise RuntimeError(
+            f"Checkpoint '{name}' was trained with 4 channels but "
+            f"use_4channel=false in config. Delete it and re-run training.")
+
+    # --- Cap n_jobs to allocated CPUs (prevents numba set_num_threads errors) ---
+    n_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK",
+                                multiprocessing.cpu_count() or 4))
+    for candidate in [inner, getattr(inner, '_transformer', None)]:
+        if candidate is None:
+            continue
+        for attr in ('n_jobs', '_n_jobs'):
+            if hasattr(candidate, attr):
+                setattr(candidate, attr, n_cpus)
+
+    return obj
 
 @torch.no_grad()
 def dl_predict_proba(models, X_np, device, batch_size=256):
@@ -413,7 +438,8 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                     sapropel_id=sap_id, segment_type="forced",
                     cfg=cfg, ts_len=ts_len)
 
-                X_forced     = np.stack(rw_forced.dl_inputs)
+                X_forced = np.stack(rw_forced.dl_inputs)
+
                 probs_forced = predict_fn(X_forced)
                 p_trans_f    = (1.0 - probs_forced[:, null_idx] if null_idx >= 0
                                 else probs_forced[:, -1])
