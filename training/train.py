@@ -239,10 +239,12 @@ def train_tsc(model_name, dataset_name, cfg, logger):
     X_val = np.concatenate(X_val_parts)
     y_val = np.concatenate(y_val_parts)
 
-    # Drop flat series — aeon rejects constant input (std ≤ 1e-7).
-    # Check std over the time axis so each row (series) is evaluated independently.
-    tr_mask = X_train.std(axis=1) > 1e-7
-    vl_mask = X_val.std(axis=1)   > 1e-7
+    # Drop flat series — aeon rejects constant input internally at std <= 1e-7.
+    # We use 1e-6 (10× higher) to absorb float32 precision at the boundary:
+    # a series with std=1.1e-7 passes our old >1e-7 filter but can still
+    # fail aeon's check due to float32/float64 rounding inside joblib workers.
+    tr_mask = X_train.std(axis=1) > 1e-6
+    vl_mask = X_val.std(axis=1)   > 1e-6
     if (~tr_mask).any():
         logger.info(f"  Dropping {(~tr_mask).sum()} flat train series")
         X_train, y_train = X_train[tr_mask], y_train[tr_mask]
@@ -274,8 +276,8 @@ def train_tsc(model_name, dataset_name, cfg, logger):
                                                   channel_stats=ch_stats)
         # Drop series where any channel has zero variance — aeon rejects them.
         # (Rare but possible for very short or very uniform series.)
-        tr_mask4 = (X_train.std(axis=2) > 1e-7).all(axis=1)  # all channels OK
-        vl_mask4 = (X_val.std(axis=2)   > 1e-7).all(axis=1)
+        tr_mask4 = (X_train.std(axis=2) > 1e-6).all(axis=1)  # all channels OK
+        vl_mask4 = (X_val.std(axis=2)   > 1e-6).all(axis=1)
         if (~tr_mask4).any():
             logger.info(f"  Dropping {(~tr_mask4).sum()} degenerate-channel train series")
             X_train, y_train = X_train[tr_mask4], y_train[tr_mask4]

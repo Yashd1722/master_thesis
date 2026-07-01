@@ -8,6 +8,7 @@ taking the first channel (the raw residual, channel 0).
 
 IS_TSC = True — managed by the aeon training loop in train.py.
 """
+import warnings
 import numpy as np
 import joblib
 
@@ -38,12 +39,17 @@ class WEASEL2Net:
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         """X: (N, C, L) or (N, L). y: (N,) int."""
-        self._clf.fit(self._to_univariate(X), y)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*liblinear.*", category=FutureWarning)
+            warnings.filterwarnings("ignore", message=".*n_jobs.*liblinear.*", category=UserWarning)
+            self._clf.fit(self._to_univariate(X), y)
         return self
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Returns (N, num_classes) probability matrix."""
-        return self._clf.predict_proba(self._to_univariate(X))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*liblinear.*", category=FutureWarning)
+            return self._clf.predict_proba(self._to_univariate(X))
 
     def save(self, path):
         joblib.dump(self, path)
