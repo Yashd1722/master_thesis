@@ -5,9 +5,10 @@
 source ~/Master_thesis/myenv/bin/activate
 cd ~/Master_thesis/master_thesis || exit 1
 
-# Current model roster (Phase 2 pruned + Phase 2 additions).
-# TSC: 8 models  DL: 3 models
-TSC_MODELS=(minirocket multirocket arsenal drcif rocket hydra_multirocket rdst weasel2)
+# Current model roster: TSC: 7 models  DL: 3 models
+# hydra_multirocket dropped — aeon's Hydra conv1d allocates O(N×L) intermediate
+# tensors (~20TB at 50k samples) that exceed 60G nodes regardless of MAX_TRAIN_SAMPLES.
+TSC_MODELS=(minirocket multirocket arsenal drcif rocket rdst weasel2)
 DL_MODELS=(cnn_lstm lstm inceptiontime)
 ALL_MODELS=("${TSC_MODELS[@]}" "${DL_MODELS[@]}")
 
