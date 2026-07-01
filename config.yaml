@@ -11,6 +11,7 @@ paths:
   pangaea_clean: "dataset/pangaea_923197/datasets/clean_dataset/"
   checkpoints: "checkpoints/"
   results: "results/"
+  test_results: "test_result/"
   logs: "logs/"
 
 naming:
@@ -122,4 +123,4 @@ inference:
   n_null_series: 10                 # AR(1) surrogates per forced series (Bury uses 10)
   null_method: "AR1"                # Primary: AR1 (Bury parity). AAFT is optional/off.
   ar1_fit_fraction: 0.20            # Fit AR(1) to first 20% of series (neutral reference period)
-  use_4channel: true               # EWS feature augmentation (default OFF; see Phase 3)
+  use_4channel: false               # EWS feature augmentation (default OFF; see Phase 3)

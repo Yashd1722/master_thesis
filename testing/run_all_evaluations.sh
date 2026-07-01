@@ -33,4 +33,4 @@ done
 echo ""
 echo "All evaluations done. Generating summary figures..."
 python testing/plot_figures.py --config config.yaml
-echo "Figures saved to results/comparison/"
+echo "Figures saved to test_result/comparison/"
