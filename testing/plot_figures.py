@@ -35,23 +35,22 @@ sys.path.insert(0, str(REPO_ROOT))
 # Canonical model order: TSC first (fast → slow), then DL
 MODEL_ORDER = [
     "minirocket", "multirocket", "rocket", "arsenal", "drcif",
-    "hydra_multirocket", "rdst", "weasel2",
+    "rdst", "weasel2",
     "cnn_lstm", "lstm", "inceptiontime",
 ]
 
 # Fixed per-model color palette
 MODEL_COLORS = {
-    "minirocket":        "#1f77b4",
-    "multirocket":       "#aec7e8",
-    "rocket":            "#ff7f0e",
-    "arsenal":           "#ffbb78",
-    "drcif":             "#2ca02c",
-    "hydra_multirocket": "#98df8a",
-    "rdst":              "#d62728",
-    "weasel2":           "#ff9896",
-    "cnn_lstm":          "#9467bd",
-    "lstm":              "#c5b0d5",
-    "inceptiontime":     "#8c564b",
+    "minirocket":    "#1f77b4",
+    "multirocket":   "#aec7e8",
+    "rocket":        "#ff7f0e",
+    "arsenal":       "#ffbb78",
+    "drcif":         "#2ca02c",
+    "rdst":          "#d62728",
+    "weasel2":       "#ff9896",
+    "cnn_lstm":      "#9467bd",
+    "lstm":          "#c5b0d5",
+    "inceptiontime": "#8c564b",
 }
 
 # Fixed per-class color palette (canonical Bury ordering)
@@ -598,6 +597,84 @@ def plot_fig5_roc_overlay(pangaea_records: list, core: str, element: str,
 
 
 # =============================================================================
+# FIG6 — Zenodo per-class AUC (Bury et al. 2021 Fig 2 equivalent)
+# =============================================================================
+
+def plot_fig6_zenodo_class_auc(zenodo_records: list, out_dir: Path):
+    """
+    FIG6: Binary AUC per bifurcation type on the Bury synthetic test set.
+
+    Matches Bury et al. (2021) Figure 2: each model gets one bar group with
+    one bar per transition type (fold / hopf / transcritical), showing how
+    well each classifier detects that specific bifurcation vs null.
+
+    One subplot per dataset (ts_500 left, ts_1500 right).
+    Saves: test_result/comparison/fig6_zenodo_class_auc.png
+    """
+    if not zenodo_records:
+        return
+
+    datasets   = ["ts_500", "ts_1500"]
+    classes    = ["fold", "hopf", "transcritical"]
+    class_colors = [CLASS_COLORS["fold"], CLASS_COLORS["hopf"], CLASS_COLORS["transcritical"]]
+
+    # Group records by (model, dataset)
+    by_ds = {ds: {} for ds in datasets}
+    for r in zenodo_records:
+        model   = r.get("model", "")
+        dataset = r.get("dataset", "")
+        pca     = r.get("per_class_auc", {})
+        if dataset in by_ds and pca:
+            by_ds[dataset][model] = pca
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+    bar_width = 0.22
+    offsets   = np.array([-1, 0, 1]) * bar_width
+
+    for ax, dataset in zip(axes, datasets):
+        data    = by_ds[dataset]
+        models  = _sort_models(list(data.keys()))
+        x       = np.arange(len(models))
+
+        for i, (cls, col) in enumerate(zip(classes, class_colors)):
+            aucs = [data[m].get(cls, float("nan")) for m in models]
+            bars = ax.bar(x + offsets[i], aucs, width=bar_width,
+                          color=col, label=cls.capitalize(), alpha=0.85,
+                          edgecolor="white", linewidth=0.5)
+            # Annotate bars with AUC value
+            for bar, auc in zip(bars, aucs):
+                if not np.isnan(auc):
+                    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
+                            f"{auc:.2f}", ha="center", va="bottom",
+                            fontsize=6.5, rotation=90)
+
+        ax.axhline(0.5, color=_CHANCE_COLOR, linestyle="--", linewidth=1,
+                   label="Chance (0.5)")
+        ax.set_xlim(-0.6, len(models) - 0.4)
+        ax.set_ylim(0.45, 1.05)
+        ax.set_xticks(x)
+        ax.set_xticklabels([m.replace("_", "\n") for m in models],
+                            fontsize=8)
+        ax.set_title(f"Dataset: {dataset}", fontsize=10, fontweight="bold")
+        ax.set_ylabel("Binary AUC (vs null)", fontsize=9)
+        ax.set_xlabel("Model", fontsize=9)
+        ax.grid(axis="y", alpha=0.3)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", fontsize=9,
+               framealpha=0.8, title="Bifurcation type")
+    fig.suptitle("Per-class Binary AUC on Bury (2021) Synthetic Test Set",
+                 fontsize=12, fontweight="bold", y=1.01)
+    fig.tight_layout()
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "fig6_zenodo_class_auc.png", dpi=_DPI, bbox_inches="tight")
+    plt.close(fig)
+
+
+# =============================================================================
 # Summary CLI
 # =============================================================================
 
@@ -611,7 +688,7 @@ def main():
     args = parser.parse_args()
 
     cfg          = load_config(args.config)
-    results_dir  = REPO_ROOT / cfg["paths"]["results"]
+    results_dir  = REPO_ROOT / cfg["paths"]["test_results"]
     comp_dir     = results_dir / "comparison"
     pangaea_clean = REPO_ROOT / cfg["paths"]["pangaea_clean"]
 
@@ -664,6 +741,12 @@ def main():
             plot_fig5_roc_overlay(pangaea_records, core, element, comp_dir)
             done_fig5 += 1
     print(f"  Done: {done_fig5} overlay plots")
+
+    # ── FIG6: Zenodo per-class AUC (Bury-style comparison) ────────────────────
+    if zenodo_records:
+        print("\nFIG6 — Zenodo per-class AUC (Bury-style)...")
+        plot_fig6_zenodo_class_auc(zenodo_records, comp_dir)
+        print(f"  Saved: {comp_dir / 'fig6_zenodo_class_auc.png'}")
 
     print(f"\nAll comparison figures saved to: {comp_dir}")
 

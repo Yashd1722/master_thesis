@@ -13,7 +13,7 @@ import joblib
 MODEL_NAME        = "rocket"
 MODEL_CLASS       = "RocketNet"
 IS_TSC            = True
-MAX_TRAIN_SAMPLES = 200000   # feature transform is fast; 200k fits in 60G
+MAX_TRAIN_SAMPLES = 50000    # 10k kernels × 2 features; OOM above ~50k on 60G nodes
 
 
 class RocketNet:

@@ -124,7 +124,7 @@ def _save_ar1_null_csv(forced_residuals: np.ndarray,
 def experiment_dir(model, dataset, metric, cfg) -> Path:
     name = cfg["naming"]["experiment_dir"].format(
         model=model, dataset=dataset, metric=metric)
-    d = REPO_ROOT / cfg["paths"]["results"] / name
+    d = REPO_ROOT / cfg["paths"]["test_results"] / name
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -155,14 +155,39 @@ def load_dl_models(model_name, dataset_name, ts_len, num_classes, cfg, device, l
     return models
 
 def load_tsc_model(model_name, dataset_name, cfg, logger):
-    import joblib
+    import joblib, os, multiprocessing
     ckpt_dir = REPO_ROOT / cfg["paths"]["checkpoints"]
     name     = cfg["naming"]["checkpoint_tsc"].format(
         model=model_name, dataset=dataset_name)
     fpath = ckpt_dir / name
     if not fpath.exists():
         raise RuntimeError(f"TSC checkpoint not found: {name}")
-    return joblib.load(fpath)
+    obj = joblib.load(fpath)
+
+    # The saved object may be our thin wrapper (has ._clf) or a raw aeon classifier.
+    inner = getattr(obj, '_clf', obj)
+
+    # --- Detect stale 4-channel checkpoints ---
+    use_4ch = cfg.get("inference", {}).get("use_4channel", False)
+    n_ch = getattr(inner, 'n_channels_', None)
+    if n_ch is None and hasattr(inner, 'metadata_'):
+        n_ch = inner.metadata_.get('n_channels', None)
+    if n_ch == 4 and not use_4ch:
+        raise RuntimeError(
+            f"Checkpoint '{name}' was trained with 4 channels but "
+            f"use_4channel=false in config. Delete it and re-run training.")
+
+    # --- Cap n_jobs to allocated CPUs (prevents numba set_num_threads errors) ---
+    n_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK",
+                                multiprocessing.cpu_count() or 4))
+    for candidate in [inner, getattr(inner, '_transformer', None)]:
+        if candidate is None:
+            continue
+        for attr in ('n_jobs', '_n_jobs'):
+            if hasattr(candidate, attr):
+                setattr(candidate, attr, n_cpus)
+
+    return obj
 
 @torch.no_grad()
 def dl_predict_proba(models, X_np, device, batch_size=256):
@@ -205,15 +230,22 @@ def _prepare_tsc_input(X_2d, model_name, dataset_name, cfg):
         return X_2d[:, np.newaxis, :]   # (N, 1, L)
 
 
-def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
+def evaluate_zenodo(model_name, dataset_name, cfg, device, logger, force=False):
     """
     Evaluate on the Bury synthetic test set.
 
     Reports (all saved to result.json):
       - Binary AUC: forced vs null, p_transition = 1 - P(null)  [Bury-comparable]
+      - Per-class AUC: each bifurcation type vs null separately   [Bury Fig 2]
       - 4-class macro-F1 and OVR macro-AUC                       [thesis contribution]
       - Confusion matrix (rows=true, cols=predicted)
     """
+    # Skip early if result already exists
+    _rdir = experiment_dir(model_name, dataset_name, "zenodo", cfg)
+    if (_rdir / "result.json").exists() and not force:
+        logger.info(f"  Already evaluated — skipping (use --force to redo)")
+        return json.loads((_rdir / "result.json").read_text())
+
     ds_info     = get_dataset_info(dataset_name, cfg)
     ts_len      = ds_info["ts_length"]
     num_classes = ds_info["num_classes"]
@@ -269,8 +301,26 @@ def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
     mac_auc        = ovr_macro_auc(y_all, probs)
     acc_metrics    = compute_accuracy(y_all, preds)
 
+    # Per-class AUC: each bifurcation type vs null only (Bury et al. Fig 2 metric).
+    # For class c: positives = c-class samples, negatives = null samples,
+    # score = 1 - P(null).  This lets us see which transition types are easiest.
+    per_class_auc = {}
+    for cls_idx, cls_name in enumerate(class_names):
+        if cls_idx == null_idx:
+            continue
+        mask  = (y_all == cls_idx) | (y_all == null_idx)
+        if mask.sum() < 2:
+            continue
+        y_bin = (y_all[mask] == cls_idx).astype(int)
+        try:
+            per_class_auc[cls_name] = round(float(compute_auc(y_bin, p_transition[mask])), 6)
+        except Exception:
+            per_class_auc[cls_name] = float("nan")
+
     logger.info(f"  binary AUC={bin_auc:.4f}  macro-F1={mf1:.4f}  "
                 f"macro-AUC(OVR)={mac_auc:.4f}  acc={acc_metrics['accuracy']:.4f}")
+    logger.info(f"  per-class AUC: " +
+                "  ".join(f"{k}={v:.4f}" for k, v in per_class_auc.items()))
 
     base = {
         "model":   model_name,  "dataset": dataset_name,
@@ -285,12 +335,14 @@ def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
     result_data = {
         **base,
         # Binary metrics (Bury-comparable)
-        "binary_auc":   round(float(bin_auc), 6),
-        "roc_fpr":      fpr,
-        "roc_tpr":      tpr,
-        "roc_thresh":   thr,
+        "binary_auc":    round(float(bin_auc), 6),
+        "roc_fpr":       fpr,
+        "roc_tpr":       tpr,
+        "roc_thresh":    thr,
+        # Per-class AUC (Bury Fig 2 metric)
+        "per_class_auc": per_class_auc,
         # 4-class metrics (thesis contribution)
-        "macro_f1":     round(float(mf1), 6),
+        "macro_f1":      round(float(mf1), 6),
         "macro_auc_ovr": round(float(mac_auc), 6),
         # Full accuracy breakdown
         **acc_metrics,
@@ -302,7 +354,7 @@ def evaluate_zenodo(model_name, dataset_name, cfg, device, logger):
     plot_confusion_matrix(result_data, result_dir, class_names)
     return result_data
 
-def evaluate_pangaea(model_name, dataset_name, cfg, device, logger):
+def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False):
     """
     Evaluate on PANGAEA empirical XRF cores using rolling-window EWS inference.
 
@@ -386,7 +438,8 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger):
                     sapropel_id=sap_id, segment_type="forced",
                     cfg=cfg, ts_len=ts_len)
 
-                X_forced     = np.stack(rw_forced.dl_inputs)
+                X_forced = np.stack(rw_forced.dl_inputs)
+
                 probs_forced = predict_fn(X_forced)
                 p_trans_f    = (1.0 - probs_forced[:, null_idx] if null_idx >= 0
                                 else probs_forced[:, -1])
@@ -461,7 +514,14 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger):
 
                 null_tau_ci = compute_tau_ci(null_taus) if null_taus else {}
 
-                tag  = f"{core_name}_{sap_id}_{element}"
+                tag       = f"{core_name}_{sap_id}_{element}"
+                _rdir_tag = experiment_dir(model_name, f"pangaea_{tag}", "pangaea", cfg)
+                if (_rdir_tag / "result.json").exists() and not force:
+                    logger.info(f"    {tag}: already evaluated — skipping")
+                    all_results[tag] = json.loads(
+                        (_rdir_tag / "result.json").read_text())
+                    continue
+
                 base = {
                     "model": model_name, "dataset": dataset_name,
                     "core": core_name, "sapropel": sap_id, "element": element,
@@ -511,6 +571,8 @@ def main():
     parser.add_argument("--target",  default="zenodo",
                         choices=["zenodo", "pangaea"])
     parser.add_argument("--config",  default="config.yaml")
+    parser.add_argument("--force",   action="store_true",
+                        help="Re-evaluate even if result.json already exists.")
     args = parser.parse_args()
 
     cfg     = load_config(args.config)
@@ -523,11 +585,18 @@ def main():
     logger.info(f"Model  : {args.model}  IS_TSC={is_tsc_model(args.model)}")
     logger.info(f"Dataset: {args.dataset}  Target: {args.target}")
     logger.info(f"Device : {device}")
+    logger.info(f"Results→ test_result/")
 
-    if args.target == "zenodo":
-        evaluate_zenodo(args.model, args.dataset, cfg, device, logger)
-    else:
-        evaluate_pangaea(args.model, args.dataset, cfg, device, logger)
+    try:
+        if args.target == "zenodo":
+            evaluate_zenodo(args.model, args.dataset, cfg, device, logger,
+                            force=args.force)
+        else:
+            evaluate_pangaea(args.model, args.dataset, cfg, device, logger,
+                             force=args.force)
+    except RuntimeError as e:
+        logger.error(f"Skipped — {e}")
+        sys.exit(0)   # missing checkpoint is not a SLURM array failure
 
     logger.info("\nDone.")
 

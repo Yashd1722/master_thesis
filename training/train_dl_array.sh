@@ -6,8 +6,8 @@
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
 #SBATCH --array=0-5
-#SBATCH --output=%x_%A_%a.out
-#SBATCH --error=%x_%A_%a.err
+#SBATCH --output=logs/%x_%A_%a.out
+#SBATCH --error=logs/%x_%A_%a.err
 
 # Match thread counts to allocated CPUs (h100 partition: 4 CPUs).
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK

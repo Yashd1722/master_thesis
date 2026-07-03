@@ -14,7 +14,7 @@ import joblib
 MODEL_NAME        = "multirocket"
 MODEL_CLASS       = "MultiRocketNet"
 IS_TSC            = True
-MAX_TRAIN_SAMPLES = 80000   # feature matrix is larger than ROCKET
+MAX_TRAIN_SAMPLES = 40000   # 49728 features × 80k → dual-copy peak ~52GB OOM on 60G nodes
 
 
 class MultiRocketNet:

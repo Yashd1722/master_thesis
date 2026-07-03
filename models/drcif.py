@@ -14,7 +14,7 @@ import joblib
 MODEL_NAME        = "drcif"
 MODEL_CLASS       = "DrCIFNet"
 IS_TSC            = True
-MAX_TRAIN_SAMPLES = 50000
+MAX_TRAIN_SAMPLES = 20000    # 50k exceeded 4h wall time for ts_1500 on large_cpu
 
 
 class DrCIFNet:
