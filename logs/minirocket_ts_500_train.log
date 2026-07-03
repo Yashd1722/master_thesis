@@ -1,17 +1,28 @@
-14:30:55 | INFO | Model  : minirocket
-14:30:55 | INFO | Dataset: ts_500
-14:30:55 | INFO | IS_TSC : True
-14:31:00 | INFO |   Loading train data into memory...
-14:31:04 | INFO |   Dropping 1435 flat train series 
-14:31:04 | INFO |   Dropping 100 flat val series 
-14:31:04 | INFO |   Train shape before subsampling: (473565, 500)
-14:31:04 | INFO |   Subsampled train to 100000 (MAX_TRAIN_SAMPLES=100000)
-14:31:04 | INFO |   Starting EWS Augmentation...
-14:31:43 | INFO |   Augmented data shape: (100000, 4, 500) (4 channels)
-14:31:47 | INFO |   Applied safe jitter (1e-4 orig, 1e-2 derived) to prevent aeon crashes
-14:31:50 | INFO |   Applied nuclear jitter (1e-2) to prevent aeon variance crashes
-14:31:51 | INFO |   [MEM-SAFETY] Subsampling minirocket from 100000 to 50000 to prevent OOM
-14:31:51 | INFO |   Fitting minirocket...
-14:39:12 | INFO |   Val acc=0.6698 f1=0.6699  time=7.3min
-14:39:12 | INFO |   Saved: minirocket_ts_500_best.pkl
-14:39:12 | INFO | Done — val_f1=0.6699
+10:37:26 | INFO | Model  : minirocket
+10:37:26 | INFO | Dataset: ts_500
+10:37:26 | INFO | Mode   : 4-class
+10:37:26 | INFO | IS_TSC : True
+10:37:26 | INFO |   Checkpoint exists (minirocket_ts_500_best.pkl) — skipping (use --force to retrain)
+	Command being timed: "python -u training/train.py --model minirocket --dataset ts_500"
+	User time (seconds): 3.64
+	System time (seconds): 0.60
+	Percent of CPU this job got: 158%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.67
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 536764
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 164566
+	Voluntary context switches: 80
+	Involuntary context switches: 288
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 8
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

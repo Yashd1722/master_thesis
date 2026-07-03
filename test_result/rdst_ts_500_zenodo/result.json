@@ -1,0 +1,64 @@
+{
+  "model": "rdst",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "null_idx": 3,
+  "inference_time_sec": 65.85,
+  "timestamp": "2026-07-01T09:58:31",
+  "binary_auc": 0.800856,
+  "roc_fpr": [
+    0.0,
+    0.2730210016155089,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.874732905982906,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ],
+  "per_class_auc": {
+    "fold": 0.769889,
+    "hopf": 0.850289,
+    "transcritical": 0.7823
+  },
+  "macro_f1": 0.6431149439481725,
+  "macro_auc_ovr": 0.762156,
+  "accuracy": 0.6431152147731835,
+  "confusion_matrix": [
+    [
+      607,
+      92,
+      317,
+      234
+    ],
+    [
+      140,
+      966,
+      111,
+      33
+    ],
+    [
+      232,
+      79,
+      731,
+      202
+    ],
+    [
+      130,
+      16,
+      192,
+      900
+    ]
+  ]
+}

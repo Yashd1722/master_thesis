@@ -1,16 +1,43 @@
-14:30:55 | INFO | Model  : rocket
-14:30:55 | INFO | Dataset: ts_1500
-14:30:55 | INFO | IS_TSC : True
-14:31:01 | INFO |   Loading train data into memory...
-14:31:03 | INFO |   Dropping 580 flat train series 
-14:31:03 | INFO |   Dropping 34 flat val series 
-14:31:03 | INFO |   Train shape before subsampling: (189420, 1500)
-14:31:03 | INFO |   Starting EWS Augmentation...
-14:32:57 | INFO |   Augmented data shape: (189420, 4, 1500) (4 channels)
-14:33:16 | INFO |   Applied safe jitter (1e-4 orig, 1e-2 derived) to prevent aeon crashes
-14:33:34 | INFO |   Applied nuclear jitter (1e-2) to prevent aeon variance crashes
-14:33:36 | INFO |   [MEM-SAFETY] Subsampling rocket from 189420 to 50000 to prevent OOM
-14:33:37 | INFO |   Fitting rocket...
-17:00:47 | INFO |   Val acc=0.7624 f1=0.7622  time=142.5min
-17:00:47 | INFO |   Saved: rocket_ts_1500_best.pkl
-17:00:47 | INFO | Done — val_f1=0.7622
+10:40:27 | INFO | Model  : rocket
+10:40:27 | INFO | Dataset: ts_1500
+10:40:27 | INFO | Mode   : 4-class
+10:40:27 | INFO | IS_TSC : True
+10:40:27 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
+10:40:27 | INFO |   Loading train and val data into memory...
+10:40:33 | INFO |   Dropping 637 flat train series
+10:40:33 | INFO |   Dropping 40 flat val series
+10:40:33 | INFO |   Train shape: (189363, 1500)  Val shape: (7960, 1500)
+10:40:33 | INFO |   Subsampled to 50000 (MAX_TRAIN_SAMPLES=50000)
+10:40:33 | INFO |   Fitting rocket on 50000 series...
+12:39:55 | INFO |   Val acc=0.7416  macro-F1=0.7403  time=115.8 min
+12:39:55 | INFO |   Confusion matrix (rows=true, cols=pred):
+12:39:55 | INFO |                fold: [1202, 60, 379, 359]
+12:39:55 | INFO |                hopf: [179, 1603, 191, 27]
+12:39:55 | INFO |       transcritical: [262, 92, 1341, 285]
+12:39:55 | INFO |                null: [45, 11, 167, 1757]
+12:39:55 | INFO |   Saved: rocket_ts_1500_best.pkl
+12:39:55 | INFO | Done — val_f1=0.7403
+12:39:55 | INFO | Metrics saved: rocket_ts_1500_train_metrics.json
+	Command being timed: "python -u training/train.py --model rocket --dataset ts_1500"
+	User time (seconds): 59974.28
+	System time (seconds): 26.35
+	Percent of CPU this job got: 836%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:59:30
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 50260684
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 45
+	Minor (reclaiming a frame) page faults: 510517
+	Voluntary context switches: 11979
+	Involuntary context switches: 9982387
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 3400
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
