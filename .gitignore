@@ -28,6 +28,9 @@ dataset/processed/
 data/**/*.npz
 __MACOSX/
 old_results_backup/
+_pre_refactor_backup_*/
+*_smoke/
+config_smoke.yaml
 
 # ----------------------------
 # DATASET RULES

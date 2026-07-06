@@ -1,26 +1,44 @@
-10:37:26 | INFO | Model  : minirocket
-10:37:26 | INFO | Dataset: ts_500
-10:37:26 | INFO | Mode   : 4-class
-10:37:26 | INFO | IS_TSC : True
-10:37:26 | INFO |   Checkpoint exists (minirocket_ts_500_best.pkl) — skipping (use --force to retrain)
+18:24:49 | INFO | Model  : minirocket
+18:24:49 | INFO | Dataset: ts_500
+18:24:49 | INFO | Mode   : 4-class
+18:24:49 | INFO | IS_TSC : True
+18:24:49 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
+18:24:49 | INFO |   Loading train and val data into memory...
+18:24:54 | INFO |   Dropping 1566 flat train series
+18:24:54 | INFO |   Dropping 104 flat val series
+18:24:54 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
+18:24:56 | INFO |   Residuals normalised; train 33332 -> 99996 (1 clean + 2 censored copies)
+18:24:56 | INFO |   use_4channel=true — expanding to 4 EWS channels
+18:25:37 | INFO |   ch_stats saved → minirocket_ts_500_best_ch_stats.npz
+18:25:37 | INFO |   Final train shape: (99996, 4, 500)  Val shape: (19896, 4, 500)
+18:25:38 | INFO |   Fitting minirocket on 99996 series...
+18:44:08 | INFO |   Val acc=0.6902  macro-F1=0.6901  time=18.4 min
+18:44:08 | INFO |   Confusion matrix (rows=true, cols=pred):
+18:44:08 | INFO |                fold: [2863, 307, 1010, 820]
+18:44:08 | INFO |                hopf: [511, 3909, 486, 94]
+18:44:08 | INFO |       transcritical: [855, 332, 3020, 741]
+18:44:08 | INFO |                null: [216, 47, 744, 3941]
+18:44:08 | INFO |   Saved: minirocket_ts_500_best.pkl
+18:44:08 | INFO | Done — val_f1=0.6901
+18:44:08 | INFO | Metrics saved: minirocket_ts_500_train_metrics.json
 	Command being timed: "python -u training/train.py --model minirocket --dataset ts_500"
-	User time (seconds): 3.64
-	System time (seconds): 0.60
-	Percent of CPU this job got: 158%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.67
+	User time (seconds): 16890.41
+	System time (seconds): 38.84
+	Percent of CPU this job got: 1453%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 19:24.84
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 536764
+	Maximum resident set size (kbytes): 39994004
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 164566
-	Voluntary context switches: 80
-	Involuntary context switches: 288
+	Major (requiring I/O) page faults: 700
+	Minor (reclaiming a frame) page faults: 816410
+	Voluntary context switches: 7262
+	Involuntary context switches: 25719
 	Swaps: 0
-	File system inputs: 0
-	File system outputs: 8
+	File system inputs: 160
+	File system outputs: 1328
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

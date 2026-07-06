@@ -258,61 +258,77 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     logger.info(f"  Train shape: {X_train.shape}  Val shape: {X_val.shape}")
 
     # ------------------------------------------------------------------
-    # Optional EWS feature augmentation (config flag use_4channel).
-    # When ON: expands (N, L) -> (N, 4, L) with [residual, variance,
-    # lag-1 AC, skewness] channels, each z-normalised independently.
-    # When OFF (default): data stays as (N, 1, L) — univariate.
+    # Build model inputs. Two stages, shared by both paths:
+    #   1. Residual: normalise every series to mean|x|==1 and add Bury-style
+    #      left-censored copies to TRAIN — the fix that lets models generalise
+    #      to short, left-padded empirical cores.
+    #   2. Channels: expand to 4 EWS feature channels if use_4channel, else 1.
+    # Doing (1) before (2) means the 4-channel CSD features are computed on the
+    # same censored/normalised residual the empirical inference will see.
     # ------------------------------------------------------------------
+    from src.data_common import make_model_input, random_left_censor
     infer_cfg   = cfg.get("inference", {})
     use_4ch     = infer_cfg.get("use_4channel", False)
     window_frac = infer_cfg.get("rolling_window_frac_augment", 0.25)
-
     ch_stats_path = ckpt_path.with_name(ckpt_path.stem + "_ch_stats.npz")
 
+    aug_cfg      = cfg.get("augmentation", {})
+    n_copies     = int(aug_cfg.get("tsc_copies", 2)) if aug_cfg.get("enabled", False) else 0
+    pad_max_frac = aug_cfg.get("pad_max_frac", 0.9)
+    min_visible  = aug_cfg.get("min_visible", 30)
+    max_samp     = get_max_train_samples(model_name)
+
+    def _stratified_subsample(X, y, target):
+        rng     = np.random.default_rng(seed)
+        classes = np.unique(y)
+        per_cls = target // len(classes)
+        idx = np.concatenate([
+            rng.choice(np.where(y == c)[0], min(per_cls, (y == c).sum()), replace=False)
+            for c in classes])
+        rng.shuffle(idx)
+        return X[idx], y[idx]
+
+    # Subsample the BASE first so the final set (base * (1 + n_copies)) stays
+    # within the model's memory gate.
+    if max_samp:
+        base_target = max(1, max_samp // (1 + n_copies))
+        if len(X_train) > base_target:
+            X_train, y_train = _stratified_subsample(X_train, y_train, base_target)
+
+    # Stage 1 — residual channel.
+    rng = np.random.default_rng(seed)
+    parts_X = [np.stack([make_model_input(s, ts_len) for s in X_train]).astype(np.float32)]
+    parts_y = [y_train]
+    for _ in range(n_copies):
+        parts_X.append(np.stack([
+            random_left_censor(s, ts_len, rng, pad_max_frac=pad_max_frac,
+                               min_visible=min_visible)
+            for s in X_train]).astype(np.float32))
+        parts_y.append(y_train)
+    X_train = np.concatenate(parts_X, axis=0)
+    y_train = np.concatenate(parts_y, axis=0)
+    X_val   = np.stack([make_model_input(s, ts_len) for s in X_val]).astype(np.float32)
+    logger.info(f"  Residuals normalised; train {len(parts_y[0])} -> {len(X_train)} "
+                f"(1 clean + {n_copies} censored copies)")
+
+    # Stage 2 — channels.
     if use_4ch:
         from src.ews_augmenter import augment_ews_channels
-        logger.info("  EWS augmentation ON (use_4channel=true) — expanding to 4 channels")
-        # Training: compute rolling channels and fit normalization from train set.
+        logger.info("  use_4channel=true — expanding to 4 EWS channels")
         X_train, ch_stats = augment_ews_channels(X_train, window_frac=window_frac)
-        # Val: reuse the train-set stats (never refit on held-out data).
         X_val,   _        = augment_ews_channels(X_val,   window_frac=window_frac,
                                                   channel_stats=ch_stats)
-        # Drop series where any channel has zero variance — aeon rejects them.
-        # (Rare but possible for very short or very uniform series.)
-        tr_mask4 = (X_train.std(axis=2) > 1e-6).all(axis=1)  # all channels OK
-        vl_mask4 = (X_val.std(axis=2)   > 1e-6).all(axis=1)
-        if (~tr_mask4).any():
-            logger.info(f"  Dropping {(~tr_mask4).sum()} degenerate-channel train series")
-            X_train, y_train = X_train[tr_mask4], y_train[tr_mask4]
-        if (~vl_mask4).any():
-            logger.info(f"  Dropping {(~vl_mask4).sum()} degenerate-channel val series")
-            X_val, y_val = X_val[vl_mask4], y_val[vl_mask4]
-        # Save stats alongside checkpoint so evaluate.py can reload them.
+        tr_ok = (X_train.std(axis=2) > 1e-6).all(axis=1)
+        vl_ok = (X_val.std(axis=2)   > 1e-6).all(axis=1)
+        X_train, y_train = X_train[tr_ok], y_train[tr_ok]
+        X_val,   y_val   = X_val[vl_ok],   y_val[vl_ok]
         np.savez(ch_stats_path, mean=ch_stats["mean"], std=ch_stats["std"])
-        logger.info(f"  Augmented shape: {X_train.shape}  "
-                    f"ch_stats saved → {ch_stats_path.name}")
+        logger.info(f"  ch_stats saved → {ch_stats_path.name}")
     else:
-        # Keep univariate: (N, L) -> (N, 1, L) so all models get consistent shape.
         X_train = X_train[:, np.newaxis, :]
         X_val   = X_val[:, np.newaxis, :]
 
-    # ------------------------------------------------------------------
-    # Stratified subsample when a model defines MAX_TRAIN_SAMPLES.
-    # This is the single, explicit memory-safety gate — no duplicate blocks.
-    # ------------------------------------------------------------------
-    max_samp = get_max_train_samples(model_name)
-    if max_samp and len(X_train) > max_samp:
-        rng      = np.random.default_rng(seed)
-        classes  = np.unique(y_train)
-        per_cls  = max_samp // len(classes)
-        idx      = np.concatenate([
-            rng.choice(np.where(y_train == c)[0], min(per_cls, (y_train == c).sum()),
-                       replace=False)
-            for c in classes
-        ])
-        rng.shuffle(idx)
-        X_train, y_train = X_train[idx], y_train[idx]
-        logger.info(f"  Subsampled to {len(X_train)} (MAX_TRAIN_SAMPLES={max_samp})")
+    logger.info(f"  Final train shape: {X_train.shape}  Val shape: {X_val.shape}")
 
     # Inject n_jobs from environment so we never hardcode 16.
     tr_cfg = dict(tr_cfg)   # copy so we don't mutate config

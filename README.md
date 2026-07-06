@@ -27,23 +27,25 @@ time-series classification (TSC) to detect critical transitions in Mediterranean
 
 Trained on GPU partition (`h100`). Checkpoints: `checkpoints/{model}_{dataset}_v{variant}_best.ckpt`.
 
-### Classical TSC (aeon v1.4.0) — 8 models
+### Classical TSC (aeon v1.4.0) — 7 models
 
-| Model | File | Key hyperparams |
+All TSC models share **one** wrapper (`models/tsc.py`); each is a row in `TSC_SPECS`.
+
+| Model | Key hyperparams | Notes |
 |---|---|---|
-| `minirocket` | `models/minirocket.py` | n_kernels=10000 |
-| `multirocket` | `models/multirocket.py` | n_kernels=6250 |
-| `arsenal` | `models/arsenal.py` | num_kernels=2000 |
-| `drcif` | `models/drcif.py` | n_estimators=100 |
-| `rocket` | `models/rocket.py` | n_kernels=10000 |
-| `hydra_multirocket` | `models/hydra_multirocket.py` | n_kernels=6250, n_groups=64 (multivariate) |
-| `rdst` | `models/rdst.py` | max_shapelets=10000 |
-| `weasel2` | `models/weasel2.py` | WEASEL v2 (univariate: channel 0) |
+| `minirocket` | n_kernels=10000 | |
+| `multirocket` | n_kernels=6250 | |
+| `arsenal` | num_kernels=2000 | |
+| `drcif` | n_estimators=100 | |
+| `rocket` | n_kernels=10000 | |
+| `rdst` | max_shapelets=10000 | float64 cast |
+| `weasel2` | WEASEL v2 | univariate: uses channel 0 only |
 
 Trained on CPU partition (`large_cpu`, 16 CPUs, 60 GB). Checkpoints: `checkpoints/{model}_{dataset}_best.pkl`.
+(`hydra_multirocket` was dropped — aeon's Hydra conv1d OOMs regardless of sample count.)
 
 `n_jobs` is NOT hardcoded in config — `train.py` reads `SLURM_CPUS_PER_TASK` at runtime.
-Training is capped at `MAX_TRAIN_SAMPLES` via stratified subsampling (defined per model in `models/__init__.py`).
+Training is capped at `MAX_TRAIN_SAMPLES` (stratified subsample), defined per model in `TSC_SPECS`.
 
 ---
 
@@ -61,20 +63,17 @@ master_thesis/
 │
 ├── src/
 │   ├── constants.py                    ← CLASS_NAMES, NULL_IDX (canonical Bury ordering)
-│   ├── dataset_loader.py               ← DataLoader for ts_500/ts_1500
+│   ├── data_common.py                  ← shared transforms: normalise + left-censor + fixed window
+│   ├── dataset_loader.py               ← DataLoader for ts_500/ts_1500 (with augmentation)
 │   ├── preprocess_bury_data.py         ← NPZ cache builder from Zenodo CSVs
-│   ├── ews_augmenter.py                ← Optional 4-channel EWS feature augmenter
+│   ├── ews_augmenter.py                ← 4-channel EWS feature augmenter
 │   ├── pangea_cleaner.py               ← PANGAEA XRF loader, Gaussian detrend, AR(1) null
 │   └── rolling_window.py               ← rolling window EWS engine (variance, AC, DL inference)
 │
 ├── models/
-│   ├── __init__.py                     ← auto-discovering registry: get_model()
-│   ├── cnn_lstm.py / lstm.py / inceptiontime.py  ← DL models
-│   ├── minirocket.py / multirocket.py / rocket.py / arsenal.py  ← TSC: kernel methods
-│   ├── hydra_multirocket.py            ← TSC: Hydra+MultiRocket (multivariate)
-│   ├── rdst.py                         ← TSC: random dilated shapelet transform
-│   ├── weasel2.py                      ← TSC: WEASEL v2 (word-based)
-│   └── drcif.py                        ← TSC: diverse random channel interval forest
+│   ├── __init__.py                     ← explicit registry: get_model(), list_models()
+│   ├── cnn_lstm.py / lstm.py / inceptiontime.py  ← DL models (PyTorch)
+│   └── tsc.py                          ← all aeon TSC models: one wrapper + TSC_SPECS table
 │
 ├── metric/
 │   ├── __init__.py
@@ -116,14 +115,14 @@ pip install -r requirements.txt
 pip install aeon==1.4.0    # TSC models — install separately (large dependency tree)
 ```
 
-### 1. Build numpy cache (run once, ~10 minutes per dataset)
+### 1. Build the NPZ cache (run once)
 
 ```bash
-python src/preprocess_bury_data.py --dataset ts_500
-python src/preprocess_bury_data.py --dataset ts_1500
+python src/preprocess_bury_data.py
 ```
 
-Outputs `cache_residuals.npy` and `cache_labels.npy` in each dataset directory.
+Processes both datasets, writing `dataset/processed/{train,val,test}_{500,1500}.npz`
+as `(N, 1, L)` arrays with labels `fold=0, hopf=1, transcritical=2, null=3`.
 
 ### 2. Preprocess PANGAEA data (run once)
 
@@ -140,11 +139,11 @@ AR(1) null series are generated on-the-fly during evaluation (not saved to disk)
 **On SLURM (recommended):**
 
 ```bash
-sbatch training/train_tsc_array.sh   # 16 tasks: 8 TSC × 2 datasets
+sbatch training/train_tsc_array.sh   # 14 tasks: 7 TSC × 2 datasets
 sbatch training/train_dl_array.sh    # 6 tasks: 3 DL × 2 datasets
 ```
 
-SLURM task mapping for TSC array (`--array=0-15`):
+SLURM task mapping for TSC array (`--array=0-13`, `task = model_idx*2 + dataset_idx`):
 
 | Task | Model | Dataset |
 |---|---|---|
@@ -153,11 +152,13 @@ SLURM task mapping for TSC array (`--array=0-15`):
 | 4–5 | arsenal | ts_500, ts_1500 |
 | 6–7 | drcif | ts_500, ts_1500 |
 | 8–9 | rocket | ts_500, ts_1500 |
-| 10–11 | hydra_multirocket | ts_500, ts_1500 |
-| 12–13 | rdst | ts_500, ts_1500 |
-| 14–15 | weasel2 | ts_500, ts_1500 |
+| 10–11 | rdst | ts_500, ts_1500 |
+| 12–13 | weasel2 | ts_500, ts_1500 |
 
 DL array (`--array=0-5`): tasks 0–1 = cnn_lstm, 2–3 = lstm, 4–5 = inceptiontime.
+
+> **Note:** checkpoints are skipped if they already exist — pass `--force` or clear
+> `checkpoints/` before retraining after a pipeline change.
 
 **Locally (single model):**
 
@@ -283,20 +284,42 @@ Use `calibratedXRF` files (7000+ rows), **not** `calibrationICP-MS` (37–295 ro
 
 ---
 
-## Optional: 4-Channel EWS Augmentation
+## Input Pipeline (train / inference parity)
 
-Set `use_4channel: true` in `config.yaml` (under `inference:`) to expand each
-time series from 1 channel (raw residual) to 4 channels:
+Training and empirical inference share one set of transforms (`src/data_common.py`)
+so a model never sees a different kind of input than it was trained on:
+
+1. **Normalisation** — every series is divided by its mean absolute value
+   (`mean|x| = 1`). Applied identically in training and at inference.
+2. **Left-censoring augmentation (Bury-style)** — each *training* series gets
+   random left zero-padding (`augmentation.pad_max_frac`), keeping the tail so
+   the transition stays at the end. Empirical sediment cores (57–365 points) are
+   much shorter than `ts_len` (500/1500) and are left-padded to length at
+   inference; without this augmentation the model would never have seen that
+   shape and collapses to chance. TSC models get `1 + tsc_copies` copies per
+   series; DL models are censored on the fly each epoch.
+3. **Fixed window** — `make_fixed_window` takes the last `ts_len` residuals
+   before each rolling position, normalises, and left-pads. `prepare_dl_input`
+   (empirical inference) calls the same function.
+
+Controlled by the `augmentation:` block in `config.yaml`.
+
+## 4-Channel EWS Features
+
+`use_4channel: true` (default, **TSC only**) expands the normalised/censored
+residual into 4 channels — the main lever for 4-class accuracy:
 
 ```
-Channel 0: raw residual
+Channel 0: raw residual (normalised)
 Channel 1: rolling variance    (window = 25% of series length)
 Channel 2: rolling lag-1 AC    (causal Pearson, via pandas rolling.corr)
 Channel 3: rolling skewness
 ```
 
-Per-channel z-normalisation uses train-set statistics, saved alongside the
-checkpoint as `{model}_{dataset}_best_ch_stats.npz`. Off by default.
+Channels are computed on the same censored/normalised residual used at inference.
+Per-channel z-normalisation uses train-set statistics, saved beside the
+checkpoint as `{model}_{dataset}_best_ch_stats.npz`. Toggle `use_4channel` to
+A/B 1-channel vs 4-channel. DL models remain 1-channel.
 
 ---
 

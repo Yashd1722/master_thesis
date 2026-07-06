@@ -10,15 +10,8 @@ Each Inception module applies filters of 3 different lengths in parallel
 plus a bottleneck + MaxPool passthrough, then concatenates all outputs.
 
 This provides a fair modern DL comparison against the Bury (2021) CNN-LSTM.
-
-Input  : (B, 1, T)        — batch, channel, time
-Output : (B, num_classes) — raw logits
+Input (B, 1, T) -> logits (B, num_classes).
 """
-
-MODEL_NAME  = "inceptiontime"
-MODEL_CLASS = "InceptionTime"
-IS_SKLEARN  = False
-
 import torch
 import torch.nn as nn
 
@@ -104,15 +97,6 @@ class InceptionTime(nn.Module):
         self.fc  = nn.Linear(n_out, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Parameters
-        ----------
-        x : (B, 1, T)
-
-        Returns
-        -------
-        logits : (B, num_classes)
-        """
         residual_input = x
         for module in self.inception_stack:
             x = module(x)

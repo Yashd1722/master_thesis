@@ -7,7 +7,9 @@ import yaml
 import torch
 import numpy as np
 from pathlib import Path
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
+
+from src.data_common import random_left_censor, make_model_input
 
 def _clean_dict(d):
     """Recursively strip whitespace from all dictionary keys to prevent KeyErrors."""
@@ -27,6 +29,45 @@ def get_dataset_info(dataset_name: str, cfg: dict) -> dict:
     """Get dataset metadata (like ts_length and num_classes)."""
     return cfg["datasets"][dataset_name]
 
+
+class EWSDataset(Dataset):
+    """Residual series -> model input, with train/inference-parity transforms.
+
+    Every item is normalised to mean|x|==1 (matching empirical inference). On
+    the training split, when augmentation is enabled, each item is additionally
+    left-censored by a random amount so the model learns to classify short,
+    left-padded records — exactly the shape empirical cores take at inference.
+    Val/test items are the clean (un-censored) normalised full signal.
+    """
+
+    def __init__(self, X, y, length, augment, aug_cfg):
+        # X arrives as (N, 1, L); squeeze the channel — we re-add it per item.
+        self.X = X.astype(np.float32)
+        self.y = y.astype(np.int64)
+        self.length = length
+        self.augment = augment
+        self.normalize = aug_cfg.get("normalize", True)
+        self.pad_max_frac = aug_cfg.get("pad_max_frac", 0.9)
+        self.min_visible = aug_cfg.get("min_visible", 30)
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        series = self.X[idx, 0]
+        if self.augment:
+            # Fresh RNG per call -> different censoring each epoch/worker.
+            rng = np.random.default_rng()
+            out = random_left_censor(
+                series, self.length, rng,
+                pad_max_frac=self.pad_max_frac, min_visible=self.min_visible)
+        elif self.normalize:
+            out = make_model_input(series, self.length)
+        else:
+            out = series.astype(np.float32)
+        x = torch.from_numpy(out).unsqueeze(0)   # (1, length)
+        return x, int(self.y[idx])
+
 def get_dataloader(
     dataset_name: str, 
     split: str,         # "train", "val", or "test"
@@ -38,37 +79,31 @@ def get_dataloader(
     """
     Create a PyTorch DataLoader for the specified dataset and split.
     """
-    # 1. Get sequence length (500 or 1500)
     ts_length = cfg["datasets"][dataset_name]["ts_length"]
-    
-    # 2. Locate the preprocessed .npz file
-    npz_path = Path("dataset/processed") / f"{split}_{ts_length}.npz"
-    
+
+    processed_dir = cfg.get("paths", {}).get("processed_dir", "dataset/processed")
+    npz_path = Path(processed_dir) / f"{split}_{ts_length}.npz"
     if not npz_path.exists():
         raise FileNotFoundError(
             f"Missing data file: {npz_path}\n"
-            f"Please run 'python src/preprocess_bury_data.py' first."
+            f"Run 'python src/preprocess_bury_data.py' first."
         )
-        
-    # 3. Load data into memory (Extremely fast because it's a single .npz file)
+
     data = np.load(npz_path)
     X = data["X"]  # Shape: (N, 1, L)
     y = data["y"]  # Shape: (N,)
-    
-    # 4. Apply padding variant
-    # Variant 1: Standard length (do nothing)
-    # Variant 2: Extended length (pad 50 timesteps with zeros on the right)
-    if pad_variant == 2:
-        X = np.pad(X, ((0, 0), (0, 0), (0, 50)), mode='constant', constant_values=0.0)
-        
-    # 5. Convert to PyTorch tensors
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
-    
-    dataset = TensorDataset(X_tensor, y_tensor)
-    
-    # 6. Configure DataLoader for HPC efficiency
+
+    # 4. Target canvas length. pad_variant==2 uses a slightly longer canvas
+    #    (ts_len+50) so the two DL checkpoints stay diverse for ensembling;
+    #    the meaningful length-invariance now comes from left-censoring below.
+    target_length = ts_length + 50 if pad_variant == 2 else ts_length
+
+    # 5. Build the parity-aware dataset. Augmentation (random left-censoring)
+    #    is applied ONLY on the train split and only when enabled in config.
     is_train = (split == "train")
+    aug_cfg  = cfg.get("augmentation", {})
+    augment  = bool(aug_cfg.get("enabled", False)) and is_train
+    dataset  = EWSDataset(X, y, target_length, augment, aug_cfg)
     use_cuda = torch.cuda.is_available()
     
     return DataLoader(
