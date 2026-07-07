@@ -1,41 +1,44 @@
-10:38:56 | INFO | Model  : rocket
-10:38:56 | INFO | Dataset: ts_500
-10:38:56 | INFO | Mode   : 4-class
-10:38:56 | INFO | IS_TSC : True
-10:38:56 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
-10:38:56 | INFO |   Loading train and val data into memory...
-10:39:01 | INFO |   Dropping 1566 flat train series
-10:39:02 | INFO |   Dropping 104 flat val series
-10:39:02 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
-10:39:02 | INFO |   Subsampled to 50000 (MAX_TRAIN_SAMPLES=50000)
-10:39:02 | INFO |   Fitting rocket on 50000 series...
-11:58:56 | INFO |   Val acc=0.6374  macro-F1=0.6377  time=77.7 min
-11:58:56 | INFO |   Confusion matrix (rows=true, cols=pred):
-11:58:56 | INFO |                fold: [2433, 326, 1157, 1084]
-11:58:56 | INFO |                hopf: [546, 3785, 513, 156]
-11:58:56 | INFO |       transcritical: [901, 291, 2879, 877]
-11:58:56 | INFO |                null: [467, 69, 828, 3584]
-11:58:56 | INFO |   Saved: rocket_ts_500_best.pkl
-11:58:56 | INFO | Done — val_f1=0.6377
-11:58:56 | INFO | Metrics saved: rocket_ts_500_train_metrics.json
+18:24:50 | INFO | Model  : rocket
+18:24:50 | INFO | Dataset: ts_500
+18:24:50 | INFO | Mode   : 4-class
+18:24:50 | INFO | IS_TSC : True
+18:24:50 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
+18:24:50 | INFO |   Loading train and val data into memory...
+18:24:56 | INFO |   Dropping 1566 flat train series
+18:24:56 | INFO |   Dropping 104 flat val series
+18:24:56 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
+18:24:56 | INFO |   Residuals normalised; train 13332 -> 39996 (1 clean + 2 censored copies)
+18:24:56 | INFO |   use_4channel=true — expanding to 4 EWS channels
+18:25:17 | INFO |   ch_stats saved → rocket_ts_500_best_ch_stats.npz
+18:25:17 | INFO |   Final train shape: (39996, 4, 500)  Val shape: (19896, 4, 500)
+18:25:18 | INFO |   Fitting rocket on 39996 series...
+19:21:20 | INFO |   Val acc=0.6662  macro-F1=0.6674  time=51.3 min
+19:21:20 | INFO |   Confusion matrix (rows=true, cols=pred):
+19:21:20 | INFO |                fold: [2814, 292, 1085, 809]
+19:21:20 | INFO |                hopf: [521, 3831, 537, 111]
+19:21:20 | INFO |       transcritical: [1004, 335, 2866, 743]
+19:21:20 | INFO |                null: [400, 43, 761, 3744]
+19:21:20 | INFO |   Saved: rocket_ts_500_best.pkl
+19:21:20 | INFO | Done — val_f1=0.6674
+19:21:20 | INFO | Metrics saved: rocket_ts_500_train_metrics.json
 	Command being timed: "python -u training/train.py --model rocket --dataset ts_500"
-	User time (seconds): 57399.13
-	System time (seconds): 29.55
-	Percent of CPU this job got: 1195%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:20:02
+	User time (seconds): 52908.18
+	System time (seconds): 35.62
+	Percent of CPU this job got: 1558%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 56:36.38
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 50121464
+	Maximum resident set size (kbytes): 43458952
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 58
-	Minor (reclaiming a frame) page faults: 520850
-	Voluntary context switches: 5679
-	Involuntary context switches: 4522875
+	Major (requiring I/O) page faults: 1034
+	Minor (reclaiming a frame) page faults: 636083
+	Voluntary context switches: 7357
+	Involuntary context switches: 32221
 	Swaps: 0
-	File system inputs: 0
-	File system outputs: 3400
+	File system inputs: 328
+	File system outputs: 4216
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

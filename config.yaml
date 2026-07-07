@@ -59,7 +59,7 @@ models:
   # n_jobs is NOT hardcoded here — train.py reads SLURM_CPUS_PER_TASK at runtime
   # and injects it into every model call. These entries only set model-specific
   # hyperparameters that do NOT change with the HPC allocation.
-  tsc: [minirocket, multirocket, arsenal, hydra_multirocket, rdst, weasel2, drcif, rocket]
+  tsc: [minirocket, multirocket, arsenal, rdst, weasel2, drcif, rocket]
   dl:  [cnn_lstm, lstm, inceptiontime]
 
 training:
@@ -109,10 +109,22 @@ training:
   minirocket:       {n_kernels: 10000}
   multirocket:      {n_kernels: 6250}
   arsenal:          {num_kernels: 2000}
-  hydra_multirocket: {n_kernels: 6250, n_groups: 64}
   rdst:             {max_shapelets: 10000}
   weasel2:          {}
   drcif:            {n_estimators: 100}
+
+augmentation:
+  # Bury-style left-censoring: each TRAIN series is randomly left zero-padded so
+  # the model learns to detect a transition from only the tail of a record.
+  # This is what lets the models generalise to short empirical cores (57-365 pts
+  # left-padded to ts_len). See src/data_common.random_left_censor.
+  enabled: true
+  pad_max_frac: 0.95      # max fraction of the series that can be zeroed on the left
+  min_visible: 30         # never leave fewer than this many real points visible
+  # Every input (train/val/test/inference) is normalised to mean|x|==1 so the
+  # scale seen in training matches the scale seen at empirical inference.
+  normalize: true
+  tsc_copies: 2           # extra censored copies per series for TSC single-fit models
 
 inference:
   rolling_window_frac: 0.50         # CSD rolling window as fraction of record length (Bury rw=0.5)
@@ -123,4 +135,5 @@ inference:
   n_null_series: 10                 # AR(1) surrogates per forced series (Bury uses 10)
   null_method: "AR1"                # Primary: AR1 (Bury parity). AAFT is optional/off.
   ar1_fit_fraction: 0.20            # Fit AR(1) to first 20% of series (neutral reference period)
-  use_4channel: false               # EWS feature augmentation (default OFF; see Phase 3)
+  use_4channel: true                # TSC only: expand to 4 EWS channels (raw+var+ac+skew).
+                                    # The main lever for 4-class accuracy. Toggle to A/B.

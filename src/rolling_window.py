@@ -69,17 +69,15 @@ def _lag1_ac(series: np.ndarray) -> float:
 
 def prepare_dl_input(residuals: np.ndarray, position: int,
                      ts_len: int) -> np.ndarray:
-    """Right-aligned, normalised, left-padded to ts_len."""
-    seg   = residuals[:position].astype(np.float64)
-    denom = np.mean(np.abs(seg))
-    if denom > 1e-10:
-        seg = seg / denom
-    n = len(seg)
-    if n >= ts_len:
-        return seg[-ts_len:].astype(np.float32)
-    out      = np.zeros(ts_len, dtype=np.float32)
-    out[-n:] = seg.astype(np.float32)
-    return out
+    """Right-aligned, normalised, left-padded fixed window ending at `position`.
+
+    Delegates to src.data_common.make_fixed_window so training and inference
+    share one definition of the transform (normalise to mean|x|==1, then
+    left-pad to ts_len). This is the exact shape the model is now trained on
+    via Bury-style left-censoring.
+    """
+    from src.data_common import make_fixed_window
+    return make_fixed_window(residuals, position, ts_len)
 
 
 def compute_rolling_ews(
