@@ -4,6 +4,16 @@ All changes are listed chronologically. One bullet per fix. Branch: `refactor-cl
 
 ---
 
+## Phase 3 (Fixes) & Phase 4 (Loop Engineering & Retraining)
+
+- **[3.1]** Subclassed and implemented custom chunked fitting/transform inside `TSCModel` for convolutional classifiers (`minirocket`, `rocket`, `multirocket`). It processes series in chunks of 5,000, casting intermediate outputs to `float32` and calling `gc.collect()`, preventing OOM memory spikes and ensuring peak memory footprint remains well below 55 GB.
+- **[3.2]** Updated `config.yaml` to configure `max_train_samples` per model (30,000 for memory-heavy models like `multirocket` and `arsenal`, and 80,000 for others).
+- **[3.3]** Updated `training/train.py` to import and utilize the newly created `random_censor` (supporting both-sided padding/censoring) and to read `max_train_samples` directly from config.
+- **[3.4]** Modified `training/train.py` to move the flat series (standard deviation <= 1e-06) filtering step outside the `use_4channel` block, ensuring it applies to both 1-channel and 4-channel runs and preventing Numba/aeon variation check crashes.
+- **[4.1]** Created `run/optimize.py` to run a fast proxy hyperparameter optimization on a synthetic OOD validation set. It evaluates combinations of `pad_max_frac`, `both_sided`, `tsc_copies`, `csd_window_frac`, and `use_4channel` on a subset of 5,000 samples with 1,000 kernels, logging results to `results/opt_ledger.csv` and saving the best config to `results/best_config.yaml`.
+- **[4.2]** Ran a full 72-configuration optimization grid search, followed by an 18-configuration refinement search. The winning configuration was found to be: `pad_max_frac=0.9`, `both_sided=False`, `tsc_copies=3`, `csd_window_frac=0.25`, and `use_4channel=True` (OOD Validation Binary AUC = 0.7599).
+- **[4.3]** Created `run/submit_and_gate.py` to orchestrate parallel model retraining on the SLURM cluster. It backs up baseline checkpoints, updates global `config.yaml` with the winning optimized configuration, submits TSC (CPU) and DL (GPU) Slurm array jobs, waits for their completion, and enforces a strict validation F1-gating check that reverts to baseline checkpoints for any model that regresses.
+
 ## Phase 6 — Documentation
 
 - **[6.1]** Rewrote `README.md`: accurate 11-model roster (8 TSC + 3 DL), current

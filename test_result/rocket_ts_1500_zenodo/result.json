@@ -1,0 +1,64 @@
+{
+  "model": "rocket",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "null_idx": 3,
+  "inference_time_sec": 344.72,
+  "timestamp": "2026-07-07T01:25:06",
+  "binary_auc": 0.913333,
+  "roc_fpr": [
+    0.0,
+    0.104,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.9306666666666666,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ],
+  "per_class_auc": {
+    "fold": 0.905,
+    "hopf": 0.938,
+    "transcritical": 0.897
+  },
+  "macro_f1": 0.7820412429969796,
+  "macro_auc_ovr": 0.854333,
+  "accuracy": 0.7815,
+  "confusion_matrix": [
+    [
+      357,
+      19,
+      81,
+      43
+    ],
+    [
+      49,
+      395,
+      46,
+      10
+    ],
+    [
+      69,
+      17,
+      363,
+      51
+    ],
+    [
+      15,
+      1,
+      36,
+      448
+    ]
+  ]
+}

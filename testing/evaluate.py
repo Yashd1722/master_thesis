@@ -515,7 +515,10 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                 null_tau_ci = compute_tau_ci(null_taus) if null_taus else {}
 
                 tag       = f"{core_name}_{sap_id}_{element}"
-                _rdir_tag = experiment_dir(model_name, f"pangaea_{tag}", "pangaea", cfg)
+                # dataset_name must be in the path: without it ts_500 and ts_1500
+                # share a result dir and whichever runs second skips itself.
+                _rdir_tag = experiment_dir(
+                    model_name, f"{dataset_name}_pangaea_{tag}", "pangaea", cfg)
                 if (_rdir_tag / "result.json").exists() and not force:
                     logger.info(f"    {tag}: already evaluated — skipping")
                     all_results[tag] = json.loads(
@@ -528,11 +531,13 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                     "n_forced": len(p_trans_f),
                     "n_null": len(all_null_dl) if all_null_dl else 0,
                     "p_transition": p_trans_f.tolist(),
+                    "p_transition_null": p_trans_n.tolist() if p_trans_n is not None else [],
+                    "null_window_counts": null_window_counts if null_window_counts is not None else [],
                     "ages_kyr_bp": rw_forced.ages_kyr_bp.tolist(),
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 }
 
-                result_dir  = experiment_dir(model_name, f"pangaea_{tag}", "pangaea", cfg)
+                result_dir  = _rdir_tag
                 result_data = {
                     **base,
                     # Binary AUC (Bury-comparable)

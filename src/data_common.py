@@ -86,6 +86,40 @@ def random_left_censor(
     return left_pad_to(tail, L)
 
 
+def random_censor(
+    x: np.ndarray,
+    length: int,
+    rng: np.random.Generator,
+    pad_max_frac: float = 0.9,
+    min_visible: int = 30,
+    both_sided: bool = False,
+) -> np.ndarray:
+    """Random censoring wrapper supporting both left-only and both-sided padding."""
+    x = np.asarray(x, dtype=np.float64)
+    L = length
+    if both_sided:
+        # Pad left and right (up to 45% each side, matching Bury)
+        pad_l_max = int(0.45 * L)
+        pad_r_max = int(0.45 * L)
+        pad_l = int(rng.uniform(0.0, pad_l_max))
+        pad_r = int(rng.uniform(0.0, pad_r_max))
+        
+        visible = L - pad_l - pad_r
+        if visible < min_visible:
+            visible = min_visible
+            pad_l = int((L - visible) / 2)
+            pad_r = L - visible - pad_l
+            
+        tail = x[pad_l : L - pad_r]
+        tail = normalize_mean_abs(tail)
+        
+        out = np.zeros(L, dtype=np.float32)
+        out[pad_l : pad_l + len(tail)] = tail
+        return out
+    else:
+        return random_left_censor(x, length, rng, pad_max_frac=pad_max_frac, min_visible=min_visible)
+
+
 def make_model_input(x: np.ndarray, length: int) -> np.ndarray:
     """Clean (un-augmented) model input: normalise then left-pad to `length`.
 

@@ -27,8 +27,9 @@ export NUMBA_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
+# Re-evaluate from scratch: sbatch --export=ALL,EVAL_FORCE=--force ...
 python -u testing/evaluate.py \
     --model "$MODEL" \
     --dataset "$DATASET" \
     --target pangaea \
-    --config config.yaml
+    --config config.yaml ${EVAL_FORCE:-}

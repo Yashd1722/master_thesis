@@ -1,0 +1,64 @@
+{
+  "model": "minirocket",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "null_idx": 3,
+  "inference_time_sec": 7.62,
+  "timestamp": "2026-07-10T11:10:47",
+  "binary_auc": 0.829237,
+  "roc_fpr": [
+    0.0,
+    0.22383252818035426,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.8823058446757406,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ],
+  "per_class_auc": {
+    "fold": 0.800484,
+    "hopf": 0.875684,
+    "transcritical": 0.8115
+  },
+  "macro_f1": 0.6804660886269114,
+  "macro_auc_ovr": 0.787058,
+  "accuracy": 0.680497093605933,
+  "confusion_matrix": [
+    [
+      707,
+      72,
+      252,
+      219
+    ],
+    [
+      122,
+      978,
+      119,
+      31
+    ],
+    [
+      213,
+      97,
+      746,
+      191
+    ],
+    [
+      63,
+      13,
+      202,
+      964
+    ]
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "model": "weasel2",
+  "dataset": "ts_1500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "null_idx": 3,
+  "inference_time_sec": 220.83,
+  "timestamp": "2026-07-07T01:23:03",
+  "binary_auc": 0.797,
+  "roc_fpr": [
+    0.0,
+    0.252,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.846,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ],
+  "per_class_auc": {
+    "fold": 0.757,
+    "hopf": 0.844,
+    "transcritical": 0.79
+  },
+  "macro_f1": 0.6440987180329392,
+  "macro_auc_ovr": 0.762,
+  "accuracy": 0.643,
+  "confusion_matrix": [
+    [
+      265,
+      26,
+      92,
+      117
+    ],
+    [
+      65,
+      350,
+      55,
+      30
+    ],
+    [
+      90,
+      29,
+      297,
+      84
+    ],
+    [
+      45,
+      10,
+      71,
+      374
+    ]
+  ]
+}

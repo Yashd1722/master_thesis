@@ -28,5 +28,5 @@ source "$HOME/Master_thesis/myenv/bin/activate"
 
 mkdir -p logs
 
-python -u training/train.py --model "$MODEL" --dataset "$DATASET" \
+python -u training/train.py --model "$MODEL" --dataset "$DATASET" --force \
   2>&1 | tee "logs/${MODEL}_${DATASET}_train.log"
