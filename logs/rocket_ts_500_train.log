@@ -1,44 +1,45 @@
-18:24:50 | INFO | Model  : rocket
-18:24:50 | INFO | Dataset: ts_500
-18:24:50 | INFO | Mode   : 4-class
-18:24:50 | INFO | IS_TSC : True
-18:24:50 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
-18:24:50 | INFO |   Loading train and val data into memory...
-18:24:56 | INFO |   Dropping 1566 flat train series
-18:24:56 | INFO |   Dropping 104 flat val series
-18:24:56 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
-18:24:56 | INFO |   Residuals normalised; train 13332 -> 39996 (1 clean + 2 censored copies)
-18:24:56 | INFO |   use_4channel=true — expanding to 4 EWS channels
-18:25:17 | INFO |   ch_stats saved → rocket_ts_500_best_ch_stats.npz
-18:25:17 | INFO |   Final train shape: (39996, 4, 500)  Val shape: (19896, 4, 500)
-18:25:18 | INFO |   Fitting rocket on 39996 series...
-19:21:20 | INFO |   Val acc=0.6662  macro-F1=0.6674  time=51.3 min
-19:21:20 | INFO |   Confusion matrix (rows=true, cols=pred):
-19:21:20 | INFO |                fold: [2814, 292, 1085, 809]
-19:21:20 | INFO |                hopf: [521, 3831, 537, 111]
-19:21:20 | INFO |       transcritical: [1004, 335, 2866, 743]
-19:21:20 | INFO |                null: [400, 43, 761, 3744]
-19:21:20 | INFO |   Saved: rocket_ts_500_best.pkl
-19:21:20 | INFO | Done — val_f1=0.6674
-19:21:20 | INFO | Metrics saved: rocket_ts_500_train_metrics.json
-	Command being timed: "python -u training/train.py --model rocket --dataset ts_500"
-	User time (seconds): 52908.18
-	System time (seconds): 35.62
-	Percent of CPU this job got: 1558%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 56:36.38
+13:02:26 | INFO | Model  : rocket
+13:02:26 | INFO | Dataset: ts_500
+13:02:26 | INFO | Mode   : 4-class
+13:02:26 | INFO | IS_TSC : True
+13:02:26 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
+13:02:26 | INFO |   Loading train and val data into memory...
+13:02:31 | INFO |   Dropping 1566 flat train series
+13:02:31 | INFO |   Dropping 104 flat val series
+13:02:31 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
+13:02:32 | INFO |   Residuals normalised; train 10000 -> 40000 (1 clean + 3 censored copies)
+13:02:32 | INFO |   use_4channel=true — expanding to 4 EWS channels
+13:02:53 | INFO |   ch_stats saved → rocket_ts_500_best_ch_stats.npz
+13:02:55 | INFO |   Final train shape: (40000, 4, 500)  Val shape: (19896, 4, 500)
+13:02:55 | INFO |   Fitting rocket on 40000 series...
+14:02:39 | INFO |   Val acc=0.6566  macro-F1=0.6589  time=55.1 min
+14:02:39 | INFO |   Confusi14:02:39 | INFO |   Val acc=0.6566  macro-F1=0.6589  time=55.1 min
+14:02:39 | INFO |   Confusion matrix (rows=true, cols=pred):
+14:02:39 | INFO |                fold: [2820, 297, 1089, 794]
+14:02:39 | INFO |                hopf: [567, 3788, 542, 103]
+14:02:39 | INFO |       tran14:02:39 | INFO |   Saved: rocket_ts_500_best.pkl
+14:02:39 | INFO | Done — val_f1=0.6589
+14:02:39 | INFO | Metrics saved: rocket_ts_500_train_metrics.json
+FO | Done — val_f1=0.6589
+14:02:39 | INFO | Metrics saved: rocket_ts_500_train_metrics.json
+	Command being timed: "python -u training/train.py --model rocket --dataset ts_500 --force"
+	User time (seconds): 56378.40
+	System time (seconds): 38.79
+	Percent of CPU this job got: 1559%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:00:17
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 43458952
+	Maximum resident set size (kbytes): 43454476
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 1034
-	Minor (reclaiming a frame) page faults: 636083
-	Voluntary context switches: 7357
-	Involuntary context switches: 32221
+	Major (requiring I/O) page faults: 825
+	Minor (reclaiming a frame) page faults: 796626
+	Voluntary context switches: 1634
+	Involuntary context switches: 35074
 	Swaps: 0
-	File system inputs: 328
-	File system outputs: 4216
+	File system inputs: 0
+	File system outputs: 4224
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

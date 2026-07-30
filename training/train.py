@@ -266,7 +266,7 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     # Doing (1) before (2) means the 4-channel CSD features are computed on the
     # same censored/normalised residual the empirical inference will see.
     # ------------------------------------------------------------------
-    from src.data_common import make_model_input, random_left_censor
+    from src.data_common import make_model_input, random_censor
     infer_cfg   = cfg.get("inference", {})
     use_4ch     = infer_cfg.get("use_4channel", False)
     window_frac = infer_cfg.get("rolling_window_frac_augment", 0.25)
@@ -276,7 +276,8 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     n_copies     = int(aug_cfg.get("tsc_copies", 2)) if aug_cfg.get("enabled", False) else 0
     pad_max_frac = aug_cfg.get("pad_max_frac", 0.9)
     min_visible  = aug_cfg.get("min_visible", 30)
-    max_samp     = get_max_train_samples(model_name)
+    both_sided   = bool(aug_cfg.get("both_sided", False))
+    max_samp     = tr_cfg.get("max_train_samples", get_max_train_samples(model_name))
 
     def _stratified_subsample(X, y, target):
         rng     = np.random.default_rng(seed)
@@ -301,13 +302,14 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     parts_y = [y_train]
     for _ in range(n_copies):
         parts_X.append(np.stack([
-            random_left_censor(s, ts_len, rng, pad_max_frac=pad_max_frac,
-                               min_visible=min_visible)
+            random_censor(s, ts_len, rng, pad_max_frac=pad_max_frac,
+                          min_visible=min_visible, both_sided=both_sided)
             for s in X_train]).astype(np.float32))
         parts_y.append(y_train)
     X_train = np.concatenate(parts_X, axis=0)
     y_train = np.concatenate(parts_y, axis=0)
     X_val   = np.stack([make_model_input(s, ts_len) for s in X_val]).astype(np.float32)
+
     logger.info(f"  Residuals normalised; train {len(parts_y[0])} -> {len(X_train)} "
                 f"(1 clean + {n_copies} censored copies)")
 
@@ -318,15 +320,21 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
         X_train, ch_stats = augment_ews_channels(X_train, window_frac=window_frac)
         X_val,   _        = augment_ews_channels(X_val,   window_frac=window_frac,
                                                   channel_stats=ch_stats)
-        tr_ok = (X_train.std(axis=2) > 1e-6).all(axis=1)
-        vl_ok = (X_val.std(axis=2)   > 1e-6).all(axis=1)
-        X_train, y_train = X_train[tr_ok], y_train[tr_ok]
-        X_val,   y_val   = X_val[vl_ok],   y_val[vl_ok]
         np.savez(ch_stats_path, mean=ch_stats["mean"], std=ch_stats["std"])
         logger.info(f"  ch_stats saved → {ch_stats_path.name}")
     else:
         X_train = X_train[:, np.newaxis, :]
         X_val   = X_val[:, np.newaxis, :]
+
+    # Add a tiny amount of noise to prevent interval-based classifiers (e.g. DrCIF)
+    # from crashing on flat zero-padded regions across any channel:
+    X_train += rng.normal(0, 1e-3, X_train.shape).astype(np.float32)
+    X_val   += np.random.default_rng(seed + 1).normal(0, 1e-3, X_val.shape).astype(np.float32)
+
+    tr_ok = (X_train.std(axis=2) > 1e-6).all(axis=1)
+    vl_ok = (X_val.std(axis=2)   > 1e-6).all(axis=1)
+    X_train, y_train = X_train[tr_ok], y_train[tr_ok]
+    X_val,   y_val   = X_val[vl_ok],   y_val[vl_ok]
 
     logger.info(f"  Final train shape: {X_train.shape}  Val shape: {X_val.shape}")
 
