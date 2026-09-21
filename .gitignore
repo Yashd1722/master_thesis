@@ -28,9 +28,12 @@ dataset/processed/
 data/**/*.npz
 __MACOSX/
 old_results_backup/
+checkpoints_backup/
 _pre_refactor_backup_*/
 *_smoke/
 config_smoke.yaml
+slurm-*.out
+*.zip
 
 # ----------------------------
 # DATASET RULES
@@ -52,5 +55,5 @@ dataset/**
 # ----------------------------
 !results/
 !results/**/*
-!test_results/
-!test_results/**/*
+!test_result/
+!test_result/**/*

@@ -1,22 +1,22 @@
-# Core
 numpy
 pandas
 scipy
 
-# Deep Learning
 torch
 torchvision
 torchaudio
 
-# Data handling / utils
 pyyaml
 tqdm
 
-# ML / metrics
-scikit-learn
+scikit-learn>=1.7,<1.8   # aeon 1.4 + tsai 1.0.1 need this range; wildboar's <1.6 pin is stale but works on 1.7
+aeon
+tslearn      # aeon soft dependency for LearningShapeletClassifier (ls)
+tensorflow   # aeon soft dependency for LearningShapeletClassifier (ls)
+pyts         # BagOfPatterns / SAXVSM backend (models/bakeoff_dictionary.py); needs models/_pyts_compat.py
+tsai         # PatchTST backend (models/patchtst.py)
+mrsqm        # MrSQMClassifier backend (models/tsc.py, mrsqm model)
+wildboar     # ShapeletForestClassifier / gRSF backend (models/tsc.py, grsf model)
 
-# Plotting
 matplotlib
-
-# Optional (very useful for your project)
 seaborn

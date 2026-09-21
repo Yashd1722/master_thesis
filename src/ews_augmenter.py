@@ -19,7 +19,7 @@ _CHUNK_SIZE = 10_000
 
 
 def _rolling_channels_chunk(chunk: np.ndarray, window: int) -> np.ndarray:
-    """(B, L) -> (B, 4, L) [raw, var, lag1_ac, skew] for one chunk."""
+    """(B, L) -> (B, 5, L) [raw, var, lag1_ac, skew, var_ratio] for one chunk."""
     # (L, B) DataFrame — rolling operates down rows (time), one column per series.
     df = pd.DataFrame(chunk.T, dtype=np.float64)  # (L, B)
     roll = df.rolling(window, min_periods=2)
@@ -28,24 +28,29 @@ def _rolling_channels_chunk(chunk: np.ndarray, window: int) -> np.ndarray:
     skew_ch = roll.skew().fillna(0.0)                     # (L, B)
 
     # Lag-1 Pearson autocorrelation between x[t] and x[t-1] within each window.
-    # df.shift(1) shifts rows down so row t of df_lag contains x[t-1].
     lag1_ch = roll.corr(df.shift(1)).fillna(0.0)          # (L, B)
 
-    # Stack to (B, 4, L)
+    # Log-scaled Variance Growth Ratio: Var(t) / (Var_initial + eps)
+    # Replace 0.0 with NaN so bfill picks up the true first non-zero variance of the visible signal
+    init_var  = var_ch.replace(0.0, np.nan).bfill().iloc[0].fillna(1e-6)  # (B,)
+    var_ratio = np.log1p(np.maximum(0.0, var_ch / (init_var + 1e-6))).fillna(0.0)  # (L, B)
+
+    # Stack to (B, 5, L)
     out = np.stack([
         chunk,              # raw residual — (B, L)
         var_ch.T.values,    # (B, L)
         lag1_ch.T.values,   # (B, L)
         skew_ch.T.values,   # (B, L)
-    ], axis=1)              # -> (B, 4, L)
+        var_ratio.T.values, # (B, L) - Channel 4: Variance Growth Ratio
+    ], axis=1)              # -> (B, 5, L)
 
     return out.astype(np.float32)
 
 
 def _compute_rolling_channels(X: np.ndarray, window: int) -> np.ndarray:
-    """(N, L) -> (N, 4, L), processed in _CHUNK_SIZE batches for memory."""
+    """(N, L) -> (N, 5, L), processed in _CHUNK_SIZE batches for memory."""
     N, L = X.shape
-    out  = np.empty((N, 4, L), dtype=np.float32)
+    out  = np.empty((N, 5, L), dtype=np.float32)
 
     for start in range(0, N, _CHUNK_SIZE):
         end              = min(start + _CHUNK_SIZE, N)

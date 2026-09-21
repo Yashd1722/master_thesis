@@ -25,9 +25,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from models import get_model, list_models, is_tsc_model
-from src.constants import CLASS_NAMES, NULL_IDX
+from src.constants import CLASS_NAMES, NULL_IDX, setup_log as _setup_log
 from src.dataset_loader import load_config, get_dataset_info, get_dataloader
-from src.rolling_window import run_all_sapropels, compute_rolling_ews, ELEMENTS
+from src.rolling_window import compute_rolling_ews, ELEMENTS
 from metric.auc         import compute_auc, ovr_macro_auc
 from metric.roc         import compute_roc
 from metric.accuracy    import compute_accuracy
@@ -41,18 +41,6 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray): return obj.tolist()
         if isinstance(obj, np.generic):  return obj.item()
         return super().default(obj)
-
-
-def setup_log(log_path: Path) -> logging.Logger:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger(log_path.stem)
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter("%(asctime)s | %(message)s", "%H:%M:%S")
-    for h in [logging.FileHandler(log_path, mode="w"),
-              logging.StreamHandler(sys.stdout)]:
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-    return logger
 
 
 N_SURROGATES = 10
@@ -223,11 +211,16 @@ def _prepare_tsc_input(X_2d, model_name, dataset_name, cfg):
     if use_4ch:
         from src.ews_augmenter import augment_ews_channels
         ch_stats = _load_ch_stats(model_name, dataset_name, cfg)
+        if ch_stats is None:
+            raise RuntimeError(
+                f"use_4channel=true but no channel-stats file for "
+                f"{model_name}/{dataset_name}. Re-run training to regenerate "
+                f"{model_name}_{dataset_name}_best_ch_stats.npz.")
         X_aug, _ = augment_ews_channels(X_2d, window_frac=window_frac,
                                          channel_stats=ch_stats)
-        return X_aug   # (N, 4, L)
+        return X_aug
     else:
-        return X_2d[:, np.newaxis, :]   # (N, 1, L)
+        return X_2d[:, np.newaxis, :]
 
 
 def evaluate_zenodo(model_name, dataset_name, cfg, device, logger, force=False):
@@ -377,6 +370,11 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
         model = load_tsc_model(model_name, dataset_name, cfg, logger)
         if use_4ch:
             ch_stats = _load_ch_stats(model_name, dataset_name, cfg)
+            if ch_stats is None:
+                raise RuntimeError(
+                    f"use_4channel=true but no channel-stats file for "
+                    f"{model_name}/{dataset_name}. Re-run training to regenerate "
+                    f"{model_name}_{dataset_name}_best_ch_stats.npz.")
             from src.ews_augmenter import augment_ews_channels as _aug
             def predict_fn(X_2d):
                 X_aug, _ = _aug(X_2d, window_frac=window_frac, channel_stats=ch_stats)
@@ -432,11 +430,12 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                 forced_ages      = forced_ages[sort_idx]
 
                 # ── Rolling-window EWS on forced ─────────────────────────────
+                pad_mode = cfg.get("inference", {}).get("pad_mode", "zero")
                 rw_forced = compute_rolling_ews(
                     residuals=forced_residuals, ages_kyr_bp=forced_ages,
                     element=element, core_name=core_name,
                     sapropel_id=sap_id, segment_type="forced",
-                    cfg=cfg, ts_len=ts_len)
+                    cfg=cfg, ts_len=ts_len, pad_mode=pad_mode)
 
                 X_forced = np.stack(rw_forced.dl_inputs)
 
@@ -459,11 +458,13 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                 null_cols = [c for c in df_null.columns if c.startswith("null_")]
                 null_ages = (df_null["age_kyr_bp"].values.astype(np.float64)
                              if "age_kyr_bp" in df_null.columns else forced_ages)
-
+                
                 # Build null rolling windows. Track how many windows each
                 # surrogate contributes so we can split p_trans_n later for tau.
                 all_null_dl      = []
                 null_window_counts = []  # n_windows per surrogate
+                
+                # ── Rolling-window EWS on NULL surrogate ─────────────────────
                 for nc in null_cols:
                     null_resids = df_null[nc].values.astype(np.float64)
                     valid_n     = ~np.isnan(null_resids)
@@ -472,11 +473,12 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                     null_sort      = np.argsort(null_ages[valid_n])[::-1]
                     null_r_sorted  = null_resids[valid_n][null_sort]
                     null_a_sorted  = null_ages[valid_n][null_sort]
+                    
                     rw_null = compute_rolling_ews(
                         residuals=null_r_sorted, ages_kyr_bp=null_a_sorted,
                         element=element, core_name=core_name,
-                        sapropel_id=sap_id, segment_type="neutral",
-                        cfg=cfg, ts_len=ts_len)
+                        sapropel_id=sap_id, segment_type="null",
+                        cfg=cfg, ts_len=ts_len, pad_mode=pad_mode)
                     null_window_counts.append(len(rw_null.dl_inputs))
                     all_null_dl.extend(rw_null.dl_inputs)
 
@@ -531,6 +533,10 @@ def evaluate_pangaea(model_name, dataset_name, cfg, device, logger, force=False)
                     "n_forced": len(p_trans_f),
                     "n_null": len(all_null_dl) if all_null_dl else 0,
                     "p_transition": p_trans_f.tolist(),
+                    "p_fold": probs_forced[:, 0].tolist(),
+                    "p_hopf": probs_forced[:, 1].tolist(),
+                    "p_transcritical": probs_forced[:, 2].tolist(),
+                    "p_null": probs_forced[:, 3].tolist() if probs_forced.shape[1] > 3 else [],
                     "p_transition_null": p_trans_n.tolist() if p_trans_n is not None else [],
                     "null_window_counts": null_window_counts if null_window_counts is not None else [],
                     "ages_kyr_bp": rw_forced.ages_kyr_bp.tolist(),
@@ -584,8 +590,9 @@ def main():
     device  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log_dir = REPO_ROOT / cfg["paths"]["logs"]
     log_dir.mkdir(parents=True, exist_ok=True)
-    logger  = setup_log(
-        log_dir / f"{args.model}_{args.dataset}_{args.target}_eval.log")
+    logger  = _setup_log(
+        log_dir / f"{args.model}_{args.dataset}_{args.target}_eval.log",
+        include_level=False)
 
     logger.info(f"Model  : {args.model}  IS_TSC={is_tsc_model(args.model)}")
     logger.info(f"Dataset: {args.dataset}  Target: {args.target}")

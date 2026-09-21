@@ -1,6 +1,0 @@
-both_sided: false
-csd_window_frac: 0.25
-max_train_samples: 5000
-pad_max_frac: 0.9
-tsc_copies: 3
-use_4channel: true

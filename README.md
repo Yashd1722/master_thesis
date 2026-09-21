@@ -1,329 +1,192 @@
 # Early Warning Signals for Mediterranean Sapropel Transitions
 
 Master thesis — Yashkumar Dhameliya  
-Reproduces and extends **Bury et al. (2021)** using both deep learning and classical
-time-series classification (TSC) to detect critical transitions in Mediterranean sediment records.
+Reproduces and extends **Bury et al. (2021)** using deep learning and classical time-series classification (TSC) algorithms from the *Great Time Series Classification Bake-Off* (Bagnall et al., 2017) to detect critical transitions in Mediterranean sediment records.
 
 ---
 
-## Papers Reproduced
+## Papers & Benchmarks Reproduced
 
-| Paper | DOI | What we reproduce |
+| Paper | DOI | What We Reproduce / Extend |
 |---|---|---|
-| Bury et al. (2021) PNAS | [10.1073/pnas.2106140118](https://doi.org/10.1073/pnas.2106140118) | CNN-LSTM trained on Zenodo ts_500/ts_1500, AR(1) null, applied to PANGAEA Mo records |
-| Hennekam et al. (2020) PANGAEA | [10.1594/PANGAEA.923197](https://doi.pangaea.de/10.1594/PANGAEA.923197) | Empirical XRF data for 3 cores × 5 elements |
+| Bury et al. (2021) PNAS | [10.1073/pnas.2106140118](https://doi.org/10.1073/pnas.2106140118) | Deep learning for early warning signals of tipping points (Zenodo & empirical sediment core evaluation) |
+| Bagnall et al. (2017) Data Mining & Knowl. Disc. | [10.1007/s10618-016-0483-9](https://doi.org/10.1007/s10618-016-0483-9) | *The Great Time Series Classification Bake-Off*: 22 classical TSC & Bake-Off classifiers evaluated on EWS signal detection |
+| Hennekam et al. (2020) PANGAEA | [10.1594/PANGAEA.923197](https://doi.pangaea.de/10.1594/PANGAEA.923197) | High-resolution XRF sediment core geochemical data (3 Mediterranean cores × 5 elements) |
 
 ---
 
-## Model Roster
+## Model Roster (29)
 
-### Deep Learning (PyTorch) — 3 models
+### 1. Deep Learning Models (PyTorch) — 7 Models
+Trained on GPU partition (`h100`). Checkpoints saved to `checkpoints/{model}_{dataset}_v{variant}_best.ckpt`.
+DL models consume the single normalised residual channel `(B, 1, L)`.
 
-| Model | File | Description |
-|---|---|---|
-| `cnn_lstm` | `models/cnn_lstm.py` | Bury 2021 baseline: Conv1D → LSTM → LSTM → softmax |
-| `lstm` | `models/lstm.py` | Stacked LSTM classifier |
-| `inceptiontime` | `models/inceptiontime.py` | InceptionTime (3 Inception modules + GAP + residual) |
+| Model | File | Description | Key Architectural Features |
+|---|---|---|---|
+| `cnn_lstm` | [`models/cnn_lstm.py`](file:///home/s466553/Master_thesis/master_thesis/models/cnn_lstm.py) | Bury 2021 baseline | Conv1D → MaxPool → LSTM(50) → LSTM(10) → Linear; classifier reads the hidden state at the final timestep, where the left-padded input holds the approach to the transition |
+| `lstm` | [`models/lstm.py`](file:///home/s466553/Master_thesis/master_thesis/models/lstm.py) | Stacked Recurrent Network | Linear(1→128) → LSTM(128) → LSTM(64) → Linear; final-timestep readout |
+| `inceptiontime` | [`models/inceptiontime.py`](file:///home/s466553/Master_thesis/master_thesis/models/inceptiontime.py) | InceptionTime Network | 3 Inception modules + Global Average Pooling + Residual connections |
+| `patchtst` | [`models/patchtst.py`](file:///home/s466553/Master_thesis/master_thesis/models/patchtst.py) | Patch Transformer | `tsai` PatchTST, patch_len 16 / stride 8, 3 layers, 4 heads (requires `tsai`) |
+| `resnet` | [`models/resnet.py`](file:///home/s466553/Master_thesis/master_thesis/models/resnet.py) | Wang 2017 ResNet baseline | 3 residual blocks {64,128,128}, kernels {8,5,3}, GAP → Linear; layer-for-layer match to Fawaz `dl-4-tsc` (see `ARCHITECTURE_COMPARISON.md`) |
+| `tcn` | [`models/tcn.py`](file:///home/s466553/Master_thesis/master_thesis/models/tcn.py) | Bai 2018 Temporal ConvNet | 8 dilated causal residual blocks, `weight_norm`, dilation 2^i, last-timestep readout; block/init match to `locuslab/TCN` |
+| `rnn_fcn` | [`models/rnn_fcn.py`](file:///home/s466553/Master_thesis/master_thesis/models/rnn_fcn.py) | Karim 2018 LSTM-FCN | dimension-shuffled LSTM(128) ∥ FCN {128,256,128}, concat → Linear; match to `titu1994/LSTM-FCN` and `tsai` |
 
-Trained on GPU partition (`h100`). Checkpoints: `checkpoints/{model}_{dataset}_v{variant}_best.ckpt`.
+### 2. Classical & Bake-Off TSC Models — 22 Models
+Trained on CPU partition (`large_cpu`, 16 CPUs, 150 GB RAM). Checkpoints saved to `checkpoints/{model}_{dataset}_best.pkl`.
+TSC models consume the 5-channel EWS feature suite (see Improvement 2) flattened to `(N, 5L)`.
 
-### Classical TSC (aeon v1.4.0) — 7 models
-
-All TSC models share **one** wrapper (`models/tsc.py`); each is a row in `TSC_SPECS`.
-
-| Model | Key hyperparams | Notes |
-|---|---|---|
-| `minirocket` | n_kernels=10000 | |
-| `multirocket` | n_kernels=6250 | |
-| `arsenal` | num_kernels=2000 | |
-| `drcif` | n_estimators=100 | |
-| `rocket` | n_kernels=10000 | |
-| `rdst` | max_shapelets=10000 | float64 cast |
-| `weasel2` | WEASEL v2 | univariate: uses channel 0 only |
-
-Trained on CPU partition (`large_cpu`, 16 CPUs, 60 GB). Checkpoints: `checkpoints/{model}_{dataset}_best.pkl`.
-(`hydra_multirocket` was dropped — aeon's Hydra conv1d OOMs regardless of sample count.)
-
-`n_jobs` is NOT hardcoded in config — `train.py` reads `SLURM_CPUS_PER_TASK` at runtime.
-Training is capped at `MAX_TRAIN_SAMPLES` (stratified subsample), defined per model in `TSC_SPECS`.
+| Model | File / Class | Category | Key Features / Scalability Knobs |
+|---|---|---|---|
+| `minirocket` | `models/tsc.py` | Random Convolution | 10,000 MiniRocket kernels + Softmax `decision_function` calibration |
+| `multirocket` | `models/tsc.py` | Random Convolution | 6,250 MultiRocket kernels (first/second order differences) |
+| `rocket` | `models/tsc.py` | Random Convolution | 10,000 original Rocket kernels |
+| `arsenal` | `models/tsc.py` | Kernel Ensemble | 2,000 MiniRocket ensemble classifiers |
+| `drcif` | `models/tsc.py` | Canonical Interval | Diverse Representation Canonical Interval Forest (100 trees) |
+| `weasel2` | `models/tsc.py` | Dictionary (SFA) | WEASEL v2 multi-resolution word histograms |
+| `rdst` | `models/tsc.py` | Shapelet | Random Dilation Shapelet Transform (1,000 shapelets) |
+| `tsf` | `models/tsc.py` | Summary Interval | Time Series Forest (200 trees) |
+| `st` | `models/tsc.py` | Shapelet Transform | Contractable Shapelet Transform Classifier |
+| `ls` | `models/tsc.py` | Shapelet | Learned Shapelets |
+| `boss` / `cboss` | `models/tsc.py` | Dictionary (SFA) | Contractable Bag of SFA Symbols |
+| `bop` | [`models/bakeoff_dictionary.py`](file:///home/s466553/Master_thesis/master_thesis/models/bakeoff_dictionary.py) | Dictionary | Bag of Patterns (1-NN on SFA word histograms) |
+| `saxvsm` | [`models/bakeoff_dictionary.py`](file:///home/s466553/Master_thesis/master_thesis/models/bakeoff_dictionary.py) | Dictionary | SAX-VSM (Vector Space Model with cosine similarity) |
+| `tsbf` | [`models/bakeoff_tsbf.py`](file:///home/s466553/Master_thesis/master_thesis/models/bakeoff_tsbf.py) | Subseries Bagging | Time Series Bag of Features |
+| `lps` | [`models/bakeoff_lps.py`](file:///home/s466553/Master_thesis/master_thesis/models/bakeoff_lps.py) | Tree Distance | Learned Pattern Similarity (randomized tree-based histograms) |
+| `fastshapelet` | [`models/bakeoff_fastshapelet.py`](file:///home/s466553/Master_thesis/master_thesis/models/bakeoff_fastshapelet.py) | Shapelet | Fast Shapelet Discovery via SAX dimensionality reduction |
+| `catch22` | `models/tsc.py` | Feature Based | 22 canonical time-series features + classifier |
+| `tde` | `models/tsc.py` | Dictionary (SFA) | Temporal Dictionary Ensemble |
+| `pf` | `models/tsc.py` | Distance Based | Proximity Forest (elastic-distance trees) |
+| `cif` | `models/tsc.py` | Canonical Interval | Canonical Interval Forest (predecessor of `drcif`; single representation) |
+| `mrsqm` | `models/tsc.py` | Symbolic Sequence | Multiple Representation Sequence Miner (SAX+SFA + linear SEQL; requires `mrsqm`) |
+| `grsf` | `models/tsc.py` (wildboar) | Shapelet Forest | Generalized Random Shapelet Forest (shapelet split embedded in tree nodes; requires `wildboar`) |
 
 ---
 
-## Repository Structure
+## Key Pipeline & Architectural Improvements
 
-```
+1. **Continuous Probability Calibration for Rocket Family**:
+   * Replaced hard step-function binary outputs from `RidgeClassifierCV` with continuous decision function probabilities (`scipy.special.softmax(decision_function(X))`), enabling meaningful ROC AUC scoring.
+2. **Multivariate 5-Channel EWS Feature Suite (TSC models)**:
+   * `src/ews_augmenter.py` expands the residual into $(N, 5, L)$ — raw residual, rolling variance, rolling lag-1 AC, rolling skewness, and the Variance Growth Ratio $\nabla V / (V + \epsilon)$ — flattened to $(N, 5L)$ so the univariate TSC classifiers ingest all five. Per-channel z-norm stats are fit on train and reused for val/test/empirical (`{model}_{dataset}_best_ch_stats.npz`).
+3. **Geological Noise & Bioturbation Left-Censoring Augmentation**:
+   * Enhanced `random_left_censor()` with AR(1) red noise ($\phi \in [0.3, 0.7]$) and 3-point Gaussian smoothing to bridge the synthetic-to-empirical (Sim-to-Real) domain gap.
+4. **Right-Aligned Left-Padded Sequences**:
+   * Training (`src/data_common.py`) and inference (`src/rolling_window.py`) share one transform: normalise the visible signal to mean$|x|=1$, then left-pad to `ts_len` (`pad_mode` from `config.yaml`, default `zero` per Bury 2021). The transition always sits at the final timestep, which the recurrent classifiers read out directly.
+5. **Memory Buffer Pre-Allocation & Slurm Thread Pinning**:
+   * Pre-allocated array memory buffers in chunked transformations (cutting peak RAM by 50%) and explicitly pinned `NUMBA_NUM_THREADS`, `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `VECLIB_MAXIMUM_THREADS`, and `BLIS_NUM_THREADS`.
+
+---
+
+## Clean Directory Map
+
+```text
 master_thesis/
-│
-├── config.yaml                         ← single source of truth (paths, hyperparams, cores)
-├── requirements.txt
-├── CHANGELOG.md                        ← per-phase change log
-├── MIGRATION.md                        ← guide for adapting old checkpoints/results
-├── README_HPC.md                       ← HPC-specific guide (SLURM, julia2)
-├── REPORT_NOTES.md                     ← thesis-writing reference (deviations, caveats)
-│
-├── src/
-│   ├── constants.py                    ← CLASS_NAMES, NULL_IDX (canonical Bury ordering)
-│   ├── data_common.py                  ← shared transforms: normalise + left-censor + fixed window
-│   ├── dataset_loader.py               ← DataLoader for ts_500/ts_1500 (with augmentation)
-│   ├── preprocess_bury_data.py         ← NPZ cache builder from Zenodo CSVs
-│   ├── ews_augmenter.py                ← 4-channel EWS feature augmenter
-│   ├── pangea_cleaner.py               ← PANGAEA XRF loader, Gaussian detrend, AR(1) null
-│   └── rolling_window.py               ← rolling window EWS engine (variance, AC, DL inference)
-│
-├── models/
-│   ├── __init__.py                     ← explicit registry: get_model(), list_models()
-│   ├── cnn_lstm.py / lstm.py / inceptiontime.py  ← DL models (PyTorch)
-│   └── tsc.py                          ← all aeon TSC models: one wrapper + TSC_SPECS table
-│
-├── metric/
-│   ├── __init__.py
-│   ├── accuracy.py                     ← per-class and overall accuracy
-│   ├── auc.py                          ← binary_auc (forced vs AR(1) null), ovr_macro_auc
-│   ├── roc.py                          ← ROC curve (Bury 2021 protocol)
-│   ├── kendall_tau.py                  ← Kendall τ trend test + CI
-│   └── multiclass.py                   ← macro_f1 (4-class)
-│
-├── training/
-│   ├── train.py                        ← universal training script (DL + TSC, --binary flag)
-│   ├── train_tsc_array.sh              ← SLURM array: 8 TSC × 2 datasets = 16 tasks
-│   └── train_dl_array.sh               ← SLURM array: 3 DL × 2 datasets = 6 tasks
-│
-├── testing/
-│   ├── evaluate.py                     ← Zenodo test set + PANGAEA empirical evaluation
-│   ├── plot_figures.py                 ← FIG1–FIG5 (inline + summary CLI)
-│   └── run_all_evaluations.sh          ← convenience: evaluate all models, then plot
-│
-├── dataset/
-│   ├── ts_500/combined/                ← Zenodo 500-step series (labels.csv + cache_*.npy)
-│   ├── ts_1500/combined/               ← same, 1500-step series
-│   └── pangaea_923197/datasets/clean_dataset/  ← PANGAEA XRF CSV files
-│
-├── checkpoints/                        ← trained model files (gitignored)
-├── results/                            ← result.json files per (model, dataset/core/sap/elem)
-│   └── comparison/                     ← FIG3–FIG5 summary plots
-└── logs/                               ← SLURM .out/.err + Python training logs (gitignored)
+├── config.yaml                    # Central configuration file (paths, hyperparameters, cores)
+├── requirements.txt               # Environment dependencies
+├── README.md                      # Primary documentation
+├── README_HPC.md                  # HPC Slurm cluster guide
+├── REPORT_NOTES.md                # Thesis notes & architectural comparisons
+├── models/                        # Model architectures & Bake-Off classifiers
+│   ├── tsc.py                     # Aeon & scikit-learn model wrapper (Rocket, Arsenal, DrCIF, etc.)
+│   ├── cnn_lstm.py                # PyTorch CNN-LSTM architecture
+│   ├── lstm.py                    # PyTorch LSTM architecture
+│   ├── inceptiontime.py           # PyTorch InceptionTime architecture
+│   ├── bakeoff_dictionary.py      # BOP & SAX-VSM scratch implementations
+│   ├── bakeoff_fastshapelet.py    # FastShapelet scratch implementation
+│   ├── bakeoff_lps.py             # LPS scratch implementation
+│   └── bakeoff_tsbf.py            # TSBF scratch implementation
+├── src/                           # Preprocessing & augmentation utilities
+│   ├── constants.py               # Canonical class names & index definitions
+│   ├── data_common.py             # Left-censoring augmentation (with red noise + bioturbation)
+│   ├── dataset_loader.py          # PyTorch DataLoader & EWSDataset
+│   ├── ews_augmenter.py           # Rolling EWS feature extraction
+│   ├── pangea_cleaner.py          # PANGAEA sediment core preprocessing & AAFT null surrogates
+│   ├── preprocess_bury_data.py    # Bury (2021) synthetic dataset preprocessor
+│   └── rolling_window.py          # Causal rolling-window EWS inference engine
+├── submit_all.sh                  # One command: train + eval + aggregate (Slurm, all 24 models)
+├── RUNBOOK.md                     # Step-by-step run guide and troubleshooting
+├── training/                      # Unified training pipeline & Slurm scripts
+│   ├── train.py                   # Central training runner for DL & TSC models
+│   ├── train_tsc_array.sh         # Slurm array: 20 TSC models x 2 datasets
+│   └── train_dl_array.sh          # Slurm array: 4 DL models x 2 datasets
+├── testing/                       # Evaluation pipeline & Slurm scripts
+│   ├── evaluate.py                # Evaluation runner for Zenodo & PANGAEA test sets
+│   ├── eval_zenodo_array.sh       # Slurm array: 24 models x 2 datasets (synthetic)
+│   ├── eval_pangaea_array.sh      # Slurm array: 24 models x 2 datasets (empirical)
+│   ├── collect_results.py         # Aggregate all result.json into results/summary/*.csv
+│   └── plot_figures.py            # Publication figure & plot generation
+├── metric/                        # Standard evaluation metrics
+│   ├── auc.py                     # Binary & OVR macro-averaged ROC AUC metrics
+│   ├── roc.py                     # ROC curve calculation utilities
+│   └── kendall_tau.py             # Kendall tau rank correlation metrics
+├── dataset/                       # Raw & processed data directories
+├── checkpoints/                   # Saved model weights & feature scalers
+└── logs/                          # Execution & Slurm job logs
 ```
 
 ---
 
-## Quick Start — Full Pipeline
+## Quick Start — Running the Pipeline
 
-### 0. Install dependencies
-
+### 0. Everything at once (Slurm)
 ```bash
-pip install -r requirements.txt
-pip install aeon==1.4.0    # TSC models — install separately (large dependency tree)
+bash submit_all.sh
 ```
+Submits DL + TSC training, chains synthetic + empirical evaluation after them,
+and runs `collect_results.py` + `plot_figures.py` at the end. See `RUNBOOK.md`
+for the step-by-step version, per-model reruns, and troubleshooting.
 
-### 1. Build the NPZ cache (run once)
-
+### 1. Build Synthetic Data Cache (Bury et al. 2021)
 ```bash
 python src/preprocess_bury_data.py
 ```
 
-Processes both datasets, writing `dataset/processed/{train,val,test}_{500,1500}.npz`
-as `(N, 1, L)` arrays with labels `fold=0, hopf=1, transcritical=2, null=3`.
-
-### 2. Preprocess PANGAEA data (run once)
-
+### 2. Preprocess PANGAEA Sediment Data & Build AAFT Surrogates
 ```bash
 python src/pangea_cleaner.py
 ```
 
-Outputs per (core, sapropel, element): `{core}_{sap}_forced.csv` with columns
-`age_kyr_bp`, `{element}`, `{element}_trend`, `{element}_residuals`.
-AR(1) null series are generated on-the-fly during evaluation (not saved to disk).
+### 3. Model Training
 
-### 3. Train all models
-
-**On SLURM (recommended):**
-
+**Train Deep Learning Models on GPU (Slurm):**
 ```bash
-sbatch training/train_tsc_array.sh   # 14 tasks: 7 TSC × 2 datasets
-sbatch training/train_dl_array.sh    # 6 tasks: 3 DL × 2 datasets
+sbatch training/train_dl_array.sh
 ```
 
-SLURM task mapping for TSC array (`--array=0-13`, `task = model_idx*2 + dataset_idx`):
-
-| Task | Model | Dataset |
-|---|---|---|
-| 0–1 | minirocket | ts_500, ts_1500 |
-| 2–3 | multirocket | ts_500, ts_1500 |
-| 4–5 | arsenal | ts_500, ts_1500 |
-| 6–7 | drcif | ts_500, ts_1500 |
-| 8–9 | rocket | ts_500, ts_1500 |
-| 10–11 | rdst | ts_500, ts_1500 |
-| 12–13 | weasel2 | ts_500, ts_1500 |
-
-DL array (`--array=0-5`): tasks 0–1 = cnn_lstm, 2–3 = lstm, 4–5 = inceptiontime.
-
-> **Note:** checkpoints are skipped if they already exist — pass `--force` or clear
-> `checkpoints/` before retraining after a pipeline change.
-
-**Locally (single model):**
-
+**Train Classical & Bake-Off TSC Models on CPU (Slurm):**
 ```bash
-python training/train.py --model minirocket --dataset ts_500
-python training/train.py --model cnn_lstm   --dataset ts_500
+sbatch training/train_tsc_array.sh
 ```
 
-Optional flags:
-- `--binary` — 2-class (forced vs null) mode for DL models only (Bury replication)
-- `--config config.yaml` — override default config path
-
-### 4. Run inference (all models, all targets)
-
+**Run Locally (Single Model):**
 ```bash
-bash testing/run_all_evaluations.sh
+python training/train.py --model minirocket --dataset ts_500 --force
+python training/train.py --model cnn_lstm   --dataset ts_500 --force
 ```
 
-Or run a single evaluation:
+### 4. Evaluation & Inference
 
+**Run Evaluation Arrays on HPC (Slurm):**
+```bash
+sbatch testing/eval_zenodo_array.sh
+sbatch testing/eval_pangaea_array.sh
+```
+
+**Run Single Evaluation Locally:**
 ```bash
 python testing/evaluate.py --model minirocket --dataset ts_500 --target zenodo
 python testing/evaluate.py --model minirocket --dataset ts_500 --target pangaea
 ```
 
-Results are saved to `results/{model}_{dataset}_zenodo/result.json` and
-`results/{model}_pangaea_{core}_{sap}_{element}_pangaea/result.json`.
-
-### 5. Generate all figures
-
+### 5. Generate Figures
 ```bash
 python testing/plot_figures.py --config config.yaml
 ```
-
-All comparison figures saved to `results/comparison/`.
-
----
-
-## Metrics Reported
-
-### Zenodo (synthetic test set)
-| Metric | Key in result.json | Description |
-|---|---|---|
-| `binary_auc` | `binary_auc` | AUC (forced vs AR(1) null), Bury-comparable |
-| `macro_f1` | `macro_f1` | 4-class macro-averaged F1 |
-| `macro_auc_ovr` | `macro_auc_ovr` | OVR macro-averaged AUC (4-class) |
-| Accuracy | `accuracy_*` | Per-class and overall |
-
-### PANGAEA (empirical)
-| Metric | Key in result.json | Description |
-|---|---|---|
-| `binary_auc` | `binary_auc` | AUC using Bury ROC protocol (AR(1) null surrogates) |
-| `kendall_tau` | `kendall_tau` | Positive = rising p_transition toward transition |
-| `tau_null_mean` | `tau_null_mean` | Mean τ of AR(1) null surrogates (reference baseline) |
-
----
-
-## Figure Guide
-
-| Figure | Function | Output path | Description |
-|---|---|---|---|
-| FIG1 | `plot_fig1_pangaea` | `results/comparison/{model}_{core}_{sap}_{elem}_fig1.png` | 4-panel: proxy, residuals, EWS indicators, p_transition |
-| FIG2 | `plot_fig2_roc` | `results/comparison/{model}_{core}_{sap}_{elem}_fig2_roc.png` | ROC curve per combination |
-| FIG3 | `plot_fig3_auc_heatmap` | `results/comparison/fig3_auc_heatmap.png` | AUC heatmap: models × elements |
-| FIG4 | `plot_fig4_kendall_tau` | `results/comparison/fig4_kendall_tau.png` | Kendall τ per model (mean ± 95% CI) |
-| FIG5 | `plot_fig5_roc_overlay` | `results/comparison/fig5_roc_overlay_{core}_{elem}.png` | All-model ROC overlay per core |
-
-Inline figures are also generated automatically after each `evaluate.py` call.
-
----
-
-## EWS Protocol
-
-### Training signal: p_transition
-
-```
-p_transition = 1 - P(null)   where NULL_IDX = 3  (from src/constants.py)
-```
-
-The model predicts probabilities for [fold, hopf, transcritical, null]. The
-EWS signal is the probability of belonging to ANY forced class (1 − P(null)).
-
-### AR(1) null surrogates
-
-AR(1) fitted to the **first 20%** of the forced residuals (neutral reference
-period, before CSD ramp begins). 10 surrogates generated per forced series.
-The ROC is computed with forced windows as positives, null windows as negatives,
-following exactly the Bury (2021) procedure.
-
-### Causal rolling windows
-
-All rolling-window EWS features (variance, lag-1 AC, skewness) use only past
-data — no `center=True`. This avoids look-ahead bias.
-
----
-
-## Datasets
-
-### Zenodo (Bury 2021 synthetic data)
-
-Downloaded from [zenodo.org/record/5527154](https://zenodo.org/record/5527154)
-
-| Dataset | Series | Length | Classes |
-|---|---|---|---|
-| ts_500 | ~500,000 | 500 steps | fold, hopf, transcritical, null |
-| ts_1500 | ~500,000 | 1500 steps | fold, hopf, transcritical, null |
-
-Label ordering: `fold=0, hopf=1, transcritical=2, null=3` (Bury canonical).
-
-### PANGAEA (Hennekam et al. 2020)
-
-Downloaded from [pangaea.de](https://doi.pangaea.de/10.1594/PANGAEA.923197)
-
-| Core | Age range | Forced sapropels | Test sapropels |
-|---|---|---|---|
-| MS21PC | 0–95 ka BP | S3 | S1 |
-| MS66PC | 0–150 ka BP | S5, S4, S3 | S1 |
-| 64PE406-E1 | 50–340 ka BP | S9, S8, S7 | S3, S4, S5, S6 |
-
-Elements: Al, Ba, Mo, Ti, U (Mo = primary anoxia proxy; Al, Ti = lithogenic negative controls).
-
-Use `calibratedXRF` files (7000+ rows), **not** `calibrationICP-MS` (37–295 rows).
-
----
-
-## Input Pipeline (train / inference parity)
-
-Training and empirical inference share one set of transforms (`src/data_common.py`)
-so a model never sees a different kind of input than it was trained on:
-
-1. **Normalisation** — every series is divided by its mean absolute value
-   (`mean|x| = 1`). Applied identically in training and at inference.
-2. **Left-censoring augmentation (Bury-style)** — each *training* series gets
-   random left zero-padding (`augmentation.pad_max_frac`), keeping the tail so
-   the transition stays at the end. Empirical sediment cores (57–365 points) are
-   much shorter than `ts_len` (500/1500) and are left-padded to length at
-   inference; without this augmentation the model would never have seen that
-   shape and collapses to chance. TSC models get `1 + tsc_copies` copies per
-   series; DL models are censored on the fly each epoch.
-3. **Fixed window** — `make_fixed_window` takes the last `ts_len` residuals
-   before each rolling position, normalises, and left-pads. `prepare_dl_input`
-   (empirical inference) calls the same function.
-
-Controlled by the `augmentation:` block in `config.yaml`.
-
-## 4-Channel EWS Features
-
-`use_4channel: true` (default, **TSC only**) expands the normalised/censored
-residual into 4 channels — the main lever for 4-class accuracy:
-
-```
-Channel 0: raw residual (normalised)
-Channel 1: rolling variance    (window = 25% of series length)
-Channel 2: rolling lag-1 AC    (causal Pearson, via pandas rolling.corr)
-Channel 3: rolling skewness
-```
-
-Channels are computed on the same censored/normalised residual used at inference.
-Per-channel z-normalisation uses train-set statistics, saved beside the
-checkpoint as `{model}_{dataset}_best_ch_stats.npz`. Toggle `use_4channel` to
-A/B 1-channel vs 4-channel. DL models remain 1-channel.
 
 ---
 
 ## References
 
 - Bury, T.M. et al. (2021). Deep learning for early warning signals of tipping points. *PNAS*, 118(39). [DOI: 10.1073/pnas.2106140118](https://doi.org/10.1073/pnas.2106140118)
+- Bagnall, A. et al. (2017). The great time series classification bake off: a review and experimental evaluation of recent algorithmic advances. *Data Mining and Knowledge Discovery*, 31(3), 606–660. [DOI: 10.1007/s10618-016-0483-9](https://doi.org/10.1007/s10618-016-0483-9)
 - Hennekam, R. et al. (2020). PANGAEA dataset 923197. [DOI: 10.1594/PANGAEA.923197](https://doi.pangaea.de/10.1594/PANGAEA.923197)

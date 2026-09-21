@@ -1,46 +1,45 @@
-13:02:25 | INFO | Model  : minirocket
-13:02:25 | INFO | Dataset: ts_500
-13:02:25 | INFO | Mode   : 4-class
-13:02:25 | INFO | IS_TSC : True
-13:02:25 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
-13:02:25 | INFO |   Loading train and val data into memory...
-13:02:31 | INFO |   Dropping 1566 flat train series
-13:02:31 | INFO |   Dropping 104 flat val series
-13:02:31 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
-13:02:32 | INFO |   Residuals normalised; train 20000 -> 80000 (1 clean + 3 censored copies)
-13:02:32 | INFO |   use_4channel=true — expanding to 4 EWS channels
-13:03:06 | INFO |   ch_stats saved → minirocket_ts_500_best_ch_stats.npz
-13:03:10 | INFO |   Final train shape: (80000, 4, 500)  Val shape: (19896, 4, 500)
-13:03:10 | INFO |   Fitting minirocket on 80000 series...
-13:13:50 | INFO |   Val acc=0.6776  macro-F1=0.6770  time=10.5 min
-13:13:50 | INFO |   Confusion matrix (rows=true, cols=pred):
-13:13:50 | INFO |                fold: [2782, 350, 1004, 864]
-13:13:50 | INFO |                hopf: [489, 3901, 501, 109]
-13:13:50 | INFO |       transcritical: [885, 363, 2944, 756]
-13:13:50 | INFO |                null: [260, 68, 766, 3854]
-13:13:50 | INFO |   Saved: minirocket_ts_500_best.pkl
-13:13:50 | INFO | Done — val_f1=0.6770
-13:13:50 | INFO | Metrics saved: minirocket_ts_500_train_metrics.json
-| INFO | Done — val_f1=0.6770
-13:13:50 | INFO | Metrics saved: minirocket_ts_500_train_metrics.json
+20:54:16 | INFO | Model  : minirocket
+20:54:16 | INFO | Dataset: ts_500
+20:54:16 | INFO | Mode   : 4-class
+20:54:16 | INFO | IS_TSC : True
+20:54:16 | INFO |   n_jobs=16  (SLURM_CPUS_PER_TASK or default=4)
+20:54:16 | INFO |   Loading train and val data into memory...
+20:54:22 | INFO |   Dropping 1566 flat train series
+20:54:22 | INFO |   Dropping 104 flat val series
+20:54:22 | INFO |   Train shape: (473434, 500)  Val shape: (19896, 500)
+20:54:26 | INFO |   Residuals normalised; train 20000 -> 80000 (1 clean + 3 censored copies)
+20:54:26 | INFO |   use_4channel=true — expanding to 4 EWS channels
+20:55:02 | INFO |   ch_stats saved → minirocket_ts_500_best_ch_stats.npz
+20:55:06 | INFO |   Final train shape: (80000, 5, 500)  Val shape: (19896, 5, 500)
+20:55:06 | INFO |   Fitting minirocket on 80000 series...
+21:05:34 | INFO |   Val acc=0.6770  balanced_acc=0.6771  macro-F1=0.6763  time=10.3 min
+21:05:34 | INF21:05:34 | INFO |   Val acc=0.6770  balanced_acc=0.6771  macro-F1=0.6763  time=10.3 min
+21:05:34 | INFO |   Confusion matrix (rows=true, cols=pred):
+21:05:34 | INFO |                fold: [2663, 328, 1053, 956]
+21:05:34 | INFO |                hopf: [503, 3872, 499, 126]
+21:05:34 | INFO |  21:05:34 | INFO |   Saved: minirocket_ts_500_best.pkl
+21:05:34 | INFO | Done — val_f1=0.6763
+21:05:34 | INFO | Metrics saved: minirocket_ts_500_train_metrics.json
+| INFO | Done — val_f1=0.6763
+21:05:34 | INFO | Metrics saved: minirocket_ts_500_train_metrics.json
 	Command being timed: "python -u training/train.py --model minirocket --dataset ts_500 --force"
-	User time (seconds): 9597.61
-	System time (seconds): 34.13
-	Percent of CPU this job got: 1400%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 11:27.83
+	User time (seconds): 9285.78
+	System time (seconds): 27.64
+	Percent of CPU this job got: 1360%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 11:24.55
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 33301744
+	Maximum resident set size (kbytes): 33513928
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 458
-	Minor (reclaiming a frame) page faults: 796450
-	Voluntary context switches: 1455
-	Involuntary context switches: 7262
+	Major (requiring I/O) page faults: 476
+	Minor (reclaiming a frame) page faults: 888955
+	Voluntary context switches: 9037
+	Involuntary context switches: 30715
 	Swaps: 0
-	File system inputs: 0
-	File system outputs: 1272
+	File system inputs: 800
+	File system outputs: 1264
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0
