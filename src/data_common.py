@@ -42,18 +42,42 @@ def normalize_mean_abs(x: np.ndarray, eps: float = 1e-10) -> np.ndarray:
     return x.astype(np.float32)
 
 
-def left_pad_to(x: np.ndarray, length: int) -> np.ndarray:
-    """Right-align `x` in a zero vector of size `length` (pad on the LEFT).
+def left_pad_to(x: np.ndarray, length: int, pad_mode: str = "zero") -> np.ndarray:
+    """Right-align `x` in a vector of size `length` (pad on the LEFT).
 
     If `x` is longer than `length`, keep its last `length` points (the tail,
     which for our data holds the approach to the transition).
+    
+    pad_mode options:
+      - "zero": Pure zero padding (Bury et al. 2021 default).
+      - "edge": Repeat the first observed value x[0] to ensure C^0 continuity.
+      - "reflect": Mirror the signal values across the boundary for pseudo-C^1 continuity.
     """
     x = np.asarray(x, dtype=np.float32)
     n = len(x)
     if n >= length:
         return x[-length:].astype(np.float32)
-    out = np.zeros(length, dtype=np.float32)
-    out[-n:] = x
+    
+    pad_len = length - n
+    
+    if pad_mode == "zero":
+        out = np.zeros(length, dtype=np.float32)
+        out[-n:] = x
+    elif pad_mode == "edge":
+        pad_val = x[0] if n > 0 else 0.0
+        out = np.full(length, fill_value=pad_val, dtype=np.float32)
+        out[-n:] = x
+    elif pad_mode == "reflect":
+        if n > 1:
+            out = np.pad(x, (pad_len, 0), mode='reflect')
+        else:
+            pad_val = x[0] if n > 0 else 0.0
+            out = np.full(length, fill_value=pad_val, dtype=np.float32)
+            out[-n:] = x
+        out = out.astype(np.float32)
+    else:
+        raise ValueError(f"Unknown pad_mode: {pad_mode}")
+        
     return out
 
 
@@ -63,6 +87,7 @@ def random_left_censor(
     rng: np.random.Generator,
     pad_max_frac: float = 0.9,
     min_visible: int = 30,
+    pad_mode: str = "zero",
 ) -> np.ndarray:
     """Bury-style left-censoring augmentation for ONE full-length training series.
 
@@ -82,8 +107,22 @@ def random_left_censor(
     if visible < min_visible:
         visible = min_visible
     tail = x[-visible:] if len(x) >= visible else x
+
+    # 1. Bioturbation simulation: mild smoothing kernel on 50% of training samples
+    if len(tail) > 5 and rng.random() < 0.5:
+        tail = np.convolve(tail, [0.15, 0.70, 0.15], mode='same')
+
+    # 2. Correlated geological noise (AR(1) red noise) on 50% of training samples
+    if len(tail) > 5 and rng.random() < 0.5:
+        red = np.zeros(len(tail))
+        phi = rng.uniform(0.3, 0.7)
+        innov = rng.normal(0, 0.05, size=len(tail))
+        for t_idx in range(1, len(tail)):
+            red[t_idx] = phi * red[t_idx - 1] + innov[t_idx]
+        tail = tail + red
+
     tail = normalize_mean_abs(tail)
-    return left_pad_to(tail, L)
+    return left_pad_to(tail, L, pad_mode=pad_mode)
 
 
 def random_censor(
@@ -93,6 +132,7 @@ def random_censor(
     pad_max_frac: float = 0.9,
     min_visible: int = 30,
     both_sided: bool = False,
+    pad_mode: str = "zero",
 ) -> np.ndarray:
     """Random censoring wrapper supporting both left-only and both-sided padding."""
     x = np.asarray(x, dtype=np.float64)
@@ -113,23 +153,30 @@ def random_censor(
         tail = x[pad_l : L - pad_r]
         tail = normalize_mean_abs(tail)
         
-        out = np.zeros(L, dtype=np.float32)
-        out[pad_l : pad_l + len(tail)] = tail
-        return out
+        if pad_mode == "zero":
+            out = np.zeros(L, dtype=np.float32)
+            out[pad_l : pad_l + len(tail)] = tail
+        elif pad_mode == "edge":
+            out = np.pad(tail, (pad_l, pad_r), mode='edge')
+        elif pad_mode == "reflect":
+            out = np.pad(tail, (pad_l, pad_r), mode='reflect' if len(tail) > 1 else 'edge')
+        else:
+            raise ValueError(f"Unknown pad_mode: {pad_mode}")
+        return out.astype(np.float32)
     else:
-        return random_left_censor(x, length, rng, pad_max_frac=pad_max_frac, min_visible=min_visible)
+        return random_left_censor(x, length, rng, pad_max_frac=pad_max_frac, min_visible=min_visible, pad_mode=pad_mode)
 
 
-def make_model_input(x: np.ndarray, length: int) -> np.ndarray:
+def make_model_input(x: np.ndarray, length: int, pad_mode: str = "zero") -> np.ndarray:
     """Clean (un-augmented) model input: normalise then left-pad to `length`.
 
     Used for val/test and for the empirical inference of a full visible record.
     Equivalent to random_left_censor with pad == 0.
     """
-    return left_pad_to(normalize_mean_abs(x), length)
+    return left_pad_to(normalize_mean_abs(x), length, pad_mode=pad_mode)
 
 
-def make_fixed_window(residuals: np.ndarray, end_pos: int, length: int) -> np.ndarray:
+def make_fixed_window(residuals: np.ndarray, end_pos: int, length: int, pad_mode: str = "zero") -> np.ndarray:
     """Fixed-length rolling-window input ending at `end_pos`.
 
     Takes the last `length` residuals before `end_pos`, normalises them, and
@@ -142,4 +189,4 @@ def make_fixed_window(residuals: np.ndarray, end_pos: int, length: int) -> np.nd
     seg = np.asarray(residuals[:end_pos], dtype=np.float64)
     if len(seg) > length:
         seg = seg[-length:]
-    return make_model_input(seg, length)
+    return make_model_input(seg, length, pad_mode=pad_mode)

@@ -25,6 +25,8 @@ class LSTMClassifier(nn.Module):
         self.fc2   = nn.Linear(128, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Standard left-padded sequence has zero-padding at the start and transition signal
+        # at the tail (t=T-1). Reading x[:, -1, :] extracts the hidden state at the transition.
         x = self.input_proj(x.permute(0, 2, 1))   # (B, T, 128)
         x, _ = self.lstm1(x)
         x = self.drop1(x)

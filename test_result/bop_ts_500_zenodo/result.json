@@ -1,0 +1,64 @@
+{
+  "model": "bop",
+  "dataset": "ts_500",
+  "num_classes": 4,
+  "class_names": [
+    "fold",
+    "hopf",
+    "transcritical",
+    "null"
+  ],
+  "null_idx": 3,
+  "inference_time_sec": 164.72,
+  "timestamp": "2026-09-06T14:11:09",
+  "binary_auc": 0.51268,
+  "roc_fpr": [
+    0.0,
+    0.09420289855072464,
+    1.0
+  ],
+  "roc_tpr": [
+    0.0,
+    0.11956231651988257,
+    1.0
+  ],
+  "roc_thresh": [
+    Infinity,
+    1.0,
+    0.0
+  ],
+  "per_class_auc": {
+    "fold": 0.509299,
+    "hopf": 0.501699,
+    "transcritical": 0.527077
+  },
+  "macro_f1": 0.1542327999057157,
+  "macro_auc_ovr": 0.506452,
+  "accuracy": 0.25876929244337543,
+  "confusion_matrix": [
+    [
+      87,
+      22,
+      32,
+      1109
+    ],
+    [
+      69,
+      4,
+      49,
+      1128
+    ],
+    [
+      104,
+      6,
+      75,
+      1062
+    ],
+    [
+      75,
+      0,
+      42,
+      1125
+    ]
+  ]
+}

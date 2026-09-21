@@ -1,0 +1,15 @@
+core,sapropel,element,n_models,majority_class,agreement_frac,entropy_bits,entropy_norm,votes_fold,votes_hopf,votes_transcritical,votes_null
+64PE406E1,S3,Mo,28,hopf,0.536,1.742,0.871,7,15,5,1
+64PE406E1,S3,U,28,hopf,0.75,1.702,0.851,5,21,1,1
+64PE406E1,S4,Mo,29,hopf,0.586,1.728,0.864,6,17,5,1
+64PE406E1,S4,U,28,hopf,0.607,1.814,0.907,4,17,5,2
+64PE406E1,S5,Mo,30,hopf,0.5,1.742,0.871,8,15,6,1
+64PE406E1,S5,U,29,hopf,0.621,1.771,0.885,6,18,4,1
+64PE406E1,S6,Mo,30,hopf,0.633,1.857,0.929,4,19,5,2
+64PE406E1,S6,U,30,hopf,0.8,1.72,0.86,2,24,2,2
+MS21,S1,Mo,27,hopf,0.667,1.585,0.793,7,18,2,0
+MS21,S1,U,27,hopf,0.63,1.787,0.893,6,17,2,2
+MS66,S1,Mo,27,transcritical,0.444,1.749,0.875,3,11,12,1
+MS66,S1,U,27,hopf,0.778,1.515,0.757,4,21,1,1
+MS66,S3,Mo,27,hopf,0.593,1.751,0.876,6,16,3,2
+MS66,S3,U,27,hopf,0.63,1.747,0.874,5,17,4,1

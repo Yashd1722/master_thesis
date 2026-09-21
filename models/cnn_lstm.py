@@ -26,6 +26,8 @@ class CNNLSTM(nn.Module):
         self.fc    = nn.Linear(10, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Standard left-padded sequence has zero-padding at the start and transition signal
+        # at the tail (t=T-1). Reading x[:, -1, :] extracts the hidden state at the transition.
         x = self.pool(self.drop1(self.relu(self.conv(x))))  # (B, 50, T//2)
         x = x.permute(0, 2, 1)                              # (B, T//2, 50)
         x, _ = self.lstm1(x)

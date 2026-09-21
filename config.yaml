@@ -1,9 +1,9 @@
 augmentation:
   both_sided: false
   enabled: true
-  min_visible: 30
+  min_visible: 15
   normalize: true
-  pad_max_frac: 0.9
+  pad_max_frac: 0.97
   tsc_copies: 3
 datasets:
   ts_1500:
@@ -31,16 +31,10 @@ datasets:
     ts_length: 500
     val_frac: 0.04
 inference:
-  ar1_fit_fraction: 0.2
-  end_frac: 1.0
   n_null_series: 10
   null_method: AR1
   prediction_steps: 40
-  roc_start_frac:
-    64PE406E1: 0.6
-    MS21: 0.6
-    MS66: 0.6
-    default: 0.6
+  pad_mode: "zero"
   rolling_window_frac: 0.25
   rolling_window_frac_augment: 0.25
   use_4channel: true
@@ -49,6 +43,10 @@ models:
   - cnn_lstm
   - lstm
   - inceptiontime
+  - patchtst
+  - resnet
+  - tcn
+  - rnn_fcn
   tsc:
   - minirocket
   - multirocket
@@ -57,6 +55,21 @@ models:
   - weasel2
   - drcif
   - rocket
+  - tsf
+  - st
+  - ls
+  - boss
+  - bop
+  - saxvsm
+  - tsbf
+  - lps
+  - fastshapelet
+  - catch22
+  - tde
+  - pf
+  - cif
+  - mrsqm
+  - grsf
 naming:
   checkpoint_dl: '{model}_{dataset}_v{variant}_best.ckpt'
   checkpoint_tsc: '{model}_{dataset}_best.pkl'
@@ -68,103 +81,103 @@ pangaea:
       n_events: 7
       sapropels:
       - id: S9
-        neutral_end: -107.0
-        neutral_start: -110.0
-        pretrans_end: -104.0
-        pretrans_start: -107.0
+        neutral_end: -245.6
+        neutral_start: -250.6
+        pretrans_end: -240.6
+        pretrans_start: -245.6
         role: train
-        transition_kyr: -104.0
+        transition_kyr: -240.6
       - id: S8
-        neutral_end: -92.0
-        neutral_start: -95.0
-        pretrans_end: -89.0
-        pretrans_start: -92.0
+        neutral_end: -231.6
+        neutral_start: -236.6
+        pretrans_end: -226.6
+        pretrans_start: -231.6
         role: train
-        transition_kyr: -89.0
+        transition_kyr: -226.6
       - id: S7
-        neutral_end: -77.0
-        neutral_start: -80.0
-        pretrans_end: -74.0
-        pretrans_start: -77.0
+        neutral_end: -203.2
+        neutral_start: -208.2
+        pretrans_end: -198.2
+        pretrans_start: -203.2
         role: train
-        transition_kyr: -74.0
+        transition_kyr: -198.2
       - id: S6
-        neutral_end: -62.0
-        neutral_start: -65.0
-        pretrans_end: -59.0
-        pretrans_start: -62.0
+        neutral_end: -182.9
+        neutral_start: -187.9
+        pretrans_end: -177.9
+        pretrans_start: -182.9
         role: test
-        transition_kyr: -59.0
+        transition_kyr: -177.9
       - id: S5
-        neutral_end: -57.0
-        neutral_start: -60.0
-        pretrans_end: -54.0
-        pretrans_start: -57.0
+        neutral_end: -132.9
+        neutral_start: -137.9
+        pretrans_end: -127.9
+        pretrans_start: -132.9
         role: test
-        transition_kyr: -54.0
+        transition_kyr: -127.9
       - id: S4
-        neutral_end: -42.0
-        neutral_start: -45.0
-        pretrans_end: -39.0
-        pretrans_start: -42.0
+        neutral_end: -112.6
+        neutral_start: -117.6
+        pretrans_end: -107.6
+        pretrans_start: -112.6
         role: test
-        transition_kyr: -39.0
+        transition_kyr: -107.6
       - id: S3
-        neutral_end: -25.0
-        neutral_start: -27.0
-        pretrans_end: -22.5
-        pretrans_start: -25.0
+        neutral_end: -90.4
+        neutral_start: -95.4
+        pretrans_end: -85.4
+        pretrans_start: -90.4
         role: test
-        transition_kyr: -22.5
+        transition_kyr: -85.4
     MS21:
       n_events: 2
       sapropels:
       - id: S3
-        neutral_end: -25.0
-        neutral_start: -27.0
-        pretrans_end: -22.5
-        pretrans_start: -25.0
+        neutral_end: -90.7
+        neutral_start: -95.7
+        pretrans_end: -85.7
+        pretrans_start: -90.7
         role: train
-        transition_kyr: -22.5
+        transition_kyr: -85.7
       - id: S1
-        neutral_end: -15.0
-        neutral_start: -17.0
-        pretrans_end: -11.5
-        pretrans_start: -15.0
+        neutral_end: -14.7
+        neutral_start: -19.7
+        pretrans_end: -9.7
+        pretrans_start: -14.7
         role: test
-        transition_kyr: -11.5
+        transition_kyr: -9.7
     MS66:
       n_events: 4
       sapropels:
       - id: S5
-        neutral_end: -57.0
-        neutral_start: -60.0
-        pretrans_end: -54.0
-        pretrans_start: -57.0
+        neutral_end: -133.2
+        neutral_start: -138.2
+        pretrans_end: -128.2
+        pretrans_start: -133.2
         role: train
-        transition_kyr: -54.0
+        transition_kyr: -128.2
       - id: S4
-        neutral_end: -42.0
-        neutral_start: -45.0
-        pretrans_end: -39.0
-        pretrans_start: -42.0
+        neutral_end: -112.7
+        neutral_start: -117.7
+        pretrans_end: -107.7
+        pretrans_start: -112.7
         role: train
-        transition_kyr: -39.0
+        transition_kyr: -107.7
       - id: S3
-        neutral_end: -25.0
-        neutral_start: -27.0
-        pretrans_end: -22.5
-        pretrans_start: -25.0
+        neutral_end: -90.5
+        neutral_start: -95.5
+        pretrans_end: -85.5
+        pretrans_start: -90.5
         role: test
-        transition_kyr: -22.5
+        transition_kyr: -85.5
       - id: S1
-        neutral_end: -15.0
-        neutral_start: -17.0
-        pretrans_end: -11.5
-        pretrans_start: -15.0
+        neutral_end: -14.0
+        neutral_start: -19.0
+        pretrans_end: -9.0
+        pretrans_start: -14.0
         role: test
-        transition_kyr: -11.5
-  detrend_bandwidth_frac: 0.2
+        transition_kyr: -9.0
+  bandwidth_years: 900
   rolling_window_frac: 0.5
   variable: Mo
 paths:
@@ -201,8 +214,8 @@ training:
     scheduler_patience: 20
     weight_decay: 0.0
   drcif:
-    max_train_samples: 20000
-    n_estimators: 100
+    max_train_samples: 8000
+    n_estimators: 50
   inceptiontime:
     batch_size: 256
     epochs: 500
@@ -229,6 +242,62 @@ training:
     patience: 20
     scheduler: none
     weight_decay: 0.0
+  patchtst:
+    batch_size: 128
+    epochs: 300
+    grad_clip: 1.0
+    lr: 0.001
+    min_lr: 1.0e-06
+    optimizer: adam
+    pad_variants:
+    - 1
+    patience: 20
+    scheduler: reduce_on_plateau
+    scheduler_factor: 0.5
+    scheduler_patience: 10
+    weight_decay: 0.0001
+  resnet:
+    batch_size: 128
+    epochs: 500
+    grad_clip: 1.0
+    lr: 0.001
+    min_lr: 1.0e-06
+    optimizer: adam
+    pad_variants:
+    - 1
+    patience: 40
+    scheduler: reduce_on_plateau
+    scheduler_factor: 0.5
+    scheduler_patience: 15
+    weight_decay: 0.0001
+  tcn:
+    batch_size: 128
+    epochs: 400
+    grad_clip: 0.4
+    lr: 0.002
+    min_lr: 1.0e-06
+    optimizer: adam
+    pad_variants:
+    - 1
+    patience: 30
+    scheduler: reduce_on_plateau
+    scheduler_factor: 0.5
+    scheduler_patience: 12
+    weight_decay: 0.0
+  rnn_fcn:
+    batch_size: 128
+    epochs: 500
+    grad_clip: 1.0
+    lr: 0.001
+    min_lr: 1.0e-06
+    optimizer: adam
+    pad_variants:
+    - 1
+    patience: 40
+    scheduler: reduce_on_plateau
+    scheduler_factor: 0.5
+    scheduler_patience: 15
+    weight_decay: 0.0001
   minirocket:
     max_train_samples: 80000
     n_kernels: 10000
@@ -243,3 +312,86 @@ training:
     n_kernels: 10000
   weasel2:
     max_train_samples: 20000
+  catch22:
+    max_train_samples: 30000
+    n_estimators: 200
+  tde:
+    max_train_samples: 5000
+    n_parameter_samples: 100
+  pf:
+    max_train_samples: 2000
+    n_estimators: 30
+
+  # --- Bake Off baselines (see models/tsc.py TSC_SPECS for why these five and
+  # not the elastic-distance/EE baselines). No max_train_samples: these train
+  # on the full split, bounded by time_limit_in_minutes instead. Unmeasured —
+  # tune from the first real run.
+  tsf:
+    n_estimators: 200
+    time_limit_in_minutes: 60
+    contract_max_n_estimators: 500
+    max_train_samples: 30000
+  st:
+    n_shapelet_samples: 300
+    time_limit_in_minutes: 0
+    max_train_samples: 20000
+  ls:
+    max_iter: 100
+    batch_size: 256
+    max_train_samples: 20000
+  boss:
+    time_limit_in_minutes: 90
+    max_ensemble_size: 50
+    n_parameter_samples: 50
+    max_train_samples: 5000
+  bop:
+    window_size: 0.05
+    word_size: 0.5
+    n_bins: 4
+    n_neighbors: 1
+    fit_sample_size: 2000
+    chunk_size: 500
+    max_train_samples: 30000
+  saxvsm:
+    window_size: 0.05
+    word_size: 0.5
+    n_bins: 8
+    fit_sample_size: 2000
+    chunk_size: 500
+    max_train_samples: 30000
+  tsbf:
+    n_bins: 10
+    n_estimators: 200
+    min_interval_length: 5
+    n_subseries: 20
+    max_fit_pool: 200000
+    rf_max_leaf_nodes: 500
+    max_train_samples: 30000
+  lps:
+    n_trees: 200
+    n_segments: 75
+    min_segment_length: 5
+    max_leaf_nodes: 100
+    max_pool_size: 20000
+    chunk_size: 20000
+    clf_max_leaf_nodes: 500
+    max_fit_pool: 200000
+    max_train_samples: 30000
+  fastshapelet:
+    n_shapelets: 10
+    max_candidates: 200
+    sax_word_length: 8
+    sax_alphabet_size: 4
+    selection_sample_size: 500
+    clf_max_leaf_nodes: 500
+    max_fit_pool: 200000
+    max_train_samples: 30000
+  cif:
+    n_estimators: 100
+    max_train_samples: 10000
+  mrsqm:
+    max_train_samples: 20000
+  grsf:
+    n_estimators: 100
+    n_shapelets: log2
+    max_train_samples: 8000

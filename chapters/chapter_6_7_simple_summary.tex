@@ -1,0 +1,286 @@
+% Combined, plain-language summary of Chapter 6 (Methodology) and Chapter 7
+% (Project Structure \& Implementation). Written so a non-specialist reader
+% can follow the whole system without either chapter's full technical
+% detail. Every fact below is the same fact reported in Chapters 6 and 7 --
+% nothing here is new, and nothing is repeated twice within this document.
+% Where the two chapters described the same thing from two different
+% angles, that description appears here exactly once, in the place it
+% belongs (matching chapters/WRITING_RULES.md \S4's "no repetition" rule).
+%
+% Not part of the numbered chapter sequence -- a standalone companion
+% document. \input{} it directly where wanted, or read on its own.
+
+\section*{How the Pipeline Works --- a Plain-Language Guide}
+
+\subsection*{1. What Problem This Part of the Thesis Solves}
+
+The thesis treats ``is a tipping point coming, and what kind?'' as a
+classification problem: feed a short stretch of a time series into a
+model, and get back a guess at one of four labels -- Fold, Hopf,
+Transcritical, or ``nothing happening'' (Null) -- instead of computing one
+hand-picked statistic like variance and eyeballing whether it looks
+worrying.
+
+Two very different kinds of data go through this same system: a large
+synthetic dataset with known, correct labels (used for training and for
+checking how good a model really is), and the real Mediterranean
+sediment-core measurements, which have no known label for bifurcation
+type at all. The whole system is built so both kinds of data flow through
+the \emph{same} pipeline, up to the point where the results are scored --
+only the scoring step treats them differently, because only one of them
+has a known answer to check against.
+
+\subsection*{2. The Pipeline, Step by Step}
+
+\begin{enumerate}
+    \item \textbf{Raw data comes in.} Either a synthetic simulated series,
+    or a real measurement of an element (molybdenum, Mo, or uranium, U)
+    from a sediment core. Both are just a plain list of numbers at this
+    point.
+    \item \textbf{The data is cleaned and reshaped.} Each series is cut
+    into fixed-length windows and each window is rescaled by dividing by
+    its own average size, so that a window with big swings and one with
+    small swings both end up on a comparable scale. Nothing is smoothed
+    onto an artificial evenly-spaced timeline -- the code keeps the
+    data's own real spacing, because smoothing it out would quietly wipe
+    away the very signal (rising noisiness) the whole method is trying to
+    detect, matching \citet{bury2021}'s own choice for the same reason.
+    This step is handled by \texttt{src/dataset\_loader.py} for the
+    synthetic data and \texttt{src/rolling\_window.py} for the real core
+    data.
+    \item \textbf{The path splits in two, depending on which model
+    family is about to read the window} -- not depending on which of the
+    two data sources it came from. A synthetic window and a real window
+    go through exactly the same fork:
+    \begin{itemize}
+        \item The 22 ``classical'' models (statistical/kernel-based
+        methods, not neural networks) get an enriched version of the
+        window with five numbers per time point instead of one: the raw
+        value, how noisy the recent stretch has been (rolling variance),
+        how strongly each point resembles the one before it (rolling
+        lag-1 autocorrelation), the lopsidedness of the recent values
+        (rolling skewness), and how much the noise level has grown
+        relative to where the window started (the ``variance growth
+        ratio''). This step lives in \texttt{src/ews\_augmenter.py}.
+        \item The 7 deep-learning models skip that step and just read
+        the single raw, rescaled number per time point. They have to
+        work out any useful patterns themselves, straight from the raw
+        shape.
+    \end{itemize}
+    \item \textbf{A model makes a prediction.} Every one of the 29
+    models -- all 7 deep-learning ones and all 22 classical ones --
+    exposes the same \texttt{predict\_proba()} function, so the rest of
+    the code never has to know or care which kind of model it is talking
+    to. For a neural network, this is a standard softmax turning the
+    network's raw output into four probabilities that add up to 1. For
+    most of the classical models it is just that model's own built-in
+    probability output. For one specific family of classical models (the
+    ROCKET family, which only produce a raw decision score rather than a
+    probability), the code applies the same softmax conversion by hand.
+    Either way, the result leaving this step always looks the same: four
+    probabilities, one per class.
+    \item \textbf{The result is scored -- differently, depending on the
+    data source.} For a synthetic window, the true label is known, so
+    the model's four probabilities can be checked against ground truth
+    directly. For a real core segment, the true bifurcation type is
+    \emph{not} known, so only a narrower question can be answered: did
+    the model detect that \emph{something} was approaching at all?
+    Section~4 (Section~\ref{sec:evaluation_metrics} in the full
+    Methodology chapter) explains exactly how each of those two checks
+    works.
+\end{enumerate}
+
+Training and prediction never touch the real Mediterranean data at the
+same time -- every model is trained entirely on the synthetic data first,
+and Section~5 below covers exactly when and why its weights stop
+changing after that.
+
+\subsection*{3. Why Two Model Families, Not Just One}
+
+The original method this thesis builds on used a single neural network
+\citep{bury2021}. This thesis benchmarks both deep-learning models
+\emph{and} 22 classical models, for a concrete, checkable reason: on
+general-purpose time-series benchmarks, fast classical methods (kernel-
+and interval-based ones especially) are often just as accurate as neural
+networks, and considerably cheaper to train -- MiniRocket in particular
+is reported as up to 75 times faster than the original ROCKET method
+while keeping essentially the same accuracy \citep{dempster2021minirocket},
+and it needs no GPU at all. Whether that general pattern also holds for
+this specific bifurcation-classification task was never tested before
+this thesis, so it was treated as an open question to actually answer,
+not assumed.
+
+\subsubsection*{The models themselves}
+
+\textbf{Deep learning (7 models).} Three represent the three broad
+design families in the roster and are explained in full architectural
+detail in the Methodology chapter:
+
+\begin{itemize}
+    \item \textbf{LSTM} -- a plain recurrent network (not the
+    architecture the original paper used; this one follows
+    \citet{ma2025sdml}'s design instead), reading the raw series one
+    step at a time through a memory cell that avoids the ``forgetting''
+    problem simple recurrent networks have on long sequences.
+    \item \textbf{CNN-LSTM} -- the original paper's own architecture
+    \citep{bury2021}: a convolutional layer first picks out local
+    patterns (a short spike in noisiness, a brief pattern in how points
+    relate to their neighbours) and compresses them, and only that
+    compressed summary is handed to an LSTM, so the LSTM never has to
+    track every raw noisy point itself.
+    \item \textbf{InceptionTime} \citep{fawaz2020inceptiontime} -- runs
+    several convolutional filters of different lengths in parallel over
+    the same window, so the network reads the series at several time
+    scales at once (useful because a Hopf bifurcation's oscillation is
+    fast while a Fold's slow build-up is gradual).
+\end{itemize}
+
+Four more were added to the roster and each closely reproduces a
+published architecture, checked layer-by-layer against a reference
+implementation: \textbf{ResNet} \citep{wang2017resnet} (residual blocks
+with a shortcut connection around each one), \textbf{TCN}
+\citep{bai2018tcn} (a stack of convolutions that each see a
+progressively wider stretch of the series, so the last one covers the
+whole window), \textbf{RNN-FCN} \citep{karim2018lstmfcn} (an LSTM branch
+and a convolutional branch combined, where the LSTM is deliberately
+shown the whole series as one long step rather than many short ones),
+and \textbf{PatchTST} \citep{nie2023patchtst} (splits the series into
+short patches and treats each patch as one token for a transformer, the
+same general kind of architecture behind modern language models).
+
+\textbf{Classical, non-neural-network models (22 models),} surveyed
+comprehensively by \citet{bagnall2017bakeoff} and grouped into three
+families:
+
+\begin{itemize}
+    \item \textbf{Kernel-based (the ROCKET family)}
+    \citep{dempster2020,dempster2021minirocket,tan2022multirocket,
+    middlehurst2021hivecote2} -- convolve the series with a large bank
+    of fixed or randomly-generated filters and, for each filter, just
+    count what fraction of the output is positive; feed that into a
+    simple linear classifier. Fast, and often as accurate as much
+    heavier methods.
+    \item \textbf{Dictionary-based} \citep{schafer2023weasel2,
+    senin2013saxvsm} -- turn each window into a short discrete ``word''
+    describing its shape, then classify based on which words show up how
+    often, similar in spirit to how spam filters count words in an
+    email.
+    \item \textbf{Interval- and feature-based} \citep{deng2013tsf} --
+    compute simple statistics (mean, slope, standard deviation, and
+    similar) over many different sub-stretches of the window and combine
+    them with a standard decision forest.
+\end{itemize}
+
+\subsection*{4. How a Result Is Measured}
+
+A model could just be judged by raw accuracy (how often its single top
+guess is right), but that number hides how the model behaves at other
+confidence thresholds, and for an early-warning system the acceptable
+trade-off between missing a real transition and raising a false alarm is
+itself a judgement call, not a fixed 50\% cut-off. This thesis instead
+uses AUC -- the area under the ROC curve, a standard measure that
+summarises performance across every possible threshold at once, from 0.5
+(no better than a coin flip) to 1.0 (perfect). It is used here
+specifically because comparing 29 very different models fairly needs a
+measure that does not depend on every model happening to be equally
+well-calibrated at the exact same cut-off, and AUC does not depend on
+that.
+
+Two different versions of this same AUC calculation are used, matching
+the two different questions from Section~2 above: on the synthetic data,
+where the correct label is known, each of the four classes is scored
+against the other three and the four scores are averaged -- this
+measures how well a model tells each specific bifurcation type apart
+from everything else. On the real core data, where the type is not
+known, only the narrower ``was a transition detected at all'' question
+is scored, against simulated no-transition control data.
+
+\subsection*{5. How Training Works, and When the Model Stops Changing}
+
+The synthetic dataset -- the only one with known correct labels -- is
+split once into three fixed parts: 95\% for training, 4\% for adjusting
+the model along the way (deciding when to stop training and when to slow
+the learning rate down), and 1\% held back untouched to give one honest
+accuracy number per model at the end. This is a single clean split, not
+repeated in different ways.
+
+Every deep-learning model is trained with the same loss function
+(categorical cross-entropy, the standard way to penalise a wrong
+probability guess across several classes) and the Adam optimiser
+\citep{kingma2015adam}. Most of them also use a scheduler that
+automatically halves the learning rate once progress stalls; one model
+(the plain LSTM) is the exception and trains at one fixed learning rate
+throughout. Batch size, exactly how patient training is before stopping,
+and similar per-model settings are each tuned individually rather than
+fixed to one value for the whole roster.
+
+Once training and tuning are done, every model's weights are frozen and
+saved to disk -- deep-learning weights in one standard PyTorch format
+\citep{paszke2019pytorch}, classical-model objects in another standard
+Python format -- and never updated again. This is the point where the
+real Mediterranean cores enter the picture for the first time: a frozen
+model is simply run on them, with no further learning of any kind, so
+the real-data result is a genuine test of what transferred from
+synthetic training, not a retrain on the target domain. Section~6 covers
+exactly how that real-data run works.
+
+\subsection*{6. How the Real Mediterranean Data Is Actually Evaluated}
+
+A trained, frozen model is run against a real sediment core through
+\texttt{testing/evaluate.py}. Rather than producing one single verdict
+for an entire core, the code takes 40 evenly-spaced windows stretching
+from the start of the usable pre-transition record up to the transition
+itself, and predicts once per window -- this gives a whole trajectory of
+predictions approaching the transition, not a single answer. Each
+window's four-class probabilities, the derived ``how likely is a
+transition'' number, and the classical rolling variance and
+autocorrelation for that same window are all written out together, and
+every summary table and chart in the results chapter is ultimately built
+from these saved per-window numbers.
+
+\subsection*{7. How the Code Itself Is Organised}
+
+The codebase is deliberately organised around a small number of files
+that each do one job, connected by plain function calls -- not around a
+hierarchy of custom classes. Loading data, building the extra input
+channels, defining each model, training, and evaluating are each their
+own file with one or two top-level functions; there is no single
+``Trainer'' or ``Model'' class managing everything, and no separate
+script just for running the real-data evaluation -- it is the same
+evaluation file used for the synthetic test data, with a different flag.
+Adding a brand-new model to the roster means adding one new file and one
+new entry to a settings file, not extending an inheritance chain. This
+was a deliberate choice, checked against \citet{bury2021}'s own published
+code \citep{burygithub}, which is organised the same simple,
+function-based way.
+
+None of the 22 classical models were coded from scratch -- each one is
+built directly from an existing, well-tested open-source library (mainly
+\texttt{aeon} \citep{aeon2024}, with \texttt{pyts} \citep{pyts2020}
+covering the handful of models \texttt{aeon} does not provide), so this
+thesis's own code is responsible for wiring the right library call
+together with the right settings, not for reimplementing the underlying
+algorithm. For the ROCKET-family models specifically, the underlying
+library pairs its kernel features with a ridge-regression classifier
+\citep{pedregosa2011sklearn}, not code written for this thesis.
+
+\subsection*{8. Where the Experiments Actually Ran}
+
+Training and testing 29 models at two different window lengths adds up
+to far more computation than a single computer could reasonably do. The
+experiments ran on a university computing cluster, using a standard job
+scheduler, SLURM \citep{yoo2003slurm}, to launch one job per model
+automatically rather than by hand. Deep-learning jobs were given a
+graphics-card partition, since their bottleneck is the heavy matrix
+arithmetic behind training a neural network; the classical models --
+which involve no such training step, just fast feature extraction --
+were instead given many ordinary CPU cores and no graphics card, matching
+what each family of methods actually needs to run efficiently.
+
+\bigskip
+\noindent\emph{Every number, file name, and function name above matches
+exactly what Chapter~\ref{ch:methodology} and Chapter~\ref{ch:implementation}
+report; see those chapters (and their matching
+\texttt{chapter\_6\_verification.md} / \texttt{chapter\_7\_verification.md}
+logs) for the full technical detail, exact architectural specifications,
+and source-level verification behind each claim.}

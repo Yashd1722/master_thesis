@@ -16,6 +16,9 @@ _n_threads = int(
 _os.environ["NUMBA_NUM_THREADS"] = str(_n_threads)
 _os.environ["OMP_NUM_THREADS"]   = str(_n_threads)
 _os.environ["MKL_NUM_THREADS"]   = str(_n_threads)
+_os.environ["OPENBLAS_NUM_THREADS"] = str(_n_threads)
+_os.environ["VECLIB_MAXIMUM_THREADS"] = str(_n_threads)
+_os.environ["BLIS_NUM_THREADS"]  = str(_n_threads)
 del _os, _n_threads
 
 import argparse
@@ -29,33 +32,19 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
+from sklearn.metrics import f1_score, accuracy_score, balanced_accuracy_score, confusion_matrix
 from tqdm import tqdm
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from models import get_model, list_models, is_tsc_model, get_max_train_samples
-from src.constants import CLASS_NAMES, NULL_IDX
+from src.constants import CLASS_NAMES, NULL_IDX, setup_log
 from src.dataset_loader import load_config, get_dataset_info, get_dataloader
 
 # Number of parallel workers: always read from SLURM so we never waste or
 # exceed the CPU allocation. Falls back to 4 for interactive sessions.
 N_JOBS = int(os.environ.get("SLURM_CPUS_PER_TASK", 4))
-
-# =============================================================================
-# Logging
-# =============================================================================
-def setup_log(log_path: Path) -> logging.Logger:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger(log_path.stem)
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%H:%M:%S")
-    for h in [logging.FileHandler(log_path, mode="w"),
-              logging.StreamHandler(sys.stdout)]:
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-    return logger
 
 # =============================================================================
 # DL training helpers
@@ -277,6 +266,7 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     pad_max_frac = aug_cfg.get("pad_max_frac", 0.9)
     min_visible  = aug_cfg.get("min_visible", 30)
     both_sided   = bool(aug_cfg.get("both_sided", False))
+    pad_mode     = infer_cfg.get("pad_mode", "zero")
     max_samp     = tr_cfg.get("max_train_samples", get_max_train_samples(model_name))
 
     def _stratified_subsample(X, y, target):
@@ -298,17 +288,18 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
 
     # Stage 1 — residual channel.
     rng = np.random.default_rng(seed)
-    parts_X = [np.stack([make_model_input(s, ts_len) for s in X_train]).astype(np.float32)]
+    parts_X = [np.stack([make_model_input(s, ts_len, pad_mode=pad_mode) for s in X_train]).astype(np.float32)]
     parts_y = [y_train]
     for _ in range(n_copies):
         parts_X.append(np.stack([
             random_censor(s, ts_len, rng, pad_max_frac=pad_max_frac,
-                          min_visible=min_visible, both_sided=both_sided)
+                          min_visible=min_visible, both_sided=both_sided,
+                          pad_mode=pad_mode)
             for s in X_train]).astype(np.float32))
         parts_y.append(y_train)
     X_train = np.concatenate(parts_X, axis=0)
     y_train = np.concatenate(parts_y, axis=0)
-    X_val   = np.stack([make_model_input(s, ts_len) for s in X_val]).astype(np.float32)
+    X_val   = np.stack([make_model_input(s, ts_len, pad_mode=pad_mode) for s in X_val]).astype(np.float32)
 
     logger.info(f"  Residuals normalised; train {len(parts_y[0])} -> {len(X_train)} "
                 f"(1 clean + {n_copies} censored copies)")
@@ -353,11 +344,12 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
     val_preds = val_probs.argmax(axis=1)
     val_acc   = float(accuracy_score(y_val, val_preds))
     val_f1    = float(f1_score(y_val, val_preds, average="macro", zero_division=0))
+    val_bal_acc = float(balanced_accuracy_score(y_val, val_preds))
     val_cm    = confusion_matrix(y_val, val_preds,
                                   labels=list(range(n_cls))).tolist()
 
-    logger.info(f"  Val acc={val_acc:.4f}  macro-F1={val_f1:.4f}  "
-                f"time={train_time / 60:.1f} min")
+    logger.info(f"  Val acc={val_acc:.4f}  balanced_acc={val_bal_acc:.4f}  "
+                f"macro-F1={val_f1:.4f}  time={train_time / 60:.1f} min")
     logger.info(f"  Confusion matrix (rows=true, cols=pred):")
     for i, row in enumerate(val_cm):
         logger.info(f"    {CLASS_NAMES[i]:>15s}: {row}")
@@ -367,7 +359,9 @@ def train_tsc(model_name, dataset_name, cfg, logger, force=False):
 
     return {
         "model": model_name, "dataset": dataset_name,
-        "val_acc": round(val_acc, 6), "val_f1": round(val_f1, 6),
+        "val_acc": round(val_acc, 6),
+        "val_balanced_acc": round(val_bal_acc, 6),
+        "val_f1": round(val_f1, 6),
         "val_confusion_matrix": val_cm,
         "training_time_min": round(train_time / 60, 2),
     }
@@ -425,8 +419,9 @@ def train_dl_binary(model_name, dataset_name, cfg, device, logger):
             x, y = x.to(device), remap(y).to(device)
             optimizer.zero_grad()
             logits = model(x)
+            loss = criterion(logits, y)
+            loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), tr_cfg["grad_clip"])
-            criterion(logits, y).backward()
             optimizer.step()
         # Val
         model.eval()

@@ -36,7 +36,9 @@ import pandas as pd
 from pathlib import Path
 from scipy.stats import norm
 from typing import List, Tuple, Optional
-import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.constants import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -48,22 +50,6 @@ CORE_XRF_FILES = {
     "MS66":      "MS66PC_calibratedXRF.csv",
     "64PE406E1": "64PE406-E1_calibratedXRF.csv",
 }
-
-
-# =============================================================================
-#  Config
-# =============================================================================
-
-def load_config(config_path: str = "config.yaml") -> dict:
-    candidates = [
-        Path(config_path),
-        Path(__file__).resolve().parents[1] / "config.yaml",
-    ]
-    for p in candidates:
-        if p.exists():
-            with open(p) as f:
-                return yaml.safe_load(f)
-    raise FileNotFoundError("config.yaml not found")
 
 
 def _repo_root() -> Path:
@@ -395,7 +381,7 @@ def process_core(core_name: str, cfg: dict,
     logger.info(f"\n{'='*60}\nProcessing: {core_name}\n{'='*60}")
 
     bandwidth_yr = cfg["pangaea"]["bandwidth_years"]
-    n_surr       = cfg["surrogate"]["n_surrogates"]
+    n_surr       = cfg.get("surrogate", {}).get("n_surrogates", 100)
     seed         = cfg["project"]["seed"]
     sapropels    = cfg["pangaea"]["cores"][core_name]["sapropels"]
 
@@ -471,31 +457,16 @@ def process_core(core_name: str, cfg: dict,
                                 f"{core_name}{sap_id}{elem}") % 100000,
                         )
                     else:
-                        # AAFT: fit to first 20% baseline (Bury protocol)
-                        init_n      = max(3, int(0.20 * len(resids)))
-                        ref         = resids[:init_n]
-                        surr_fn     = SURROGATE_METHODS.get(null_method,
-                                      _aaft_surrogate)
+                        # AAFT: generate surrogates over the full series length using phase-randomization
+                        # to preserve spectrum and amplitude distribution without artificial tiling jumps
+                        surr_fn     = SURROGATE_METHODS.get(null_method, _aaft_surrogate)
                         rng_s       = np.random.default_rng(
                             seed + hash(f"{core_name}{sap_id}{elem}") % 100000
                         )
-                        # Scale to baseline level then generate surrogates
                         null_series = [
-                            surr_fn(ref, rng_s).astype(np.float32)
+                            surr_fn(resids.copy(), rng_s).astype(np.float32)
                             for _ in range(n_null)
                         ]
-                        # Pad/trim each surrogate to full segment length
-                        full_len    = len(resids)
-                        padded_null = []
-                        for surr in null_series:
-                            if len(surr) >= full_len:
-                                padded_null.append(surr[:full_len])
-                            else:
-                                # Repeat surrogate to fill full length
-                                reps = (full_len // len(surr)) + 1
-                                extended = np.tile(surr, reps)[:full_len]
-                                padded_null.append(extended.astype(np.float32))
-                        null_series = padded_null
                     save_null_series(
                         null_series, ages_forced,
                         core_name, sap_id, elem, cfg

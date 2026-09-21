@@ -13,20 +13,33 @@ from models.tsc import TSCModel, TSC_SPECS
 from models.cnn_lstm import CNNLSTM
 from models.lstm import LSTMClassifier
 from models.inceptiontime import InceptionTime
+from models.resnet import ResNet
+from models.tcn import TCN
+from models.rnn_fcn import RNN_FCN
 
-# DL builders: name -> class (constructed with ts_len, num_classes)
 _DL = {
     "cnn_lstm":      CNNLSTM,
     "lstm":          LSTMClassifier,
     "inceptiontime": InceptionTime,
+    "resnet":        ResNet,
+    "tcn":           TCN,
+    "rnn_fcn":       RNN_FCN,
+    "patchtst":      None,
 }
+
+
+def _resolve_dl(name):
+    if name == "patchtst":
+        from models.patchtst import PatchTST
+        return PatchTST
+    return _DL[name]
 
 
 def get_model(name, ts_len, num_classes, **kwargs):
     if name in TSC_SPECS:
         return TSCModel(name, ts_len=ts_len, num_classes=num_classes, **kwargs)
     if name in _DL:
-        return _DL[name](ts_len=ts_len, num_classes=num_classes)
+        return _resolve_dl(name)(ts_len=ts_len, num_classes=num_classes)
     raise ValueError(f"Unknown model '{name}'. Available: {list_models()}")
 
 
